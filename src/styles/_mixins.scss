@@ -1,0 +1,552 @@
+// ============================================
+// FESTIVO DESIGN SYSTEM - MIXINS
+// ============================================
+
+@use 'variables' as *;
+
+// ============================================
+// RESPONSIVE BREAKPOINTS
+// ============================================
+@mixin xs {
+  @media (min-width: $breakpoint-xs) {
+    @content;
+  }
+}
+
+@mixin sm {
+  @media (min-width: $breakpoint-sm) {
+    @content;
+  }
+}
+
+@mixin md {
+  @media (min-width: $breakpoint-md) {
+    @content;
+  }
+}
+
+@mixin lg {
+  @media (min-width: $breakpoint-lg) {
+    @content;
+  }
+}
+
+@mixin xl {
+  @media (min-width: $breakpoint-xl) {
+    @content;
+  }
+}
+
+@mixin xxl {
+  @media (min-width: $breakpoint-2xl) {
+    @content;
+  }
+}
+
+// Max-width queries
+@mixin max-xs {
+  @media (max-width: #{$breakpoint-xs - 1px}) {
+    @content;
+  }
+}
+
+@mixin max-sm {
+  @media (max-width: #{$breakpoint-sm - 1px}) {
+    @content;
+  }
+}
+
+@mixin max-md {
+  @media (max-width: #{$breakpoint-md - 1px}) {
+    @content;
+  }
+}
+
+// ============================================
+// FLEXBOX
+// ============================================
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@mixin flex-start {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+@mixin flex-end {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+@mixin flex-column {
+  display: flex;
+  flex-direction: column;
+}
+
+@mixin flex-column-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+// ============================================
+// TYPOGRAPHY
+// ============================================
+@mixin heading-1 {
+  font-family: $font-family-heading;
+  font-size: $font-size-4xl;
+  font-weight: $font-weight-bold;
+  line-height: $line-height-tight;
+  letter-spacing: $letter-spacing-tight;
+
+  @include md {
+    font-size: $font-size-5xl;
+  }
+
+  @include lg {
+    font-size: $font-size-6xl;
+  }
+}
+
+@mixin heading-2 {
+  font-family: $font-family-heading;
+  font-size: $font-size-3xl;
+  font-weight: $font-weight-bold;
+  line-height: $line-height-tight;
+
+  @include md {
+    font-size: $font-size-4xl;
+  }
+}
+
+@mixin heading-3 {
+  font-family: $font-family-heading;
+  font-size: $font-size-2xl;
+  font-weight: $font-weight-semibold;
+  line-height: $line-height-snug;
+
+  @include md {
+    font-size: $font-size-3xl;
+  }
+}
+
+@mixin heading-4 {
+  font-family: $font-family-heading;
+  font-size: $font-size-xl;
+  font-weight: $font-weight-semibold;
+  line-height: $line-height-snug;
+
+  @include md {
+    font-size: $font-size-2xl;
+  }
+}
+
+@mixin body-large {
+  font-size: $font-size-lg;
+  line-height: $line-height-relaxed;
+}
+
+@mixin body-default {
+  font-size: $font-size-base;
+  line-height: $line-height-normal;
+}
+
+@mixin body-small {
+  font-size: $font-size-sm;
+  line-height: $line-height-normal;
+}
+
+@mixin caption {
+  font-size: $font-size-xs;
+  line-height: $line-height-normal;
+  color: $text-secondary;
+}
+
+// ============================================
+// BUTTONS
+// ============================================
+@mixin button-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-2;
+  font-family: $font-family-base;
+  font-weight: $font-weight-medium;
+  border-radius: $radius-default;
+  cursor: pointer;
+  transition: all $transition-default;
+  border: none;
+  outline: none;
+  text-decoration: none;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+@mixin button-primary {
+  @include button-base;
+  background: $bg-gradient-primary;
+  color: $text-inverse;
+  box-shadow: $shadow-primary;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 44px -10px rgba($primary-600, 0.5);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+}
+
+@mixin button-secondary {
+  @include button-base;
+  background: $bg-primary;
+  color: $primary-600;
+  border: 2px solid $primary-600;
+
+  &:hover:not(:disabled) {
+    background: $primary-50;
+    border-color: $primary-700;
+  }
+}
+
+@mixin button-ghost {
+  @include button-base;
+  background: transparent;
+  color: $text-primary;
+
+  &:hover:not(:disabled) {
+    background: $neutral-100;
+  }
+}
+
+// Button Sizes
+@mixin button-sm {
+  height: $btn-height-sm;
+  padding: 0 $spacing-3;
+  font-size: $font-size-sm;
+}
+
+@mixin button-md {
+  height: $btn-height-default;
+  padding: 0 $spacing-5;
+  font-size: $font-size-base;
+}
+
+@mixin button-lg {
+  height: $btn-height-lg;
+  padding: 0 $spacing-8;
+  font-size: $font-size-lg;
+}
+
+// ============================================
+// INPUTS
+// ============================================
+@mixin input-base {
+  width: 100%;
+  font-family: $font-family-base;
+  font-size: $font-size-base;
+  color: $text-primary;
+  background: $bg-primary;
+  border: 1px solid $border-default;
+  border-radius: $radius-default;
+  transition: all $transition-default;
+  outline: none;
+
+  &::placeholder {
+    color: $text-muted;
+  }
+
+  &:focus {
+    border-color: $border-focus;
+    box-shadow: 0 0 0 3px rgba($primary-500, 0.1);
+  }
+
+  &:disabled {
+    background: $neutral-100;
+    cursor: not-allowed;
+  }
+}
+
+@mixin input-sm {
+  height: $input-height-sm;
+  padding: 0 $spacing-3;
+  font-size: $font-size-sm;
+}
+
+@mixin input-md {
+  height: $input-height-default;
+  padding: 0 $spacing-4;
+}
+
+@mixin input-lg {
+  height: $input-height-lg;
+  padding: 0 $spacing-5;
+  font-size: $font-size-lg;
+}
+
+// ============================================
+// CARDS
+// ============================================
+@mixin card {
+  background: $bg-primary;
+  border-radius: $card-radius;
+  padding: $card-padding;
+  box-shadow: $shadow-sm;
+  transition: all $transition-default;
+}
+
+@mixin card-hover {
+  &:hover {
+    box-shadow: $shadow-md;
+    transform: translateY(-4px);
+  }
+}
+
+@mixin card-interactive {
+  @include card;
+  @include card-hover;
+  cursor: pointer;
+}
+
+// ============================================
+// LAYOUT
+// ============================================
+@mixin container {
+  width: 100%;
+  max-width: $container-xl;
+  margin: 0 auto;
+  padding: 0 $spacing-4;
+
+  @include md {
+    padding: 0 $spacing-6;
+  }
+
+  @include lg {
+    padding: 0 $spacing-8;
+  }
+}
+
+@mixin section {
+  padding: $spacing-12 0;
+
+  @include md {
+    padding: $spacing-16 0;
+  }
+
+  @include lg {
+    padding: $spacing-20 0;
+  }
+}
+
+// ============================================
+// UTILITIES
+// ============================================
+@mixin truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@mixin line-clamp($lines) {
+  display: -webkit-box;
+  -webkit-line-clamp: $lines;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+@mixin visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@mixin scrollbar-custom {
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: $neutral-100;
+    border-radius: $radius-full;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: $neutral-300;
+    border-radius: $radius-full;
+
+    &:hover {
+      background: $neutral-400;
+    }
+  }
+}
+
+// ============================================
+// ANIMATIONS
+// ============================================
+@mixin fade-in {
+  animation: fadeIn $transition-default forwards;
+}
+
+@mixin slide-up {
+  animation: slideUp $transition-default forwards;
+}
+
+@mixin pulse {
+  animation: pulse 2s infinite;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// ============================================
+// FORMS
+// ============================================
+@mixin form-group {
+  margin-bottom: $spacing-5;
+}
+
+@mixin form-label {
+  display: block;
+  margin-bottom: $spacing-2;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: $text-primary;
+}
+
+@mixin form-error {
+  margin-top: $spacing-1;
+  font-size: $font-size-sm;
+  color: $error;
+}
+
+@mixin form-hint {
+  margin-top: $spacing-1;
+  font-size: $font-size-sm;
+  color: $text-secondary;
+}
+
+// ============================================
+// BADGES
+// ============================================
+@mixin badge {
+  display: inline-flex;
+  align-items: center;
+  padding: $spacing-1 $spacing-2;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+  border-radius: $radius-full;
+  text-transform: uppercase;
+  letter-spacing: $letter-spacing-wide;
+}
+
+@mixin badge-primary {
+  @include badge;
+  background: $primary-100;
+  color: $primary-700;
+}
+
+@mixin badge-success {
+  @include badge;
+  background: $success-light;
+  color: $success-dark;
+}
+
+@mixin badge-warning {
+  @include badge;
+  background: $warning-light;
+  color: $warning-dark;
+}
+
+@mixin badge-error {
+  @include badge;
+  background: $error-light;
+  color: $error-dark;
+}
+
+// ============================================
+// AVATAR
+// ============================================
+@mixin avatar($size: 40px) {
+  width: $size;
+  height: $size;
+  border-radius: $radius-full;
+  object-fit: cover;
+  background: $neutral-200;
+}
+
+// ============================================
+// SKELETON LOADING
+// ============================================
+@mixin skeleton {
+  background: linear-gradient(90deg, $neutral-200 25%, $neutral-100 50%, $neutral-200 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: $radius-default;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
