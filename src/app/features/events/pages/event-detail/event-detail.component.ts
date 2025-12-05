@@ -1,19 +1,22 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { NavbarComponent } from '../../../../shared/components/navbar/navbar.component';
 import { ButtonComponent } from '../../../../shared/components/button/button.component';
 import { ModalComponent } from '../../../../shared/components/modal/modal.component';
 import { EventService } from '../../../../core/services/event.service';
+import { RsvpService } from '../../../../core/services/rsvp.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { Event } from '../../../../core/models/event.model';
 import { User } from '../../../../core/models/user.model';
+import { Rsvp, RsvpStatus } from '../../../../core/models/rsvp.model';
 
 @Component({
   selector: 'app-event-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule, NavbarComponent, ButtonComponent, ModalComponent],
+  imports: [CommonModule, RouterModule, FormsModule, NavbarComponent, ButtonComponent, ModalComponent],
   template: `
     <app-navbar></app-navbar>
 
@@ -176,12 +179,42 @@ import { User } from '../../../../core/models/user.model';
                         <app-button variant="secondary" fullWidth (onClick)="showManageOptions = true">
                           Manage Event
                         </app-button>
+                      } @else if (isLoadingRsvp()) {
+                        <app-button fullWidth [loading]="true" [disabled]="true">
+                          Loading...
+                        </app-button>
+                      } @else if (userRsvp()) {
+                        <!-- User has already RSVP'd -->
+                        <div class="rsvp-status-card">
+                          <div class="rsvp-status-header">
+                            <span class="rsvp-check">✓</span>
+                            <span>You're {{ userRsvp()?.status === 'going' ? 'Going' : userRsvp()?.status === 'interested' ? 'Interested' : 'Maybe Going' }}!</span>
+                          </div>
+                          @if (userRsvp()?.checkInCode) {
+                            <div class="rsvp-code">
+                              <span class="code-label">Check-in Code:</span>
+                              <span class="code-value">{{ userRsvp()?.checkInCode }}</span>
+                            </div>
+                          }
+                          @if (userRsvp()?.guestsCount && userRsvp()!.guestsCount > 0) {
+                            <div class="rsvp-guests">
+                              +{{ userRsvp()?.guestsCount }} guest(s)
+                            </div>
+                          }
+                        </div>
+                        <app-button variant="secondary" fullWidth (onClick)="rsvpModal = true">
+                          Change RSVP
+                        </app-button>
+                        <app-button variant="ghost" fullWidth (onClick)="cancelRsvp()" [loading]="isCancellingRsvp()">
+                          Cancel RSVP
+                        </app-button>
                       } @else {
+                        <!-- User hasn't RSVP'd yet -->
                         <app-button fullWidth (onClick)="rsvpModal = true">
                           @if (event()?.isPaid) {
-                            Buy Ticket
+                            Buy Ticket - ₹{{ event()?.entryFee }}
                           } @else {
-                            RSVP Now
+                            RSVP Now - Free
                           }
                         </app-button>
                         <app-button variant="secondary" fullWidth>
@@ -189,7 +222,7 @@ import { User } from '../../../../core/models/user.model';
                         </app-button>
                       }
                     } @else {
-                      <app-button routerLink="/auth/login" fullWidth>
+                      <app-button [routerLink]="['/auth/login']" [queryParams]="{returnUrl: '/events/' + event()?.slug}" fullWidth>
                         Login to RSVP
                       </app-button>
                     }
@@ -226,14 +259,76 @@ import { User } from '../../../../core/models/user.model';
       <!-- RSVP Modal -->
       <app-modal
         [isOpen]="rsvpModal"
-        title="RSVP to Event"
+        [title]="userRsvp() ? 'Update Your RSVP' : 'RSVP to Event'"
         (onClose)="rsvpModal = false"
         [showFooter]="true"
       >
-        <p>Confirm your attendance to this event.</p>
+        <div class="rsvp-form">
+          <div class="rsvp-event-info">
+            <h4>{{ event()?.title }}</h4>
+            <p>{{ formatDate(event()?.date) }} at {{ event()?.time }}</p>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Your Response</label>
+            <div class="rsvp-options">
+              <button
+                type="button"
+                class="rsvp-option"
+                [class.active]="selectedRsvpStatus === 'going'"
+                (click)="selectedRsvpStatus = 'going'"
+              >
+                <span class="option-icon">✓</span>
+                <span class="option-label">Going</span>
+              </button>
+              <button
+                type="button"
+                class="rsvp-option"
+                [class.active]="selectedRsvpStatus === 'interested'"
+                (click)="selectedRsvpStatus = 'interested'"
+              >
+                <span class="option-icon">⭐</span>
+                <span class="option-label">Interested</span>
+              </button>
+              <button
+                type="button"
+                class="rsvp-option"
+                [class.active]="selectedRsvpStatus === 'maybe'"
+                (click)="selectedRsvpStatus = 'maybe'"
+              >
+                <span class="option-icon">?</span>
+                <span class="option-label">Maybe</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Additional Guests (optional)</label>
+            <div class="guests-input">
+              <button type="button" class="guests-btn" (click)="decrementGuests()" [disabled]="guestsCount <= 0">-</button>
+              <span class="guests-count">{{ guestsCount }}</span>
+              <button type="button" class="guests-btn" (click)="incrementGuests()" [disabled]="guestsCount >= 10">+</button>
+            </div>
+            <p class="form-hint">You + {{ guestsCount }} guest(s) = {{ guestsCount + 1 }} total</p>
+          </div>
+
+          @if (event()?.isPaid) {
+            <div class="rsvp-total">
+              <span>Total Amount:</span>
+              <span class="total-value">₹{{ (event()?.entryFee || 0) * (guestsCount + 1) }}</span>
+            </div>
+          }
+        </div>
+
         <div modal-footer>
-          <app-button variant="ghost" (onClick)="rsvpModal = false">Cancel</app-button>
-          <app-button (onClick)="confirmRsvp()">Confirm RSVP</app-button>
+          <app-button variant="ghost" (onClick)="closeRsvpModal()">Cancel</app-button>
+          <app-button
+            (onClick)="confirmRsvp()"
+            [loading]="isSubmittingRsvp()"
+            [disabled]="!selectedRsvpStatus"
+          >
+            {{ userRsvp() ? 'Update RSVP' : 'Confirm RSVP' }}
+          </app-button>
         </div>
       </app-modal>
     } @else {
@@ -542,19 +637,201 @@ import { User } from '../../../../core/models/user.model';
         color: $primary-600;
       }
     }
+
+    // RSVP Status Card
+    .rsvp-status-card {
+      background: $success-light;
+      border-radius: $radius-default;
+      padding: $spacing-4;
+      margin-bottom: $spacing-3;
+    }
+
+    .rsvp-status-header {
+      display: flex;
+      align-items: center;
+      gap: $spacing-2;
+      font-weight: $font-weight-semibold;
+      color: $success-dark;
+    }
+
+    .rsvp-check {
+      @include flex-center;
+      width: 24px;
+      height: 24px;
+      background: $success;
+      color: white;
+      border-radius: $radius-full;
+      font-size: $font-size-sm;
+    }
+
+    .rsvp-code {
+      margin-top: $spacing-3;
+      padding-top: $spacing-3;
+      border-top: 1px solid rgba(0,0,0,0.1);
+      font-size: $font-size-sm;
+    }
+
+    .code-label {
+      color: $text-secondary;
+    }
+
+    .code-value {
+      font-weight: $font-weight-bold;
+      font-family: monospace;
+      margin-left: $spacing-2;
+    }
+
+    .rsvp-guests {
+      margin-top: $spacing-2;
+      font-size: $font-size-sm;
+      color: $success-dark;
+    }
+
+    // RSVP Modal Form
+    .rsvp-form {
+      padding: $spacing-2 0;
+    }
+
+    .rsvp-event-info {
+      text-align: center;
+      padding-bottom: $spacing-4;
+      margin-bottom: $spacing-4;
+      border-bottom: 1px solid $border-light;
+
+      h4 {
+        font-weight: $font-weight-semibold;
+        margin-bottom: $spacing-1;
+      }
+
+      p {
+        color: $text-secondary;
+        font-size: $font-size-sm;
+      }
+    }
+
+    .form-group {
+      margin-bottom: $spacing-5;
+    }
+
+    .form-label {
+      display: block;
+      font-weight: $font-weight-medium;
+      margin-bottom: $spacing-2;
+    }
+
+    .form-hint {
+      font-size: $font-size-sm;
+      color: $text-secondary;
+      margin-top: $spacing-2;
+    }
+
+    .rsvp-options {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: $spacing-3;
+    }
+
+    .rsvp-option {
+      @include flex-column-center;
+      padding: $spacing-4;
+      border: 2px solid $border-light;
+      border-radius: $radius-lg;
+      background: $bg-primary;
+      cursor: pointer;
+      transition: all $transition-fast;
+
+      &:hover {
+        border-color: $primary-300;
+      }
+
+      &.active {
+        border-color: $primary-600;
+        background: $primary-50;
+      }
+    }
+
+    .option-icon {
+      font-size: $font-size-xl;
+      margin-bottom: $spacing-2;
+    }
+
+    .option-label {
+      font-size: $font-size-sm;
+      font-weight: $font-weight-medium;
+    }
+
+    .guests-input {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: $spacing-4;
+    }
+
+    .guests-btn {
+      @include flex-center;
+      width: 40px;
+      height: 40px;
+      border-radius: $radius-full;
+      border: 1px solid $border-default;
+      background: $bg-primary;
+      font-size: $font-size-xl;
+      cursor: pointer;
+      transition: all $transition-fast;
+
+      &:hover:not(:disabled) {
+        background: $primary-50;
+        border-color: $primary-300;
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+
+    .guests-count {
+      font-size: $font-size-2xl;
+      font-weight: $font-weight-bold;
+      min-width: 40px;
+      text-align: center;
+    }
+
+    .rsvp-total {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: $spacing-4;
+      background: $primary-50;
+      border-radius: $radius-default;
+      margin-top: $spacing-4;
+    }
+
+    .total-value {
+      font-size: $font-size-xl;
+      font-weight: $font-weight-bold;
+      color: $primary-600;
+    }
   `]
 })
 export class EventDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private eventService = inject(EventService);
+  private rsvpService = inject(RsvpService);
   private toast = inject(ToastService);
   auth = inject(AuthService);
 
   event = signal<Event | null>(null);
+  userRsvp = signal<Rsvp | null>(null);
   isLoading = signal(true);
+  isLoadingRsvp = signal(false);
+  isSubmittingRsvp = signal(false);
+  isCancellingRsvp = signal(false);
+
   rsvpModal = false;
   showManageOptions = false;
+  selectedRsvpStatus: RsvpStatus | null = null;
+  guestsCount = 0;
 
   ngOnInit(): void {
     const slug = this.route.snapshot.paramMap.get('slug');
@@ -568,9 +845,32 @@ export class EventDetailComponent implements OnInit {
       next: (response) => {
         this.event.set(response.data);
         this.isLoading.set(false);
+
+        // Load user's RSVP status if authenticated
+        if (this.auth.isAuthenticated() && response.data._id) {
+          this.loadUserRsvp(response.data._id);
+        }
       },
       error: () => {
         this.isLoading.set(false);
+      }
+    });
+  }
+
+  loadUserRsvp(eventId: string): void {
+    this.isLoadingRsvp.set(true);
+    this.rsvpService.getMyRsvp(eventId).subscribe({
+      next: (response) => {
+        this.userRsvp.set(response.data);
+        // Pre-fill form if user already has RSVP
+        if (response.data) {
+          this.selectedRsvpStatus = response.data.status;
+          this.guestsCount = response.data.guestsCount || 0;
+        }
+        this.isLoadingRsvp.set(false);
+      },
+      error: () => {
+        this.isLoadingRsvp.set(false);
       }
     });
   }
@@ -599,8 +899,114 @@ export class EventDetailComponent implements OnInit {
   }
 
   confirmRsvp(): void {
-    this.toast.success('RSVP Confirmed!', 'You have successfully registered for this event.');
+    if (!this.selectedRsvpStatus || !this.event()) return;
+
+    this.isSubmittingRsvp.set(true);
+
+    const existingRsvp = this.userRsvp();
+
+    if (existingRsvp) {
+      // Update existing RSVP
+      this.rsvpService.updateRsvp(existingRsvp._id, {
+        status: this.selectedRsvpStatus,
+        guestsCount: this.guestsCount
+      }).subscribe({
+        next: (response) => {
+          this.userRsvp.set(response.data);
+          this.toast.success('RSVP Updated!', 'Your response has been updated.');
+          this.rsvpModal = false;
+          this.isSubmittingRsvp.set(false);
+        },
+        error: (error) => {
+          const message = error.error?.message || 'Failed to update RSVP. Please try again.';
+          this.toast.error('Update Failed', message);
+          this.isSubmittingRsvp.set(false);
+        }
+      });
+    } else {
+      // Create new RSVP
+      this.rsvpService.createRsvp({
+        eventId: this.event()!._id,
+        status: this.selectedRsvpStatus,
+        guestsCount: this.guestsCount
+      }).subscribe({
+        next: (response) => {
+          this.userRsvp.set(response.data);
+          // Update attendee count locally
+          const currentEvent = this.event();
+          if (currentEvent) {
+            this.event.set({
+              ...currentEvent,
+              currentAttendees: currentEvent.currentAttendees + 1 + this.guestsCount
+            });
+          }
+          this.toast.success('RSVP Confirmed!', 'You have successfully registered for this event.');
+          this.rsvpModal = false;
+          this.isSubmittingRsvp.set(false);
+        },
+        error: (error) => {
+          const message = error.error?.message || 'Failed to RSVP. Please try again.';
+          this.toast.error('RSVP Failed', message);
+          this.isSubmittingRsvp.set(false);
+        }
+      });
+    }
+  }
+
+  cancelRsvp(): void {
+    const rsvp = this.userRsvp();
+    if (!rsvp) return;
+
+    this.isCancellingRsvp.set(true);
+
+    this.rsvpService.cancelRsvp(rsvp._id).subscribe({
+      next: () => {
+        // Update attendee count locally
+        const currentEvent = this.event();
+        if (currentEvent) {
+          const reduction = 1 + (rsvp.guestsCount || 0);
+          this.event.set({
+            ...currentEvent,
+            currentAttendees: Math.max(0, currentEvent.currentAttendees - reduction)
+          });
+        }
+        this.userRsvp.set(null);
+        this.selectedRsvpStatus = null;
+        this.guestsCount = 0;
+        this.toast.success('RSVP Cancelled', 'Your registration has been cancelled.');
+        this.isCancellingRsvp.set(false);
+      },
+      error: (error) => {
+        const message = error.error?.message || 'Failed to cancel RSVP. Please try again.';
+        this.toast.error('Cancel Failed', message);
+        this.isCancellingRsvp.set(false);
+      }
+    });
+  }
+
+  closeRsvpModal(): void {
     this.rsvpModal = false;
+    // Reset form if no existing RSVP
+    if (!this.userRsvp()) {
+      this.selectedRsvpStatus = null;
+      this.guestsCount = 0;
+    } else {
+      // Reset to existing values
+      this.selectedRsvpStatus = this.userRsvp()!.status;
+      this.guestsCount = this.userRsvp()!.guestsCount || 0;
+    }
+  }
+
+  incrementGuests(): void {
+    if (this.guestsCount < 10) {
+      this.guestsCount++;
+    }
+  }
+
+  decrementGuests(): void {
+    if (this.guestsCount > 0) {
+      this.guestsCount--;
+    }
   }
 
   shareOnTwitter(): void {

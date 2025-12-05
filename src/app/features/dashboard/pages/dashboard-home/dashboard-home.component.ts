@@ -7,6 +7,7 @@ import { CardComponent } from '../../../../shared/components/card/card.component
 import { AuthService } from '../../../../core/services/auth.service';
 import { EventService } from '../../../../core/services/event.service';
 import { BookingService } from '../../../../core/services/booking.service';
+import { ToastService } from '../../../../core/services/toast.service';
 import { Event } from '../../../../core/models/event.model';
 import { Booking } from '../../../../core/models/booking.model';
 
@@ -231,24 +232,52 @@ import { Booking } from '../../../../core/models/booking.model';
                 } @else {
                   <div class="events-grid">
                     @for (event of myEvents(); track event._id) {
-                      <app-card
-                        [title]="event.title"
-                        [subtitle]="formatDate(event.date)"
-                        [image]="event.coverPhoto || 'assets/images/event-placeholder.jpg'"
-                        [badge]="event.status"
-                        [badgeType]="getStatusBadgeType(event.status)"
-                        hoverable
-                        clickable
-                        [hasFooter]="true"
-                        [routerLink]="['/events', event.slug]"
-                      >
-                        <p class="card-location">📍 {{ event.locationName || event.city }}</p>
-                        <p class="card-attendees">👥 {{ event.currentAttendees }} / {{ event.maxAttendees || '∞' }}</p>
-                        <div card-footer class="card-footer">
-                          <app-button size="sm" variant="ghost" [routerLink]="['/events', event.slug, 'edit']">Edit</app-button>
-                          <app-button size="sm" variant="secondary" [routerLink]="['/events', event.slug]">View</app-button>
-                        </div>
-                      </app-card>
+                      <div class="event-card-wrapper">
+                        <app-card
+                          [title]="event.title"
+                          [subtitle]="formatDate(event.date)"
+                          [image]="event.coverPhoto || 'assets/images/event-placeholder.jpg'"
+                          [badge]="event.isPublished ? 'Published' : 'Draft'"
+                          [badgeType]="event.isPublished ? 'success' : 'warning'"
+                          hoverable
+                          [hasFooter]="true"
+                        >
+                          <p class="card-location">📍 {{ event.locationName || event.city }}</p>
+                          <p class="card-attendees">👥 {{ event.currentAttendees }} / {{ event.maxAttendees || '∞' }}</p>
+                          <p class="card-status">
+                            <span class="status-badge" [class]="'status--' + event.status">{{ event.status }}</span>
+                          </p>
+                          <div card-footer class="card-footer">
+                            <div class="footer-actions">
+                              @if (event.isPublished) {
+                                <app-button
+                                  size="sm"
+                                  variant="ghost"
+                                  (click)="unpublishEvent(event, $event)"
+                                  [loading]="publishingEventId() === event._id"
+                                  [disabled]="publishingEventId() === event._id"
+                                >
+                                  Unpublish
+                                </app-button>
+                              } @else {
+                                <app-button
+                                  size="sm"
+                                  variant="primary"
+                                  (click)="publishEvent(event, $event)"
+                                  [loading]="publishingEventId() === event._id"
+                                  [disabled]="publishingEventId() === event._id"
+                                >
+                                  Publish
+                                </app-button>
+                              }
+                            </div>
+                            <div class="footer-links">
+                              <app-button size="sm" variant="ghost" [routerLink]="['/events', event.slug, 'edit']">Edit</app-button>
+                              <app-button size="sm" variant="secondary" [routerLink]="['/events', event.slug]">View</app-button>
+                            </div>
+                          </div>
+                        </app-card>
+                      </div>
                     }
                   </div>
                 }
@@ -685,7 +714,61 @@ import { Booking } from '../../../../core/models/booking.model';
 
     .card-footer {
       display: flex;
+      flex-direction: column;
+      gap: $spacing-2;
+    }
+
+    .footer-actions {
+      display: flex;
+      justify-content: center;
+      padding-bottom: $spacing-2;
+      border-bottom: 1px solid $border-light;
+    }
+
+    .footer-links {
+      display: flex;
       justify-content: space-between;
+    }
+
+    .card-status {
+      margin-top: $spacing-2;
+    }
+
+    .status-badge {
+      padding: $spacing-1 $spacing-2;
+      border-radius: $radius-full;
+      font-size: $font-size-xs;
+      font-weight: $font-weight-medium;
+      text-transform: capitalize;
+
+      &.status--draft {
+        background: $neutral-100;
+        color: $text-secondary;
+      }
+
+      &.status--planning {
+        background: $info-light;
+        color: $info-dark;
+      }
+
+      &.status--active {
+        background: $primary-100;
+        color: $primary-700;
+      }
+
+      &.status--completed {
+        background: $success-light;
+        color: $success-dark;
+      }
+
+      &.status--cancelled {
+        background: $error-light;
+        color: $error-dark;
+      }
+    }
+
+    .event-card-wrapper {
+      height: 100%;
     }
 
     .bookings-table {
@@ -758,6 +841,7 @@ export class DashboardHomeComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private eventService = inject(EventService);
   private bookingService = inject(BookingService);
+  private toast = inject(ToastService);
   auth = inject(AuthService);
 
   activeTab = signal<'overview' | 'events' | 'bookings'>('overview');
@@ -766,6 +850,7 @@ export class DashboardHomeComponent implements OnInit {
   recentBookings = signal<Booking[]>([]);
   isLoadingEvents = signal(true);
   isLoadingBookings = signal(true);
+  publishingEventId = signal<string | null>(null);
 
   ngOnInit(): void {
     const tab = this.route.snapshot.data['tab'];
@@ -847,5 +932,51 @@ export class DashboardHomeComponent implements OnInit {
       case 'active': return 'primary';
       default: return 'warning';
     }
+  }
+
+  publishEvent(event: Event, clickEvent: MouseEvent): void {
+    clickEvent.stopPropagation();
+    clickEvent.preventDefault();
+
+    this.publishingEventId.set(event._id);
+
+    this.eventService.publishEvent(event._id).subscribe({
+      next: (response) => {
+        // Update the event in the local list
+        this.myEvents.update(events =>
+          events.map(e => e._id === event._id ? { ...e, isPublished: true } : e)
+        );
+        this.toast.success('Event Published', `"${event.title}" is now visible to everyone.`);
+        this.publishingEventId.set(null);
+      },
+      error: (error) => {
+        const message = error.error?.message || 'Failed to publish event. Please try again.';
+        this.toast.error('Publish Failed', message);
+        this.publishingEventId.set(null);
+      }
+    });
+  }
+
+  unpublishEvent(event: Event, clickEvent: MouseEvent): void {
+    clickEvent.stopPropagation();
+    clickEvent.preventDefault();
+
+    this.publishingEventId.set(event._id);
+
+    this.eventService.unpublishEvent(event._id).subscribe({
+      next: (response) => {
+        // Update the event in the local list
+        this.myEvents.update(events =>
+          events.map(e => e._id === event._id ? { ...e, isPublished: false } : e)
+        );
+        this.toast.success('Event Unpublished', `"${event.title}" is now hidden from public view.`);
+        this.publishingEventId.set(null);
+      },
+      error: (error) => {
+        const message = error.error?.message || 'Failed to unpublish event. Please try again.';
+        this.toast.error('Unpublish Failed', message);
+        this.publishingEventId.set(null);
+      }
+    });
   }
 }
