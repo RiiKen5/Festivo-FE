@@ -8,6 +8,7 @@ import { InputComponent } from '../../../../shared/components/input/input.compon
 import { EventService } from '../../../../core/services/event.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { EventType, VibeScore } from '../../../../core/models/event.model';
+import { CustomValidators } from '../../../../shared/validators/custom-validators';
 
 @Component({
   selector: 'app-event-create',
@@ -490,23 +491,28 @@ export class EventCreateComponent implements OnInit {
   ];
 
   form: FormGroup = this.fb.group({
-    title: ['', [Validators.required, Validators.minLength(5)]],
+    title: ['', [Validators.required, Validators.minLength(5), Validators.maxLength(100), CustomValidators.noScript()]],
     eventType: ['house_party', Validators.required],
-    description: ['', [Validators.required, Validators.minLength(20)]],
-    date: ['', Validators.required],
-    time: ['', Validators.required],
-    endDate: [''],
-    locationName: ['', Validators.required],
-    city: ['', Validators.required],
-    address: ['', Validators.required],
-    expectedGuests: ['', [Validators.required, Validators.min(1)]],
-    maxAttendees: [''],
-    budget: [''],
+    description: ['', [Validators.required, Validators.minLength(20), Validators.maxLength(2000), CustomValidators.noScript()]],
+    date: ['', [Validators.required, CustomValidators.dateFormat(), CustomValidators.futureDate()]],
+    time: ['', [Validators.required, CustomValidators.timeFormat()]],
+    endDate: ['', [CustomValidators.dateFormat()]],
+    locationName: ['', [Validators.required, Validators.maxLength(100), CustomValidators.noScript()]],
+    city: ['', [Validators.required, Validators.maxLength(50)]],
+    address: ['', [Validators.required, Validators.maxLength(200), CustomValidators.noScript()]],
+    expectedGuests: ['', [Validators.required, Validators.min(1), Validators.max(10000)]],
+    maxAttendees: ['', [Validators.min(1), Validators.max(50000)]],
+    budget: ['', [CustomValidators.positiveNumber(), CustomValidators.priceRange(0, 100000000)]],
     isPaid: [false],
-    entryFee: [0],
+    entryFee: [0, [CustomValidators.positiveNumber()]],
     vibeScore: ['party'],
     isPublic: [true],
-    tags: ['']
+    tags: ['', [Validators.maxLength(200)]]
+  }, {
+    validators: [
+      CustomValidators.dateRange('date', 'endDate'),
+      CustomValidators.maxGreaterThanExpected('expectedGuests', 'maxAttendees')
+    ]
   });
 
   ngOnInit(): void {
@@ -550,7 +556,18 @@ export class EventCreateComponent implements OnInit {
     if (control?.touched && control?.errors) {
       if (control.errors['required']) return 'This field is required';
       if (control.errors['minlength']) return `Minimum ${control.errors['minlength'].requiredLength} characters required`;
+      if (control.errors['maxlength']) return `Maximum ${control.errors['maxlength'].requiredLength} characters allowed`;
       if (control.errors['min']) return `Value must be at least ${control.errors['min'].min}`;
+      if (control.errors['max']) return `Value cannot exceed ${control.errors['max'].max}`;
+      if (control.errors['pastDate']) return 'Date cannot be in the past';
+      if (control.errors['dateRange']) return 'End date must be after start date';
+      if (control.errors['invalidDateFormat']) return 'Use format YYYY-MM-DD';
+      if (control.errors['invalidTime']) return 'Use format HH:MM (e.g., 14:30)';
+      if (control.errors['positiveNumber']) return 'Must be a positive number';
+      if (control.errors['minPrice']) return `Minimum price is ₹${control.errors['minPrice'].min}`;
+      if (control.errors['maxPrice']) return `Maximum price is ₹${control.errors['maxPrice'].max}`;
+      if (control.errors['maxLessThanExpected']) return 'Max capacity must be greater than expected guests';
+      if (control.errors['scriptInjection']) return 'Invalid characters detected';
     }
     return '';
   }

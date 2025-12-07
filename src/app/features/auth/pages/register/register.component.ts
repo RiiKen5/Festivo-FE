@@ -59,6 +59,16 @@ import { InputComponent } from '../../../../shared/components/input/input.compon
 
             <div class="form-group">
               <app-input
+                type="text"
+                label="City"
+                placeholder="Enter your City"
+                formControlName="city"
+                [error]="getError('city')"
+              ></app-input>
+            </div>
+
+            <div class="form-group">
+              <app-input
                 type="password"
                 label="Password"
                 placeholder="Create a password"
@@ -433,6 +443,7 @@ export class RegisterComponent {
     name: ['', [Validators.required, Validators.minLength(2)]],
     email: ['', [Validators.required, Validators.email]],
     phone: [''],
+    city:['', [Validators.required, Validators.minLength(2)]],
     password: ['', [Validators.required, Validators.minLength(8)]],
     userType: ['all', Validators.required],
     acceptTerms: [false, Validators.requiredTrue]
@@ -443,6 +454,7 @@ export class RegisterComponent {
     if (control?.touched && control?.errors) {
       if (control.errors['required']) return `${field.charAt(0).toUpperCase() + field.slice(1)} is required`;
       if (control.errors['email']) return 'Please enter a valid email';
+      if(control.errors['city']) return 'Please enter a valid city';
       if (control.errors['minlength']) {
         const minLength = control.errors['minlength'].requiredLength;
         return `Must be at least ${minLength} characters`;
@@ -455,9 +467,9 @@ export class RegisterComponent {
     if (this.form.invalid) return;
 
     this.isLoading.set(true);
-    const { name, email, phone, password, userType } = this.form.value;
+    const { name, email, phone, password, userType,city } = this.form.value;
 
-    this.auth.register({ name, email, phone, password, userType }).subscribe({
+    this.auth.register({ name, email, phone, password, userType,city }).subscribe({
       next: () => {
         this.toast.success('Account Created!', 'Welcome to Festivo. Let\'s get started!');
         this.router.navigate(['/dashboard']);

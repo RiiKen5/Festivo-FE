@@ -74,6 +74,7 @@ export interface RegisterData {
   email: string;
   password: string;
   phone?: string;
+  city: string;
   userType: 'organizer' | 'helper' | 'attendee' | 'all';
 }
 

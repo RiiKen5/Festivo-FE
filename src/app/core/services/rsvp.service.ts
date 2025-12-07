@@ -67,10 +67,10 @@ export class RsvpService {
   }
 
   /**
-   * Check in to an event (with check-in code)
-   * POST /api/v1/rsvps/:rsvpId/check-in
+   * Check in a guest
+   * PUT /api/v1/rsvps/:rsvpId/check-in
    */
-  checkIn(rsvpId: string, checkInCode: string): Observable<RsvpResponse> {
-    return this.api.post<RsvpResponse>(`${this.endpoint}/${rsvpId}/check-in`, { checkInCode });
+  checkIn(rsvpId: string): Observable<RsvpResponse> {
+    return this.api.put<RsvpResponse>(`${this.endpoint}/${rsvpId}/check-in`, {});
   }
 }

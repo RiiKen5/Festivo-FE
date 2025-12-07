@@ -311,4 +311,48 @@ export class AuthService implements OnDestroy {
     const user = this.currentUserSignal();
     return user?.userType === type || user?.userType === 'all';
   }
+
+  /**
+   * Upload avatar/profile photo
+   */
+  uploadAvatar(formData: FormData): Observable<{ success: boolean; data: { profilePhoto: string } }> {
+    return this.api.upload<{ success: boolean; data: { profilePhoto: string } }>('/auth/upload-avatar', formData).pipe(
+      tap(response => {
+        if (response.success && response.data?.profilePhoto) {
+          const currentUser = this.currentUserSignal();
+          if (currentUser) {
+            const updatedUser = { ...currentUser, profilePhoto: response.data.profilePhoto };
+            this.currentUserSignal.set(updatedUser);
+            this.storage.setUser(updatedUser);
+          }
+        }
+      })
+    );
+  }
+
+  /**
+   * Toggle 2FA
+   */
+  toggle2FA(enable: boolean): Observable<any> {
+    const endpoint = enable ? '/auth/2fa/enable' : '/auth/2fa/disable';
+    return this.api.post<any>(endpoint, {}).pipe(
+      tap(response => {
+        if (response.success) {
+          const currentUser = this.currentUserSignal();
+          if (currentUser) {
+            const updatedUser = { ...currentUser, twoFactorEnabled: enable };
+            this.currentUserSignal.set(updatedUser);
+            this.storage.setUser(updatedUser);
+          }
+        }
+      })
+    );
+  }
+
+  /**
+   * Resend verification email
+   */
+  resendVerificationEmail(): Observable<any> {
+    return this.api.post('/auth/resend-verification', {});
+  }
 }

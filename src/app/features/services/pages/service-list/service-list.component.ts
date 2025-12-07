@@ -5,13 +5,14 @@ import { FormsModule } from '@angular/forms';
 import { NavbarComponent } from '../../../../shared/components/navbar/navbar.component';
 import { ButtonComponent } from '../../../../shared/components/button/button.component';
 import { CardComponent } from '../../../../shared/components/card/card.component';
+import { ErrorStateComponent } from '../../../../shared/components/error-state/error-state.component';
 import { ServiceService } from '../../../../core/services/service.service';
 import { Service, ServiceCategory, ServiceFilters } from '../../../../core/models/service.model';
 
 @Component({
   selector: 'app-service-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, NavbarComponent, ButtonComponent, CardComponent],
+  imports: [CommonModule, RouterModule, FormsModule, NavbarComponent, ButtonComponent, CardComponent, ErrorStateComponent],
   template: `
     <app-navbar></app-navbar>
 
@@ -112,6 +113,14 @@ import { Service, ServiceCategory, ServiceFilters } from '../../../../core/model
                   </div>
                 </div>
               }
+            } @else if (hasError()) {
+              <div class="error-container">
+                <app-error-state
+                  [type]="errorType()"
+                  [isRetrying]="isRetrying()"
+                  (onRetry)="retryLoad()">
+                </app-error-state>
+              </div>
             } @else if (services().length === 0) {
               <div class="empty-state">
                 <span class="empty-state__icon">🔍</span>
@@ -122,7 +131,7 @@ import { Service, ServiceCategory, ServiceFilters } from '../../../../core/model
             } @else {
               @for (service of services(); track service._id) {
                 <div class="service-card" [routerLink]="['/services', service.slug]">
-                  <div class="service-card__image" [style.background-image]="'url(' + (service.coverImage || 'assets/images/service-placeholder.jpg') + ')'">
+                  <div class="service-card__image" [style.background-image]="'url(' + (service.coverImage || 'assets/images/service-placeholder.jpeg') + ')'">
                     @if (service.isVerified) {
                       <span class="verified-badge">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
@@ -373,6 +382,10 @@ import { Service, ServiceCategory, ServiceFilters } from '../../../../core/model
       gap: $spacing-2;
     }
 
+    .error-container {
+      grid-column: 1 / -1;
+    }
+
     .empty-state {
       grid-column: 1 / -1;
       text-align: center;
@@ -581,6 +594,9 @@ export class ServiceListComponent implements OnInit {
 
   services = signal<Service[]>([]);
   isLoading = signal(true);
+  hasError = signal(false);
+  errorType = signal<'generic' | 'network' | 'server'>('generic');
+  isRetrying = signal(false);
   currentPage = signal(1);
   totalPages = signal(1);
   totalServices = signal(0);
@@ -607,6 +623,7 @@ export class ServiceListComponent implements OnInit {
 
   loadServices(): void {
     this.isLoading.set(true);
+    this.hasError.set(false);
 
     const filters: ServiceFilters = {
       page: this.currentPage(),
@@ -624,11 +641,27 @@ export class ServiceListComponent implements OnInit {
         this.totalServices.set(response.pagination?.totalRecords || response.count);
         this.totalPages.set(response.pagination?.total || 1);
         this.isLoading.set(false);
+        this.isRetrying.set(false);
       },
-      error: () => {
+      error: (err) => {
         this.isLoading.set(false);
+        this.isRetrying.set(false);
+        this.hasError.set(true);
+        // Determine error type
+        if (err.status === 0) {
+          this.errorType.set('network');
+        } else if (err.status >= 500) {
+          this.errorType.set('server');
+        } else {
+          this.errorType.set('generic');
+        }
       }
     });
+  }
+
+  retryLoad(): void {
+    this.isRetrying.set(true);
+    this.loadServices();
   }
 
   onSearch(): void {

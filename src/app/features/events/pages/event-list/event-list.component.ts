@@ -6,6 +6,7 @@ import { NavbarComponent } from '../../../../shared/components/navbar/navbar.com
 import { ButtonComponent } from '../../../../shared/components/button/button.component';
 import { InputComponent } from '../../../../shared/components/input/input.component';
 import { CardComponent } from '../../../../shared/components/card/card.component';
+import { ErrorStateComponent } from '../../../../shared/components/error-state/error-state.component';
 import { EventService } from '../../../../core/services/event.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { Event, EventType, EventFilters } from '../../../../core/models/event.model';
@@ -13,7 +14,7 @@ import { Event, EventType, EventFilters } from '../../../../core/models/event.mo
 @Component({
   selector: 'app-event-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, NavbarComponent, ButtonComponent, InputComponent, CardComponent],
+  imports: [CommonModule, RouterModule, FormsModule, NavbarComponent, ButtonComponent, InputComponent, CardComponent, ErrorStateComponent],
   template: `
     <app-navbar></app-navbar>
 
@@ -176,7 +177,16 @@ import { Event, EventType, EventFilters } from '../../../../core/models/event.mo
               }
 
               <div class="events-grid">
-                @if (isLoading()) {
+                @if (hasError()) {
+                  <div class="error-wrapper">
+                    <app-error-state
+                      [type]="errorType()"
+                      [showRetry]="true"
+                      [isRetrying]="isRetrying()"
+                      (onRetry)="retryLoad()"
+                    ></app-error-state>
+                  </div>
+                } @else if (isLoading()) {
                   @for (i of [1,2,3,4,5,6]; track i) {
                     <div class="skeleton-card">
                       <div class="skeleton skeleton--image"></div>
@@ -537,6 +547,10 @@ import { Event, EventType, EventFilters } from '../../../../core/models/event.mo
       gap: $spacing-2;
     }
 
+    .error-wrapper {
+      grid-column: 1 / -1;
+    }
+
     .empty-state {
       grid-column: 1 / -1;
       text-align: center;
@@ -660,6 +674,9 @@ export class EventListComponent implements OnInit {
 
   events = signal<Event[]>([]);
   isLoading = signal(true);
+  hasError = signal(false);
+  errorType = signal<'generic' | 'network' | 'server'>('generic');
+  isRetrying = signal(false);
   currentPage = signal(1);
   totalPages = signal(1);
   totalEvents = signal(0);
@@ -687,6 +704,7 @@ export class EventListComponent implements OnInit {
 
   loadEvents(): void {
     this.isLoading.set(true);
+    this.hasError.set(false);
 
     const filters: EventFilters = {
       page: this.currentPage(),
@@ -724,11 +742,26 @@ export class EventListComponent implements OnInit {
         this.totalEvents.set(response.pagination?.totalRecords || response.count);
         this.totalPages.set(response.pagination?.total || 1);
         this.isLoading.set(false);
+        this.isRetrying.set(false);
       },
-      error: () => {
+      error: (err) => {
         this.isLoading.set(false);
+        this.isRetrying.set(false);
+        this.hasError.set(true);
+        if (err.status === 0) {
+          this.errorType.set('network');
+        } else if (err.status >= 500) {
+          this.errorType.set('server');
+        } else {
+          this.errorType.set('generic');
+        }
       }
     });
+  }
+
+  retryLoad(): void {
+    this.isRetrying.set(true);
+    this.loadEvents();
   }
 
   onSearch(): void {

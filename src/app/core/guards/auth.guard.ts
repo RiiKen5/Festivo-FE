@@ -91,3 +91,33 @@ export const userTypeGuard: CanActivateFn = (route, state) => {
     })
   );
 };
+
+/**
+ * Guard for vendor/service provider routes
+ * Allows access if user is a 'helper' (vendor) or 'all' type
+ */
+export const vendorGuard: CanActivateFn = (route, state) => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+
+  // Wait for auth initialization to complete
+  return waitForAuthInit(auth).pipe(
+    map(() => {
+      if (!auth.isAuthenticated()) {
+        router.navigate(['/auth/login'], {
+          queryParams: { returnUrl: state.url }
+        });
+        return false;
+      }
+
+      const userType = auth.currentUser()?.userType;
+      if (userType === 'helper' || userType === 'all') {
+        return true;
+      }
+
+      // Not a vendor, show message and redirect
+      router.navigate(['/dashboard']);
+      return false;
+    })
+  );
+};

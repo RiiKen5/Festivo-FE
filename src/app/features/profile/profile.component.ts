@@ -29,12 +29,21 @@ import { ToastService } from '../../core/services/toast.service';
                     <span>{{ auth.currentUser()?.name?.charAt(0)?.toUpperCase() }}</span>
                   }
                 </div>
-                <button class="avatar-edit">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
-                    <circle cx="12" cy="13" r="4"/>
-                  </svg>
-                </button>
+                <label class="avatar-edit">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    (change)="onAvatarSelected($event)"
+                    style="display: none">
+                  @if (isUploadingAvatar()) {
+                    <div class="avatar-spinner"></div>
+                  } @else {
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+                      <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                  }
+                </label>
               </div>
               <h2>{{ auth.currentUser()?.name }}</h2>
               <p class="user-email">{{ auth.currentUser()?.email }}</p>
@@ -211,8 +220,12 @@ import { ToastService } from '../../core/services/toast.service';
                         <h4>Two-Factor Authentication</h4>
                         <p>Add an extra layer of security to your account</p>
                       </div>
-                      <label class="toggle">
-                        <input type="checkbox" [checked]="auth.currentUser()?.twoFactorEnabled">
+                      <label class="toggle" [class.toggle--loading]="isTogglingTwoFactor()">
+                        <input
+                          type="checkbox"
+                          [checked]="auth.currentUser()?.twoFactorEnabled"
+                          [disabled]="isTogglingTwoFactor()"
+                          (change)="toggle2FA($event)">
                         <span class="toggle-slider"></span>
                       </label>
                     </div>
@@ -225,7 +238,9 @@ import { ToastService } from '../../core/services/toast.service';
                       @if (auth.currentUser()?.emailVerified) {
                         <span class="verified-text">✓ Verified</span>
                       } @else {
-                        <app-button size="sm" variant="secondary">Verify</app-button>
+                        <app-button size="sm" variant="secondary" (onClick)="resendVerification()" [loading]="isResendingVerification()">
+                          Verify
+                        </app-button>
                       }
                     </div>
                   </div>
@@ -244,7 +259,10 @@ import { ToastService } from '../../core/services/toast.service';
                         <p>Receive updates via email</p>
                       </div>
                       <label class="toggle">
-                        <input type="checkbox" [checked]="auth.currentUser()?.notifications?.email">
+                        <input
+                          type="checkbox"
+                          [checked]="auth.currentUser()?.notifications?.email"
+                          (change)="updateNotificationPref('email', $event)">
                         <span class="toggle-slider"></span>
                       </label>
                     </div>
@@ -255,7 +273,10 @@ import { ToastService } from '../../core/services/toast.service';
                         <p>Receive text messages for important updates</p>
                       </div>
                       <label class="toggle">
-                        <input type="checkbox" [checked]="auth.currentUser()?.notifications?.sms">
+                        <input
+                          type="checkbox"
+                          [checked]="auth.currentUser()?.notifications?.sms"
+                          (change)="updateNotificationPref('sms', $event)">
                         <span class="toggle-slider"></span>
                       </label>
                     </div>
@@ -266,11 +287,23 @@ import { ToastService } from '../../core/services/toast.service';
                         <p>Receive real-time notifications in browser</p>
                       </div>
                       <label class="toggle">
-                        <input type="checkbox" [checked]="auth.currentUser()?.notifications?.push">
+                        <input
+                          type="checkbox"
+                          [checked]="auth.currentUser()?.notifications?.push"
+                          (change)="updateNotificationPref('push', $event)">
                         <span class="toggle-slider"></span>
                       </label>
                     </div>
                   </div>
+
+                  @if (notificationSaveMessage()) {
+                    <div class="save-indicator">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                      {{ notificationSaveMessage() }}
+                    </div>
+                  }
                 </section>
               }
             }
@@ -567,6 +600,37 @@ import { ToastService } from '../../core/services/toast.service';
       color: $success;
       font-weight: $font-weight-medium;
     }
+
+    .avatar-spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid $border-light;
+      border-top-color: $primary-600;
+      border-radius: $radius-full;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .toggle--loading {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    .save-indicator {
+      display: flex;
+      align-items: center;
+      gap: $spacing-2;
+      margin-top: $spacing-6;
+      padding: $spacing-3 $spacing-4;
+      background: $success-light;
+      color: $success-dark;
+      border-radius: $radius-default;
+      font-size: $font-size-sm;
+      font-weight: $font-weight-medium;
+    }
   `]
 })
 export class ProfileComponent {
@@ -577,6 +641,10 @@ export class ProfileComponent {
   activeSection = signal<'profile' | 'security' | 'notifications'>('profile');
   isSaving = signal(false);
   isChangingPassword = signal(false);
+  isUploadingAvatar = signal(false);
+  isTogglingTwoFactor = signal(false);
+  isResendingVerification = signal(false);
+  notificationSaveMessage = signal<string>('');
 
   profileForm: FormGroup = this.fb.group({
     name: [this.auth.currentUser()?.name || '', Validators.required],
@@ -638,6 +706,105 @@ export class ProfileComponent {
       },
       error: () => {
         this.isChangingPassword.set(false);
+      }
+    });
+  }
+
+  onAvatarSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      this.toast.error('Invalid File', 'Please select an image file.');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      this.toast.error('File Too Large', 'Please select an image under 5MB.');
+      return;
+    }
+
+    this.isUploadingAvatar.set(true);
+
+    // Create FormData and upload
+    const formData = new FormData();
+    formData.append('profilePhoto', file);
+
+    this.auth.uploadAvatar(formData).subscribe({
+      next: () => {
+        this.isUploadingAvatar.set(false);
+        this.toast.success('Avatar Updated', 'Your profile photo has been updated.');
+      },
+      error: () => {
+        this.isUploadingAvatar.set(false);
+        this.toast.error('Upload Failed', 'Could not upload avatar. Please try again.');
+      }
+    });
+  }
+
+  toggle2FA(event: Event): void {
+    const checkbox = event.target as HTMLInputElement;
+    const enable = checkbox.checked;
+
+    this.isTogglingTwoFactor.set(true);
+
+    this.auth.toggle2FA(enable).subscribe({
+      next: () => {
+        this.isTogglingTwoFactor.set(false);
+        if (enable) {
+          this.toast.success('2FA Enabled', 'Two-factor authentication has been enabled.');
+        } else {
+          this.toast.info('2FA Disabled', 'Two-factor authentication has been disabled.');
+        }
+      },
+      error: () => {
+        this.isTogglingTwoFactor.set(false);
+        // Revert checkbox
+        checkbox.checked = !enable;
+        this.toast.error('Error', 'Could not update 2FA settings.');
+      }
+    });
+  }
+
+  resendVerification(): void {
+    this.isResendingVerification.set(true);
+
+    this.auth.resendVerificationEmail().subscribe({
+      next: () => {
+        this.isResendingVerification.set(false);
+        this.toast.success('Email Sent', 'Verification email has been sent to your email address.');
+      },
+      error: () => {
+        this.isResendingVerification.set(false);
+        this.toast.error('Error', 'Could not send verification email.');
+      }
+    });
+  }
+
+  updateNotificationPref(type: 'email' | 'sms' | 'push', event: Event): void {
+    const checkbox = event.target as HTMLInputElement;
+    const enabled = checkbox.checked;
+
+    const currentNotifications = this.auth.currentUser()?.notifications || { email: true, sms: true, push: true };
+    const updatedNotifications = {
+      email: currentNotifications.email ?? true,
+      sms: currentNotifications.sms ?? true,
+      push: currentNotifications.push ?? true,
+      [type]: enabled
+    };
+
+    this.auth.updateProfile({ notifications: updatedNotifications }).subscribe({
+      next: () => {
+        this.notificationSaveMessage.set('Preferences saved');
+        setTimeout(() => this.notificationSaveMessage.set(''), 3000);
+      },
+      error: () => {
+        // Revert checkbox
+        checkbox.checked = !enabled;
+        this.toast.error('Error', 'Could not update notification preferences.');
       }
     });
   }

@@ -178,7 +178,7 @@ import { Service } from '../../core/models/service.model';
               <app-card
                 [title]="service.serviceName"
                 [subtitle]="service.category | titlecase"
-                [image]="service.coverImage || 'assets/images/service-placeholder.jpg'"
+                [image]="service.coverImage || 'assets/images/service-placeholder.jpeg'"
                 [badge]="service.isVerified ? 'Verified' : ''"
                 badgeType="success"
                 hoverable

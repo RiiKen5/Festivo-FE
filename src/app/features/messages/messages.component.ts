@@ -1,21 +1,15 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { RouterModule, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NavbarComponent } from '../../shared/components/navbar/navbar.component';
 import { ButtonComponent } from '../../shared/components/button/button.component';
 import { AuthService } from '../../core/services/auth.service';
-
-interface Conversation {
-  id: string;
-  user: {
-    name: string;
-    avatar?: string;
-  };
-  lastMessage: string;
-  timestamp: Date;
-  unread: number;
-}
+import { MessageService } from '../../core/services/message.service';
+import { UserService } from '../../core/services/user.service';
+import { ToastService } from '../../core/services/toast.service';
+import { Conversation, Message } from '../../core/models/message.model';
+import { User } from '../../core/models/user.model';
 
 @Component({
   selector: 'app-messages',
@@ -27,16 +21,9 @@ interface Conversation {
     <main class="messages-page">
       <div class="messages-container">
         <!-- Sidebar -->
-        <aside class="conversations-sidebar">
+        <aside class="conversations-sidebar" [class.show-sidebar]="!selectedConversation()">
           <div class="sidebar-header">
             <h2>Messages</h2>
-            <button class="new-message-btn">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
-                <line x1="12" y1="8" x2="12" y2="14"/>
-                <line x1="9" y1="11" x2="15" y2="11"/>
-              </svg>
-            </button>
           </div>
 
           <div class="search-box">
@@ -48,35 +35,47 @@ interface Conversation {
           </div>
 
           <div class="conversations-list">
-            @if (conversations().length === 0) {
+            @if (isLoadingConversations()) {
+              <div class="loading-state">
+                @for (i of [1,2,3]; track i) {
+                  <div class="skeleton-conv">
+                    <div class="skeleton skeleton--avatar"></div>
+                    <div class="skeleton-text">
+                      <div class="skeleton skeleton--title"></div>
+                      <div class="skeleton skeleton--subtitle"></div>
+                    </div>
+                  </div>
+                }
+              </div>
+            } @else if (filteredConversations().length === 0) {
               <div class="empty-conversations">
                 <span class="empty-icon">💬</span>
                 <p>No conversations yet</p>
                 <span class="empty-hint">Start messaging vendors or organizers</span>
               </div>
             } @else {
-              @for (conv of filteredConversations(); track conv.id) {
+              @for (conv of filteredConversations(); track conv.user._id) {
                 <button
                   class="conversation-item"
-                  [class.active]="selectedConversation()?.id === conv.id"
+                  [class.active]="selectedUserId() === conv.user._id"
                   (click)="selectConversation(conv)"
                 >
                   <div class="conv-avatar">
-                    @if (conv.user.avatar) {
-                      <img [src]="conv.user.avatar" [alt]="conv.user.name">
+                    @if (conv.user.profilePhoto) {
+                      <img [src]="conv.user.profilePhoto" [alt]="conv.user.name">
                     } @else {
                       <span>{{ conv.user.name.charAt(0).toUpperCase() }}</span>
                     }
-                    @if (conv.unread > 0) {
-                      <span class="unread-badge">{{ conv.unread }}</span>
+                    @if (conv.unreadCount > 0) {
+                      <span class="unread-badge">{{ conv.unreadCount }}</span>
                     }
                   </div>
                   <div class="conv-content">
                     <div class="conv-header">
                       <span class="conv-name">{{ conv.user.name }}</span>
-                      <span class="conv-time">{{ formatTime(conv.timestamp) }}</span>
+                      <span class="conv-time">{{ formatTime(conv.lastMessage.createdAt) }}</span>
                     </div>
-                    <p class="conv-preview">{{ conv.lastMessage }}</p>
+                    <p class="conv-preview">{{ conv.lastMessage.messageText }}</p>
                   </div>
                 </button>
               }
@@ -85,70 +84,59 @@ interface Conversation {
         </aside>
 
         <!-- Chat Area -->
-        <div class="chat-area">
+        <div class="chat-area" [class.show-chat]="selectedConversation()">
           @if (selectedConversation()) {
             <div class="chat-header">
-              <button class="back-btn" (click)="selectedConversation.set(null)">
+              <button class="back-btn" (click)="clearSelection()">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M15 18l-6-6 6-6"/>
                 </svg>
               </button>
               <div class="chat-user">
                 <div class="user-avatar">
-                  @if (selectedUser()?.avatar) {
-                    <img [src]="selectedUser()?.avatar" [alt]="selectedUser()?.name">
+                  @if (selectedConversation()?.user?.profilePhoto) {
+                    <img [src]="selectedConversation()?.user?.profilePhoto" [alt]="selectedConversation()?.user?.name">
                   } @else {
-                    <span>{{ selectedUser()?.name?.charAt(0)?.toUpperCase() || '' }}</span>
+                    <span>{{ selectedConversation()?.user?.name?.charAt(0)?.toUpperCase() || '' }}</span>
                   }
                 </div>
                 <div class="user-info">
-                  <h3>{{ selectedUser()?.name }}</h3>
-                  <span class="user-status">Online</span>
+                  <h3>{{ selectedConversation()?.user?.name }}</h3>
+                  <span class="user-status">Active</span>
                 </div>
               </div>
-              <button class="more-btn">
+              <button class="more-btn" [routerLink]="['/users', selectedUserId(), 'profile']">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="12" cy="12" r="1"/>
-                  <circle cx="19" cy="12" r="1"/>
-                  <circle cx="5" cy="12" r="1"/>
+                  <path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                  <circle cx="8.5" cy="7" r="4"/>
                 </svg>
               </button>
             </div>
 
-            <div class="chat-messages">
-              <div class="message message--received">
-                <div class="message-bubble">
-                  <p>Hello! I saw your event and I'm interested in providing catering services.</p>
-                  <span class="message-time">10:30 AM</span>
-                </div>
-              </div>
-              <div class="message message--sent">
-                <div class="message-bubble">
-                  <p>Hi! That sounds great. What kind of menu options do you offer?</p>
-                  <span class="message-time">10:32 AM</span>
-                </div>
-              </div>
-              <div class="message message--received">
-                <div class="message-bubble">
-                  <p>We have a variety of options including Indian, Continental, and fusion cuisines. I can share our detailed menu if you're interested.</p>
-                  <span class="message-time">10:35 AM</span>
-                </div>
-              </div>
+            <div class="chat-messages" #messagesContainer>
+              @if (isLoadingMessages()) {
+                <div class="loading-messages">Loading messages...</div>
+              } @else {
+                @for (message of messages(); track message._id) {
+                  <div class="message" [class.message--sent]="isSentByMe(message)" [class.message--received]="!isSentByMe(message)">
+                    <div class="message-bubble">
+                      <p>{{ message.messageText }}</p>
+                      <span class="message-time">{{ formatMessageTime(message.createdAt) }}</span>
+                    </div>
+                  </div>
+                }
+              }
             </div>
 
             <div class="chat-input">
-              <button class="attach-btn">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
-                </svg>
-              </button>
               <input
                 type="text"
                 placeholder="Type a message..."
                 [(ngModel)]="newMessage"
                 (keyup.enter)="sendMessage()"
+                [disabled]="isSending()"
               >
-              <app-button (onClick)="sendMessage()" [disabled]="!newMessage.trim()">
+              <app-button (onClick)="sendMessage()" [disabled]="!newMessage.trim()" [loading]="isSending()">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="22" y1="2" x2="11" y2="13"/>
                   <polygon points="22 2 15 22 11 13 2 9 22 2"/>
@@ -201,6 +189,21 @@ interface Conversation {
       }
     }
 
+    .chat-area {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      background: $bg-primary;
+
+      @include max-md {
+        display: none;
+
+        &.show-chat {
+          display: flex;
+        }
+      }
+    }
+
     .sidebar-header {
       @include flex-between;
       padding: $spacing-4 $spacing-6;
@@ -212,30 +215,11 @@ interface Conversation {
       }
     }
 
-    .new-message-btn,
-    .more-btn,
-    .attach-btn {
-      @include flex-center;
-      width: 40px;
-      height: 40px;
-      border-radius: $radius-default;
-      color: $text-secondary;
-      transition: all $transition-fast;
-      background: none;
-      border: none;
-      cursor: pointer;
-
-      &:hover {
-        background: $neutral-100;
-        color: $text-primary;
-      }
-    }
-
     .search-box {
       display: flex;
       align-items: center;
       gap: $spacing-3;
-      margin: $spacing-4 $spacing-4;
+      margin: $spacing-4;
       padding: $spacing-3;
       background: $neutral-100;
       border-radius: $radius-default;
@@ -265,6 +249,26 @@ interface Conversation {
       flex: 1;
       overflow-y: auto;
       @include scrollbar-custom;
+    }
+
+    .loading-state {
+      padding: $spacing-4;
+    }
+
+    .skeleton-conv {
+      display: flex;
+      gap: $spacing-3;
+      padding: $spacing-3;
+    }
+
+    .skeleton--avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+    }
+
+    .skeleton-text {
+      flex: 1;
     }
 
     .empty-conversations {
@@ -367,21 +371,14 @@ interface Conversation {
       @include truncate;
     }
 
-    .chat-area {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      background: $bg-primary;
-    }
-
     .chat-header {
       @include flex-between;
       padding: $spacing-3 $spacing-4;
       border-bottom: 1px solid $border-light;
     }
 
-    .back-btn {
-      display: none;
+    .back-btn,
+    .more-btn {
       @include flex-center;
       width: 40px;
       height: 40px;
@@ -391,12 +388,16 @@ interface Conversation {
       border: none;
       cursor: pointer;
 
-      @include max-md {
-        display: flex;
-      }
-
       &:hover {
         background: $neutral-100;
+      }
+    }
+
+    .back-btn {
+      display: none;
+
+      @include max-md {
+        display: flex;
       }
     }
 
@@ -431,7 +432,7 @@ interface Conversation {
 
     .user-status {
       font-size: $font-size-xs;
-      color: $success;
+      color: $text-muted;
     }
 
     .chat-messages {
@@ -440,8 +441,14 @@ interface Conversation {
       overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: $spacing-4;
+      gap: $spacing-3;
       @include scrollbar-custom;
+    }
+
+    .loading-messages {
+      text-align: center;
+      color: $text-secondary;
+      padding: $spacing-8;
     }
 
     .message {
@@ -477,6 +484,7 @@ interface Conversation {
 
       p {
         margin-bottom: $spacing-1;
+        word-wrap: break-word;
       }
     }
 
@@ -503,6 +511,10 @@ interface Conversation {
           outline: none;
           border-color: $primary-500;
         }
+
+        &:disabled {
+          background: $neutral-100;
+        }
       }
     }
 
@@ -526,32 +538,99 @@ interface Conversation {
     }
   `]
 })
-export class MessagesComponent {
-  auth = inject(AuthService);
+export class MessagesComponent implements OnInit {
+  private auth = inject(AuthService);
+  private route = inject(ActivatedRoute);
+  private messageService = inject(MessageService);
+  private userService = inject(UserService);
+  private toast = inject(ToastService);
 
   searchQuery = '';
   newMessage = '';
 
-  conversations = signal<Conversation[]>([
-    {
-      id: '1',
-      user: { name: 'Catering Pro' },
-      lastMessage: 'I can share our detailed menu if you\'re interested.',
-      timestamp: new Date(),
-      unread: 1
-    },
-    {
-      id: '2',
-      user: { name: 'DJ Beats' },
-      lastMessage: 'Sure! I\'m available for your event date.',
-      timestamp: new Date(Date.now() - 3600000),
-      unread: 0
-    }
-  ]);
-
+  conversations = signal<Conversation[]>([]);
+  messages = signal<Message[]>([]);
   selectedConversation = signal<Conversation | null>(null);
+  selectedUserId = signal<string | null>(null);
 
-  selectedUser = computed(() => this.selectedConversation()?.user);
+  isLoadingConversations = signal(true);
+  isLoadingMessages = signal(false);
+  isSending = signal(false);
+
+  // For new conversations from route params
+  private targetUserId: string | null = null;
+
+  ngOnInit(): void {
+    // Check if we're navigating to a specific user
+    this.targetUserId = this.route.snapshot.paramMap.get('userId');
+    this.loadConversations();
+  }
+
+  loadConversations(): void {
+    this.isLoadingConversations.set(true);
+    this.messageService.getConversations().subscribe({
+      next: (response) => {
+        this.conversations.set(response.data);
+        this.isLoadingConversations.set(false);
+
+        // If we have a target user from route params, select that conversation
+        if (this.targetUserId) {
+          const existingConv = response.data.find(c => c.user._id === this.targetUserId);
+          if (existingConv) {
+            // Select existing conversation
+            this.selectConversation(existingConv);
+          } else {
+            // Create a new conversation placeholder by fetching the user
+            this.startNewConversation(this.targetUserId);
+          }
+        }
+      },
+      error: () => {
+        this.isLoadingConversations.set(false);
+      }
+    });
+  }
+
+  /**
+   * Start a new conversation with a user who we haven't messaged before
+   */
+  startNewConversation(userId: string): void {
+    this.userService.getUserById(userId).subscribe({
+      next: (response) => {
+        const user = response.data;
+        // Create a placeholder conversation
+        const newConv: Conversation = {
+          user: user,
+          lastMessage: {
+            _id: '',
+            sender: '',
+            receiver: userId,
+            messageText: '',
+            isRead: true,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          },
+          unreadCount: 0
+        };
+
+        // Add to conversations list if not already present
+        this.conversations.update(convs => {
+          if (!convs.find(c => c.user._id === userId)) {
+            return [newConv, ...convs];
+          }
+          return convs;
+        });
+
+        // Select this conversation
+        this.selectedConversation.set(newConv);
+        this.selectedUserId.set(userId);
+        this.messages.set([]);
+      },
+      error: () => {
+        this.toast.error('Error', 'Could not load user information');
+      }
+    });
+  }
 
   filteredConversations(): Conversation[] {
     if (!this.searchQuery) return this.conversations();
@@ -562,21 +641,93 @@ export class MessagesComponent {
 
   selectConversation(conv: Conversation): void {
     this.selectedConversation.set(conv);
+    this.selectedUserId.set(conv.user._id);
+    this.loadMessages(conv.user._id);
+
+    // Mark as read
+    if (conv.unreadCount > 0) {
+      this.messageService.markConversationAsRead(conv.user._id).subscribe(() => {
+        this.conversations.update(conversations =>
+          conversations.map(c =>
+            c.user._id === conv.user._id ? { ...c, unreadCount: 0 } : c
+          )
+        );
+      });
+    }
   }
 
-  formatTime(date: Date): string {
+  loadMessages(userId: string): void {
+    this.isLoadingMessages.set(true);
+    this.messageService.getConversation(userId).subscribe({
+      next: (response) => {
+        this.messages.set(response.data);
+        this.isLoadingMessages.set(false);
+      },
+      error: () => {
+        this.isLoadingMessages.set(false);
+      }
+    });
+  }
+
+  clearSelection(): void {
+    this.selectedConversation.set(null);
+    this.selectedUserId.set(null);
+    this.messages.set([]);
+  }
+
+  isSentByMe(message: Message): boolean {
+    const currentUserId = this.auth.currentUser()?._id;
+    const sender = message.sender as User;
+    return sender?._id === currentUserId || message.sender === currentUserId;
+  }
+
+  sendMessage(): void {
+    if (!this.newMessage.trim() || !this.selectedUserId()) return;
+
+    this.isSending.set(true);
+    this.messageService.sendMessage({
+      receiver: this.selectedUserId()!,
+      messageText: this.newMessage.trim()
+    }).subscribe({
+      next: (response) => {
+        this.messages.update(messages => [...messages, response.data]);
+        this.newMessage = '';
+        this.isSending.set(false);
+
+        // Update conversation list
+        const conv = this.selectedConversation();
+        if (conv) {
+          this.conversations.update(conversations =>
+            conversations.map(c =>
+              c.user._id === conv.user._id
+                ? { ...c, lastMessage: response.data }
+                : c
+            )
+          );
+        }
+      },
+      error: () => {
+        this.isSending.set(false);
+        this.toast.error('Error', 'Failed to send message');
+      }
+    });
+  }
+
+  formatTime(date: Date | string): string {
     const now = new Date();
-    const diff = now.getTime() - new Date(date).getTime();
+    const msgDate = new Date(date);
+    const diff = now.getTime() - msgDate.getTime();
     const hours = diff / (1000 * 60 * 60);
 
     if (hours < 1) return 'Just now';
     if (hours < 24) return `${Math.floor(hours)}h ago`;
-    return new Date(date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+    return msgDate.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
   }
 
-  sendMessage(): void {
-    if (!this.newMessage.trim()) return;
-    // Would send message via service
-    this.newMessage = '';
+  formatMessageTime(date: Date | string): string {
+    return new Date(date).toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   }
 }
