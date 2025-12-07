@@ -9,7 +9,9 @@ import {
   LoginCredentials,
   RegisterData,
   TokenResponse,
-  VerifyEmailResponse
+  VerifyEmailResponse,
+  RegisterResponse,
+  GoogleAuthData
 } from '../models/user.model';
 
 @Injectable({
@@ -177,8 +179,26 @@ export class AuthService implements OnDestroy {
     );
   }
 
-  register(data: RegisterData): Observable<AuthResponse> {
-    return this.api.post<AuthResponse>('/auth/register', data).pipe(
+  register(data: RegisterData): Observable<RegisterResponse> {
+    return this.api.post<RegisterResponse>('/auth/register', data).pipe(
+      tap(response => {
+        // If registration returns tokens (email verification disabled), handle auth
+        if (response.success && response.data?.tokens) {
+          this.handleAuthSuccess(response as unknown as AuthResponse);
+        }
+        // Otherwise, email verification is required - don't log in yet
+      }),
+      catchError(error => {
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /**
+   * Google OAuth login/register
+   */
+  googleAuth(data: GoogleAuthData): Observable<AuthResponse> {
+    return this.api.post<AuthResponse>('/auth/google', data).pipe(
       tap(response => {
         if (response.success) {
           this.handleAuthSuccess(response);

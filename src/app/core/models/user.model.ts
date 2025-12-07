@@ -97,3 +97,25 @@ export interface VerifyEmailResponse {
     emailVerified: boolean;
   };
 }
+
+// Registration response when email verification is required
+export interface RegisterResponse {
+  success: boolean;
+  message: string;
+  data: {
+    message: string;
+    email: string;
+    emailSent: boolean;
+    user?: User;
+    tokens?: {
+      accessToken: string;
+      refreshToken: string;
+    };
+  };
+}
+
+// Google OAuth data
+export interface GoogleAuthData {
+  credential: string;
+  clientId?: string;
+}
