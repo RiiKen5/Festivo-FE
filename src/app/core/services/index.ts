@@ -11,3 +11,5 @@ export * from './notification.service';
 export * from './review.service';
 export * from './rsvp.service';
 export * from './task.service';
+export * from './payment.service';
+export * from './admin.service';

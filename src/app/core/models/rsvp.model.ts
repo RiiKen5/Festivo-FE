@@ -1,7 +1,7 @@
 import { User } from './user.model';
 import { Event } from './event.model';
 
-export type RsvpStatus = 'going' | 'interested' | 'maybe';
+export type RsvpStatus = 'going' | 'maybe' | 'not_going' | 'cancelled' | 'pending_payment';
 
 export interface Rsvp {
   _id: string;
@@ -10,6 +10,8 @@ export interface Rsvp {
   status: RsvpStatus;
   guestsCount: number;
   checkInCode?: string;
+  paymentStatus?: 'unpaid' | 'paid' | 'refunded';
+  amountPaid?: number;
   checkedIn: boolean;
   checkedInAt?: Date;
   createdAt: Date;
@@ -20,6 +22,8 @@ export interface RsvpCreateData {
   eventId: string;
   status: RsvpStatus;
   guestsCount?: number;
+  // From a private event invite link
+  inviteCode?: string;
 }
 
 export interface RsvpUpdateData {

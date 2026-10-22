@@ -1,4 +1,5 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -9,6 +10,7 @@ import { BookingService } from '../../../../core/services/booking.service';
 import { ReviewService } from '../../../../core/services/review.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ToastService } from '../../../../core/services/toast.service';
+import { PaymentService } from '../../../../core/services/payment.service';
 import { Booking, BookingStatus, PaymentMethod } from '../../../../core/models/booking.model';
 import { ReviewCreateData } from '../../../../core/models/review.model';
 import { Event } from '../../../../core/models/event.model';
@@ -80,6 +82,12 @@ import { User } from '../../../../core/models/user.model';
                       {{ formatPaymentStatus(booking()?.paymentStatus) }}
                     </span>
                   </div>
+                  @if (booking()?.refundedAmount) {
+                    <div class="detail-item">
+                      <span class="label">Refunded</span>
+                      <span class="value">₹{{ booking()?.refundedAmount | number }}</span>
+                    </div>
+                  }
                   <div class="detail-item">
                     <span class="label">Balance Due</span>
                     <span class="value" [class.text-error]="getBalance() > 0">
@@ -99,6 +107,21 @@ import { User } from '../../../../core/models/user.model';
                   <div class="notes-section">
                     <h3>Requirements</h3>
                     <p>{{ booking()?.requirements }}</p>
+                  </div>
+                }
+
+                @if (booking()?.payments?.length) {
+                  <div class="notes-section">
+                    <h3>Payments</h3>
+                    <ul class="payment-history">
+                      @for (p of booking()?.payments; track $index) {
+                        <li>
+                          <span>{{ p.paidAt | date:'mediumDate' }}</span>
+                          <span>{{ p.paymentMethod === 'razorpay' ? 'Paid online (protected)' : 'Recorded by vendor: ' + p.paymentMethod }}</span>
+                          <strong>₹{{ p.amount | number }}</strong>
+                        </li>
+                      }
+                    </ul>
                   </div>
                 }
               </div>
@@ -172,20 +195,38 @@ import { User } from '../../../../core/models/user.model';
                 @if (isVendor()) {
                   <!-- Vendor Actions -->
                   @if (booking()?.status === 'pending') {
-                    <app-button fullWidth [loading]="actionLoading()" (onClick)="confirmBooking()">
-                      Confirm Booking
+                    <app-button fullWidth [loading]="actionLoading()" (onClick)="openConfirmModal()">
+                      Confirm &amp; Send Quote
                     </app-button>
                   }
-                  @if (booking()?.status === 'confirmed') {
-                    <app-button fullWidth [loading]="actionLoading()" (onClick)="completeBooking()">
-                      Mark as Complete
+                  @if (getBalance() > 0 && (booking()?.status === 'confirmed' || booking()?.status === 'in_progress')) {
+                    <app-button variant="secondary" fullWidth (onClick)="showPaymentModal.set(true)">
+                      Record Cash/UPI Payment
                     </app-button>
                   }
                 } @else {
                   <!-- Organizer Actions -->
-                  @if (booking()?.paymentStatus !== 'paid' && (booking()?.status === 'confirmed' || booking()?.status === 'pending')) {
-                    <app-button fullWidth (onClick)="showPaymentModal.set(true)">
-                      Record Payment
+                  @if (booking()?.status === 'pending') {
+                    <p class="action-hint">Waiting for the vendor to confirm and send their final price.</p>
+                  }
+                  @if (getBalance() > 0 && (booking()?.status === 'confirmed' || booking()?.status === 'in_progress')) {
+                    @if (paymentsEnabled()) {
+                      <app-button fullWidth [loading]="isPaying()" (onClick)="payOnline(getBalance())">
+                        Pay ₹{{ getBalance() | number }} securely
+                      </app-button>
+                      @if (booking()?.pricePaid === 0 && getBalance() >= 1000) {
+                        <app-button variant="secondary" fullWidth [loading]="isPaying()" (onClick)="payOnline(getAdvanceAmount())">
+                          Pay 30% advance (₹{{ getAdvanceAmount() | number }})
+                        </app-button>
+                      }
+                      <p class="action-hint">Festivo holds your payment and releases it to the vendor only after you mark the booking complete.</p>
+                    } @else {
+                      <p class="action-hint">Online payments are not available yet. Please settle with the vendor directly.</p>
+                    }
+                  }
+                  @if (booking()?.status === 'confirmed' || booking()?.status === 'in_progress') {
+                    <app-button variant="secondary" fullWidth [loading]="actionLoading()" (onClick)="completeBooking()">
+                      Service Delivered — Mark Complete
                     </app-button>
                   }
                 }
@@ -246,6 +287,15 @@ import { User } from '../../../../core/models/user.model';
         [showFooter]="true"
       >
         <p>Are you sure you want to cancel this booking? This action cannot be undone.</p>
+        @if ((booking()?.pricePaid || 0) > 0) {
+          <p class="policy-note">
+            @if (isVendor()) {
+              Because you are cancelling, the organizer gets a full refund of ₹{{ booking()?.pricePaid | number }}.
+            } @else {
+              Refund policy: full refund 7+ days before the event, 50% between 2 and 7 days, none within 48 hours.
+            }
+          </p>
+        }
         <div class="form-group">
           <label>Reason (optional)</label>
           <textarea
@@ -266,11 +316,12 @@ import { User } from '../../../../core/models/user.model';
       <!-- Payment Modal -->
       <app-modal
         [isOpen]="showPaymentModal()"
-        title="Record Payment"
+        title="Record Offline Payment"
         (onClose)="showPaymentModal.set(false)"
         [showFooter]="true"
       >
         <div class="payment-form">
+          <p class="hint">Record cash or direct UPI payments you received from the organizer. Online payments are recorded automatically.</p>
           <div class="form-group">
             <label>Amount</label>
             <input
@@ -288,8 +339,8 @@ import { User } from '../../../../core/models/user.model';
               <option value="">Select method</option>
               <option value="cash">Cash</option>
               <option value="upi">UPI</option>
-              <option value="card">Card</option>
-              <option value="netbanking">Net Banking</option>
+              <option value="bank_transfer">Bank Transfer</option>
+              <option value="other">Other</option>
             </select>
           </div>
           <div class="form-group">
@@ -307,6 +358,26 @@ import { User } from '../../../../core/models/user.model';
           <app-button [loading]="actionLoading()" (onClick)="recordPayment()">
             Record Payment
           </app-button>
+        </div>
+      </app-modal>
+
+      <!-- Confirm / Quote Modal -->
+      <app-modal
+        [isOpen]="showConfirmModal()"
+        title="Confirm Booking"
+        (onClose)="showConfirmModal.set(false)"
+        [showFooter]="true"
+      >
+        <div class="payment-form">
+          <div class="form-group">
+            <label>Your final price (₹)</label>
+            <input type="number" class="form-input" [(ngModel)]="quotePrice" min="0">
+            <p class="hint">The organizer proposed ₹{{ booking()?.priceAgreed | number }}. You receive this amount minus the {{ commissionPercent() }}% Festivo fee on online payments.</p>
+          </div>
+        </div>
+        <div modal-footer>
+          <app-button variant="ghost" (onClick)="showConfirmModal.set(false)">Cancel</app-button>
+          <app-button [loading]="actionLoading()" (onClick)="confirmBooking()">Confirm Booking</app-button>
         </div>
       </app-modal>
 
@@ -647,6 +718,28 @@ import { User } from '../../../../core/models/user.model';
       }
     }
 
+    .payment-history {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+
+      li {
+        display: flex;
+        justify-content: space-between;
+        gap: $spacing-2;
+        padding: $spacing-2 0;
+        border-bottom: 1px solid $border-light;
+        font-size: $font-size-sm;
+      }
+    }
+
+    .action-hint,
+    .policy-note {
+      font-size: $font-size-sm;
+      color: $text-secondary;
+      margin: 0;
+    }
+
     .cancellation-info {
       padding: $spacing-4;
       background: $error-light;
@@ -855,6 +948,7 @@ export class BookingDetailComponent implements OnInit {
   private reviewService = inject(ReviewService);
   private auth = inject(AuthService);
   private toast = inject(ToastService);
+  private payments = inject(PaymentService);
 
   booking = signal<Booking | null>(null);
   isLoading = signal(true);
@@ -862,6 +956,11 @@ export class BookingDetailComponent implements OnInit {
   showCancelModal = signal(false);
   showPaymentModal = signal(false);
   showReviewModal = signal(false);
+  showConfirmModal = signal(false);
+  isPaying = signal(false);
+  paymentsEnabled = signal(false);
+  commissionPercent = signal(15);
+  quotePrice = 0;
 
   cancelReason = '';
   paymentAmount: number = 0;
@@ -885,6 +984,52 @@ export class BookingDetailComponent implements OnInit {
     if (id) {
       this.loadBooking(id);
     }
+    this.payments.getConfig().subscribe({
+      next: (config) => {
+        this.paymentsEnabled.set(config.enabled);
+        this.commissionPercent.set(config.bookingCommissionPercent);
+      },
+      error: () => this.paymentsEnabled.set(false)
+    });
+  }
+
+  // Action responses aren't populated, so reload to keep names and images
+  private reload(): void {
+    const id = this.booking()?._id;
+    if (id) this.loadBooking(id);
+  }
+
+  getAdvanceAmount(): number {
+    return Math.round(this.getBalance() * 0.3);
+  }
+
+  async payOnline(amount: number): Promise<void> {
+    const booking = this.booking();
+    if (!booking) return;
+
+    this.isPaying.set(true);
+    try {
+      const details = await firstValueFrom(this.payments.createBookingOrder(booking._id, amount));
+      const user = this.auth.currentUser();
+      const result = await this.payments.checkout(
+        details,
+        `Booking: ${this.getServiceName(booking.service)}`,
+        { name: user?.name, email: user?.email, contact: user?.phone }
+      );
+      if (result === 'paid') {
+        this.toast.success('Payment Successful', `₹${amount} paid. It is held safely until you mark the booking complete.`);
+        this.reload();
+      }
+    } catch (err: any) {
+      this.toast.error('Payment Failed', err?.error?.message || err?.message || 'Please try again.');
+    } finally {
+      this.isPaying.set(false);
+    }
+  }
+
+  openConfirmModal(): void {
+    this.quotePrice = this.booking()?.priceAgreed || 0;
+    this.showConfirmModal.set(true);
   }
 
   loadBooking(id: string): void {
@@ -1015,11 +1160,12 @@ export class BookingDetailComponent implements OnInit {
     if (!id) return;
 
     this.actionLoading.set(true);
-    this.bookingService.confirmBooking(id).subscribe({
-      next: (response) => {
-        this.booking.set(response.data);
+    this.bookingService.confirmBooking(id, this.quotePrice).subscribe({
+      next: () => {
+        this.reload();
         this.actionLoading.set(false);
-        this.toast.success('Booking Confirmed', 'The booking has been confirmed.');
+        this.showConfirmModal.set(false);
+        this.toast.success('Booking Confirmed', 'The organizer can now pay online.');
       },
       error: () => {
         this.actionLoading.set(false);
@@ -1033,10 +1179,10 @@ export class BookingDetailComponent implements OnInit {
 
     this.actionLoading.set(true);
     this.bookingService.completeBooking(id).subscribe({
-      next: (response) => {
-        this.booking.set(response.data);
+      next: () => {
+        this.reload();
         this.actionLoading.set(false);
-        this.toast.success('Booking Completed', 'The booking has been marked as complete.');
+        this.toast.success('Booking Completed', 'Thanks! The vendor will now be paid out. Please leave a review.');
       },
       error: () => {
         this.actionLoading.set(false);
@@ -1050,14 +1196,15 @@ export class BookingDetailComponent implements OnInit {
 
     this.actionLoading.set(true);
     this.bookingService.cancelBooking(id, this.cancelReason || undefined).subscribe({
-      next: (response) => {
-        this.booking.set(response.data);
+      next: (response: any) => {
+        this.reload();
         this.actionLoading.set(false);
         this.showCancelModal.set(false);
-        this.toast.success('Booking Cancelled', 'The booking has been cancelled.');
+        this.toast.success('Booking Cancelled', response.message || 'The booking has been cancelled.');
       },
-      error: () => {
+      error: (err) => {
         this.actionLoading.set(false);
+        this.toast.error('Could not cancel', err.error?.message || 'Please try again.');
       }
     });
   }
@@ -1070,13 +1217,13 @@ export class BookingDetailComponent implements OnInit {
     }
 
     this.actionLoading.set(true);
-    this.bookingService.updatePayment(id, {
+    this.bookingService.recordOfflinePayment(id, {
       amount: this.paymentAmount,
       paymentMethod: this.paymentMethod as PaymentMethod,
       transactionId: this.transactionId || undefined
     }).subscribe({
-      next: (response) => {
-        this.booking.set(response.data);
+      next: () => {
+        this.reload();
         this.actionLoading.set(false);
         this.showPaymentModal.set(false);
         this.paymentAmount = this.getBalance();
@@ -1123,7 +1270,7 @@ export class BookingDetailComponent implements OnInit {
     };
 
     const reviewPayload: ReviewCreateData = {
-      booking: bookingId,
+      bookingId,
       rating: this.reviewData.rating,
       reviewText: this.reviewData.reviewText,
       ratings

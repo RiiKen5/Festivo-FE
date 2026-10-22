@@ -17,6 +17,10 @@ export const DASHBOARD_ROUTES: Routes = [
     canActivate: [vendorGuard]
   },
   {
+    path: 'earnings',
+    loadComponent: () => import('./pages/earnings/earnings.component').then(m => m.EarningsComponent)
+  },
+  {
     path: 'bookings',
     loadComponent: () => import('./pages/dashboard-home/dashboard-home.component').then(m => m.DashboardHomeComponent),
     data: { tab: 'bookings' }

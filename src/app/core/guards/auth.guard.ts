@@ -96,6 +96,29 @@ export const userTypeGuard: CanActivateFn = (route, state) => {
  * Guard for vendor/service provider routes
  * Allows access if user is a 'helper' (vendor) or 'all' type
  */
+export const adminGuard: CanActivateFn = (route, state) => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+
+  return waitForAuthInit(auth).pipe(
+    map(() => {
+      if (!auth.isAuthenticated()) {
+        router.navigate(['/auth/login'], {
+          queryParams: { returnUrl: state.url }
+        });
+        return false;
+      }
+
+      if (auth.currentUser()?.role === 'admin') {
+        return true;
+      }
+
+      router.navigate(['/dashboard']);
+      return false;
+    })
+  );
+};
+
 export const vendorGuard: CanActivateFn = (route, state) => {
   const auth = inject(AuthService);
   const router = inject(Router);

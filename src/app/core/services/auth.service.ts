@@ -246,7 +246,7 @@ export class AuthService implements OnDestroy {
   }
 
   resetPassword(token: string, password: string): Observable<any> {
-    return this.api.post('/auth/reset-password', { token, password });
+    return this.api.post('/auth/reset-password', { token, newPassword: password });
   }
 
   verifyEmail(token: string): Observable<VerifyEmailResponse> {

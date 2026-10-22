@@ -1,4 +1,5 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -11,6 +12,7 @@ import { TaskService } from '../../../../core/services/task.service';
 import { FavoriteService } from '../../../../core/services/favorite.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ToastService } from '../../../../core/services/toast.service';
+import { PaymentService, CheckoutDetails } from '../../../../core/services/payment.service';
 import { Event } from '../../../../core/models/event.model';
 import { User } from '../../../../core/models/user.model';
 import { Rsvp, RsvpStatus } from '../../../../core/models/rsvp.model';
@@ -281,14 +283,27 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
                         <app-button fullWidth [loading]="true" [disabled]="true">
                           Loading...
                         </app-button>
+                      } @else if (userRsvp()?.status === 'pending_payment') {
+                        <!-- Ticket reserved but not paid -->
+                        <div class="rsvp-status-card">
+                          <div class="rsvp-status-header">
+                            <span>Your ticket is reserved — complete payment to confirm it.</span>
+                          </div>
+                        </div>
+                        <app-button fullWidth [loading]="isSubmittingRsvp()" (onClick)="completeTicketPayment()">
+                          Pay ₹{{ ticketTotal(userRsvp()?.guestsCount || 0) }}
+                        </app-button>
+                        <app-button variant="ghost" fullWidth (onClick)="cancelRsvp()" [loading]="isCancellingRsvp()">
+                          Cancel
+                        </app-button>
                       } @else if (userRsvp()) {
                         <!-- User has already RSVP'd -->
                         <div class="rsvp-status-card">
                           <div class="rsvp-status-header">
                             <span class="rsvp-check">✓</span>
-                            <span>You're {{ userRsvp()?.status === 'going' ? 'Going' : userRsvp()?.status === 'interested' ? 'Interested' : 'Maybe Going' }}!</span>
+                            <span>{{ isTicketed() ? 'You have a ticket!' : userRsvp()?.status === 'going' ? "You're Going!" : userRsvp()?.status === 'maybe' ? "You're Maybe Going" : "You're not going" }}</span>
                           </div>
-                          @if (userRsvp()?.checkInCode) {
+                          @if (userRsvp()?.status === 'going' && userRsvp()?.checkInCode) {
                             <div class="rsvp-code">
                               <span class="code-label">Check-in Code:</span>
                               <span class="code-value">{{ userRsvp()?.checkInCode }}</span>
@@ -300,16 +315,20 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
                             </div>
                           }
                         </div>
-                        <app-button variant="secondary" fullWidth (onClick)="rsvpModal = true">
-                          Change RSVP
-                        </app-button>
+                        @if (!isTicketed()) {
+                          <app-button variant="secondary" fullWidth (onClick)="rsvpModal = true">
+                            Change RSVP
+                          </app-button>
+                        } @else {
+                          <p class="form-hint">Cancel 48+ hours before the event for a full refund.</p>
+                        }
                         <app-button variant="ghost" fullWidth (onClick)="cancelRsvp()" [loading]="isCancellingRsvp()">
-                          Cancel RSVP
+                          {{ isTicketed() ? 'Cancel Ticket' : 'Cancel RSVP' }}
                         </app-button>
                       } @else {
                         <!-- User hasn't RSVP'd yet -->
                         <app-button fullWidth (onClick)="rsvpModal = true">
-                          @if (event()?.isPaid) {
+                          @if (isTicketed()) {
                             Buy Ticket - ₹{{ event()?.entryFee }}
                           } @else {
                             RSVP Now - Free
@@ -330,11 +349,29 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
                         </app-button>
                       }
                     } @else {
-                      <app-button [routerLink]="['/auth/login']" [queryParams]="{returnUrl: '/events/' + event()?.slug}" fullWidth>
+                      <app-button [routerLink]="['/auth/login']" [queryParams]="{returnUrl: returnUrl()}" fullWidth>
                         Login to RSVP
                       </app-button>
                     }
                   </div>
+
+                  @if (isOrganizer() && event()?.inviteCode) {
+                    <div class="invite-box">
+                      <span class="share-label">{{ event()?.isPublic ? 'Invite link' : 'Private invite link' }}</span>
+                      <p class="form-hint">
+                        @if (event()?.isPublic) {
+                          Anyone with this link can join.
+                        } @else {
+                          Only people with this link can see and join this event.
+                        }
+                      </p>
+                      <div class="share-buttons">
+                        <app-button size="sm" variant="secondary" (onClick)="copyInviteLink()">Copy link</app-button>
+                        <app-button size="sm" variant="secondary" (onClick)="shareInviteOnWhatsApp()">WhatsApp</app-button>
+                        <app-button size="sm" variant="ghost" (onClick)="regenerateInvite()">Reset</app-button>
+                      </div>
+                    </div>
+                  }
 
                   <div class="sidebar-share">
                     <span class="share-label">Share event</span>
@@ -377,6 +414,7 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
             <p>{{ formatDate(event()?.date) }} at {{ event()?.time }}</p>
           </div>
 
+          @if (!isTicketed()) {
           <div class="form-group">
             <label class="form-label">Your Response</label>
             <div class="rsvp-options">
@@ -392,23 +430,24 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
               <button
                 type="button"
                 class="rsvp-option"
-                [class.active]="selectedRsvpStatus === 'interested'"
-                (click)="selectedRsvpStatus = 'interested'"
-              >
-                <span class="option-icon">⭐</span>
-                <span class="option-label">Interested</span>
-              </button>
-              <button
-                type="button"
-                class="rsvp-option"
                 [class.active]="selectedRsvpStatus === 'maybe'"
                 (click)="selectedRsvpStatus = 'maybe'"
               >
                 <span class="option-icon">?</span>
                 <span class="option-label">Maybe</span>
               </button>
+              <button
+                type="button"
+                class="rsvp-option"
+                [class.active]="selectedRsvpStatus === 'not_going'"
+                (click)="selectedRsvpStatus = 'not_going'"
+              >
+                <span class="option-icon">✕</span>
+                <span class="option-label">Can't go</span>
+              </button>
             </div>
           </div>
+          }
 
           <div class="form-group">
             <label class="form-label">Additional Guests (optional)</label>
@@ -420,10 +459,10 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
             <p class="form-hint">You + {{ guestsCount }} guest(s) = {{ guestsCount + 1 }} total</p>
           </div>
 
-          @if (event()?.isPaid) {
+          @if (isTicketed()) {
             <div class="rsvp-total">
               <span>Total Amount:</span>
-              <span class="total-value">₹{{ (event()?.entryFee || 0) * (guestsCount + 1) }}</span>
+              <span class="total-value">₹{{ ticketTotal(guestsCount) }}</span>
             </div>
           }
         </div>
@@ -433,9 +472,9 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
           <app-button
             (onClick)="confirmRsvp()"
             [loading]="isSubmittingRsvp()"
-            [disabled]="!selectedRsvpStatus"
+            [disabled]="!selectedRsvpStatus && !isTicketed()"
           >
-            {{ userRsvp() ? 'Update RSVP' : 'Confirm RSVP' }}
+            {{ isTicketed() ? 'Continue to Payment' : userRsvp() ? 'Update RSVP' : 'Confirm RSVP' }}
           </app-button>
         </div>
       </app-modal>
@@ -821,6 +860,17 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
       &:hover {
         border-color: $primary-300;
         color: $primary-600;
+      }
+    }
+
+    .invite-box {
+      padding: $spacing-4 0;
+      border-top: 1px solid $border-light;
+
+      .share-buttons {
+        display: flex;
+        gap: $spacing-2;
+        flex-wrap: wrap;
       }
     }
 
@@ -1288,7 +1338,11 @@ export class EventDetailComponent implements OnInit {
   private taskService = inject(TaskService);
   private favoriteService = inject(FavoriteService);
   private toast = inject(ToastService);
+  private payments = inject(PaymentService);
   auth = inject(AuthService);
+
+  // From a private invite link (?invite=...)
+  private inviteCode: string | null = null;
 
   event = signal<Event | null>(null);
   userRsvp = signal<Rsvp | null>(null);
@@ -1325,13 +1379,19 @@ export class EventDetailComponent implements OnInit {
 
   ngOnInit(): void {
     const slug = this.route.snapshot.paramMap.get('slug');
+    this.inviteCode = this.route.snapshot.queryParamMap.get('invite');
     if (slug) {
       this.loadEvent(slug);
     }
   }
 
-  loadEvent(slug: string): void {
-    this.eventService.getEventBySlug(slug).subscribe({
+  loadEvent(slugOrId: string): void {
+    // Links from bookings and notifications use the event id
+    const request = /^[a-f0-9]{24}$/i.test(slugOrId)
+      ? this.eventService.getEventById(slugOrId, this.inviteCode)
+      : this.eventService.getEventBySlug(slugOrId, this.inviteCode);
+
+    request.subscribe({
       next: (response) => {
         this.event.set(response.data);
         this.isLoading.set(false);
@@ -1361,11 +1421,13 @@ export class EventDetailComponent implements OnInit {
     this.isLoadingRsvp.set(true);
     this.rsvpService.getMyRsvp(eventId).subscribe({
       next: (response) => {
-        this.userRsvp.set(response.data);
+        // A cancelled RSVP means the user can RSVP again
+        const rsvp = response.data && response.data.status !== 'cancelled' ? response.data : null;
+        this.userRsvp.set(rsvp);
         // Pre-fill form if user already has RSVP
-        if (response.data) {
-          this.selectedRsvpStatus = response.data.status;
-          this.guestsCount = response.data.guestsCount || 0;
+        if (rsvp) {
+          this.selectedRsvpStatus = rsvp.status;
+          this.guestsCount = rsvp.guestsCount || 0;
         }
         this.isLoadingRsvp.set(false);
       },
@@ -1398,8 +1460,103 @@ export class EventDetailComponent implements OnInit {
     });
   }
 
+  isTicketed(): boolean {
+    return (this.event()?.entryFee || 0) > 0;
+  }
+
+  ticketTotal(guests: number): number {
+    return (this.event()?.entryFee || 0) * (guests + 1);
+  }
+
+  returnUrl(): string {
+    const base = `/events/${this.event()?.slug}`;
+    return this.inviteCode ? `${base}?invite=${this.inviteCode}` : base;
+  }
+
+  // Paid events: reserve the ticket, then pay through Razorpay
+  private async buyTicket(): Promise<void> {
+    const event = this.event()!;
+    this.isSubmittingRsvp.set(true);
+    try {
+      const response: any = await firstValueFrom(this.rsvpService.createRsvp({
+        eventId: event._id,
+        status: 'going',
+        guestsCount: this.guestsCount,
+        inviteCode: this.inviteCode || undefined
+      }));
+      this.userRsvp.set(response.data.rsvp);
+      this.rsvpModal = false;
+      await this.payForTicket(response.data.checkout);
+    } catch (error: any) {
+      this.toast.error('Could not reserve ticket', error?.error?.message || error?.message || 'Please try again.');
+    } finally {
+      this.isSubmittingRsvp.set(false);
+    }
+  }
+
+  async completeTicketPayment(): Promise<void> {
+    const rsvp = this.userRsvp();
+    if (!rsvp) return;
+    this.isSubmittingRsvp.set(true);
+    try {
+      const checkout = await firstValueFrom(this.payments.createTicketOrder(rsvp._id));
+      await this.payForTicket(checkout);
+    } catch (error: any) {
+      this.toast.error('Payment Failed', error?.error?.message || error?.message || 'Please try again.');
+    } finally {
+      this.isSubmittingRsvp.set(false);
+    }
+  }
+
+  private async payForTicket(checkout: CheckoutDetails): Promise<void> {
+    const user = this.auth.currentUser();
+    const result = await this.payments.checkout(checkout, `Ticket: ${this.event()?.title}`, {
+      name: user?.name, email: user?.email, contact: user?.phone
+    });
+    if (result === 'paid') {
+      this.toast.success('Ticket Confirmed!', 'See you there. Your check-in code is on this page.');
+      this.loadEvent(this.event()!._id);
+    } else {
+      this.toast.info('Payment not completed', 'Your ticket is reserved. Complete payment to confirm it.');
+    }
+  }
+
+  private inviteUrl(): string {
+    const event = this.event();
+    return `${window.location.origin}/events/${event?.slug}?invite=${event?.inviteCode}`;
+  }
+
+  copyInviteLink(): void {
+    navigator.clipboard.writeText(this.inviteUrl()).then(
+      () => this.toast.success('Copied', 'Invite link copied to clipboard.'),
+      () => this.toast.error('Copy failed', this.inviteUrl())
+    );
+  }
+
+  shareInviteOnWhatsApp(): void {
+    const text = `You're invited to ${this.event()?.title}! ${this.inviteUrl()}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  }
+
+  regenerateInvite(): void {
+    const event = this.event();
+    if (!event || !confirm('Reset the invite link? The old link will stop working.')) return;
+    this.eventService.regenerateInvite(event._id).subscribe({
+      next: (response) => {
+        this.event.set({ ...event, inviteCode: response.data.inviteCode });
+        this.toast.success('Invite link reset', 'Share the new link with your guests.');
+      },
+      error: () => this.toast.error('Error', 'Could not reset the invite link.')
+    });
+  }
+
   confirmRsvp(): void {
-    if (!this.selectedRsvpStatus || !this.event()) return;
+    if (!this.event()) return;
+    if (this.isTicketed()) {
+      this.buyTicket();
+      return;
+    }
+    if (!this.selectedRsvpStatus) return;
 
     this.isSubmittingRsvp.set(true);
 
@@ -1428,13 +1585,14 @@ export class EventDetailComponent implements OnInit {
       this.rsvpService.createRsvp({
         eventId: this.event()!._id,
         status: this.selectedRsvpStatus,
-        guestsCount: this.guestsCount
+        guestsCount: this.guestsCount,
+        inviteCode: this.inviteCode || undefined
       }).subscribe({
         next: (response) => {
           this.userRsvp.set(response.data);
           // Update attendee count locally
           const currentEvent = this.event();
-          if (currentEvent) {
+          if (currentEvent && this.selectedRsvpStatus === 'going') {
             this.event.set({
               ...currentEvent,
               currentAttendees: currentEvent.currentAttendees + 1 + this.guestsCount
@@ -1460,10 +1618,10 @@ export class EventDetailComponent implements OnInit {
     this.isCancellingRsvp.set(true);
 
     this.rsvpService.cancelRsvp(rsvp._id).subscribe({
-      next: () => {
+      next: (response: any) => {
         // Update attendee count locally
         const currentEvent = this.event();
-        if (currentEvent) {
+        if (currentEvent && rsvp.status === 'going') {
           const reduction = 1 + (rsvp.guestsCount || 0);
           this.event.set({
             ...currentEvent,
@@ -1473,7 +1631,7 @@ export class EventDetailComponent implements OnInit {
         this.userRsvp.set(null);
         this.selectedRsvpStatus = null;
         this.guestsCount = 0;
-        this.toast.success('RSVP Cancelled', 'Your registration has been cancelled.');
+        this.toast.success('Cancelled', response?.message || 'Your registration has been cancelled.');
         this.isCancellingRsvp.set(false);
       },
       error: (error) => {
@@ -1644,7 +1802,7 @@ export class EventDetailComponent implements OnInit {
     } else {
       // Create new task
       this.taskService.createTask({
-        event: this.event()!._id,
+        eventId: this.event()!._id,
         taskName: this.taskFormData.taskName,
         description: this.taskFormData.description || undefined,
         category: this.taskFormData.category as TaskCategory,

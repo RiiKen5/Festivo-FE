@@ -13,6 +13,9 @@ export interface Booking {
   status: BookingStatus;
   priceAgreed: number;
   pricePaid: number;
+  totalPaid?: number;
+  refundedAmount?: number;
+  payments?: BookingPayment[];
   paymentStatus: PaymentStatus;
   paymentMethod?: PaymentMethod;
   transactionId?: string;
@@ -35,6 +38,14 @@ export interface Booking {
   updatedAt: Date;
 }
 
+export interface BookingPayment {
+  amount: number;
+  paymentMethod: PaymentMethod;
+  transactionId?: string;
+  paidAt: Date;
+  notes?: string;
+}
+
 export type BookingStatus =
   | 'pending'
   | 'confirmed'
@@ -53,7 +64,10 @@ export type PaymentMethod =
   | 'cash'
   | 'upi'
   | 'card'
-  | 'netbanking';
+  | 'netbanking'
+  | 'bank_transfer'
+  | 'razorpay'
+  | 'other';
 
 export interface BookingFilters {
   status?: BookingStatus;
@@ -68,9 +82,10 @@ export interface BookingFilters {
 }
 
 export interface BookingCreateData {
-  event: string;
-  service: string;
+  eventId: string;
+  serviceId: string;
   eventDate: string;
+  // The organizer's proposed price; the vendor may confirm at a different quote
   priceAgreed: number;
   notes?: string;
   requirements?: string;
@@ -82,13 +97,12 @@ export interface BookingUpdateData {
   priceAgreed?: number;
 }
 
+// An offline payment the vendor records as received
 export interface PaymentUpdateData {
   amount: number;
   paymentMethod: PaymentMethod;
   transactionId?: string;
-  razorpayOrderId?: string;
-  razorpayPaymentId?: string;
-  razorpaySignature?: string;
+  notes?: string;
 }
 
 export interface BookingsResponse {

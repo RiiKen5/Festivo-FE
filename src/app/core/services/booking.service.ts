@@ -48,8 +48,9 @@ export class BookingService {
     return this.api.put<BookingResponse>(`${this.endpoint}/${id}`, data);
   }
 
-  confirmBooking(id: string): Observable<BookingResponse> {
-    return this.api.post<BookingResponse>(`${this.endpoint}/${id}/confirm`, {});
+  // Vendor accepts, optionally at a revised price (their quote)
+  confirmBooking(id: string, priceAgreed?: number): Observable<BookingResponse> {
+    return this.api.post<BookingResponse>(`${this.endpoint}/${id}/confirm`, { priceAgreed });
   }
 
   cancelBooking(id: string, reason?: string): Observable<BookingResponse> {
@@ -60,7 +61,8 @@ export class BookingService {
     return this.api.post<BookingResponse>(`${this.endpoint}/${id}/complete`, {});
   }
 
-  updatePayment(id: string, data: PaymentUpdateData): Observable<BookingResponse> {
-    return this.api.post<BookingResponse>(`${this.endpoint}/${id}/payment`, data);
+  // Vendor records an offline payment they received. Organizers pay online via PaymentService.
+  recordOfflinePayment(id: string, data: PaymentUpdateData): Observable<BookingResponse> {
+    return this.api.put<BookingResponse>(`${this.endpoint}/${id}/payment`, data);
   }
 }

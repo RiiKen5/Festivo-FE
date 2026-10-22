@@ -71,6 +71,6 @@ export class RsvpService {
    * PUT /api/v1/rsvps/:rsvpId/check-in
    */
   checkIn(rsvpId: string): Observable<RsvpResponse> {
-    return this.api.put<RsvpResponse>(`${this.endpoint}/${rsvpId}/check-in`, {});
+    return this.api.post<RsvpResponse>(`${this.endpoint}/${rsvpId}/check-in`, {});
   }
 }

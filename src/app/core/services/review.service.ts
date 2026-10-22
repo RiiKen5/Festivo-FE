@@ -45,7 +45,7 @@ export class ReviewService {
    * PUT /api/v1/reviews/:reviewId/respond
    */
   respondToReview(reviewId: string, vendorResponse: string): Observable<ReviewResponse> {
-    return this.api.put<ReviewResponse>(`${this.endpoint}/${reviewId}/respond`, { vendorResponse });
+    return this.api.post<ReviewResponse>(`${this.endpoint}/${reviewId}/respond`, { response: vendorResponse });
   }
 
   /**

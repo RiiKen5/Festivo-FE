@@ -26,7 +26,7 @@ export interface Review {
 }
 
 export interface ReviewCreateData {
-  booking: string;
+  bookingId: string;
   rating: number;
   reviewText: string;
   ratings: {

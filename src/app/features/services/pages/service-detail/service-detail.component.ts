@@ -1820,8 +1820,8 @@ export class ServiceDetailComponent implements OnInit {
     this.bookingError.set('');
 
     const bookingData: BookingCreateData = {
-      event: this.bookingForm.eventId,
-      service: serviceId,
+      eventId: this.bookingForm.eventId,
+      serviceId: serviceId,
       eventDate: this.bookingForm.eventDate,
       priceAgreed: this.bookingForm.priceAgreed,
       notes: this.bookingForm.notes || undefined,

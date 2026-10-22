@@ -18,7 +18,7 @@ export interface Conversation {
 }
 
 export interface MessageCreateData {
-  receiver: string;
+  receiverId: string;
   messageText: string;
 }
 
@@ -41,6 +41,6 @@ export interface ConversationsResponse {
 export interface UnreadMessagesCountResponse {
   success: boolean;
   data: {
-    count: number;
+    unreadCount: number;
   };
 }

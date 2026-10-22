@@ -205,6 +205,10 @@ import { Booking } from '../../../../core/models/booking.model';
                       <span class="action-icon">💬</span>
                       <span class="action-label">Messages</span>
                     </a>
+                    <a routerLink="/dashboard/earnings" class="action-card">
+                      <span class="action-icon">💰</span>
+                      <span class="action-label">Earnings &amp; Payouts</span>
+                    </a>
                     <a routerLink="/profile" class="action-card">
                       <span class="action-icon">👤</span>
                       <span class="action-label">Edit Profile</span>

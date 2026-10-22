@@ -3,12 +3,23 @@ import { inject } from '@angular/core';
 import { catchError, throwError } from 'rxjs';
 import { ToastService } from '../services/toast.service';
 
+// The API responds with { success: false, error: { message, details? } }.
+// Validation failures put the useful text in details[].message.
+const serverMessage = (body: any): string | undefined => {
+  const err = body?.error;
+  if (err?.details?.length && err.details[0]?.message) {
+    return err.details.map((d: any) => d.message).join('. ');
+  }
+  return err?.message || body?.message;
+};
+
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const toast = inject(ToastService);
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
       let errorMessage = 'An unexpected error occurred';
+      const fromServer = serverMessage(error.error);
 
       if (error.error instanceof ErrorEvent) {
         // Client-side error
@@ -20,22 +31,22 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
             errorMessage = 'Unable to connect to server. Please check your internet connection.';
             break;
           case 400:
-            errorMessage = error.error?.message || 'Bad request. Please check your input.';
+            errorMessage = fromServer || 'Bad request. Please check your input.';
             break;
           case 401:
             // Handled by auth interceptor
             return throwError(() => error);
           case 403:
-            errorMessage = 'You do not have permission to perform this action.';
+            errorMessage = fromServer || 'You do not have permission to perform this action.';
             break;
           case 404:
-            errorMessage = error.error?.message || 'Resource not found.';
+            errorMessage = fromServer || 'Resource not found.';
             break;
           case 409:
-            errorMessage = error.error?.message || 'Conflict. This resource already exists.';
+            errorMessage = fromServer || 'Conflict. This resource already exists.';
             break;
           case 422:
-            errorMessage = error.error?.message || 'Validation error. Please check your input.';
+            errorMessage = fromServer || 'Validation error. Please check your input.';
             break;
           case 429:
             errorMessage = 'Too many requests. Please try again later.';
@@ -43,8 +54,11 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
           case 500:
             errorMessage = 'Server error. Please try again later.';
             break;
+          case 503:
+            errorMessage = fromServer || 'Service temporarily unavailable. Please try again later.';
+            break;
           default:
-            errorMessage = error.error?.message || `Error: ${error.status}`;
+            errorMessage = fromServer || `Error: ${error.status}`;
         }
       }
 
@@ -53,7 +67,12 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
         toast.error('Error', errorMessage);
       }
 
-      return throwError(() => ({ ...error, friendlyMessage: errorMessage }));
+      // Expose the server's message at error.error.message, where components read it
+      return throwError(() => ({
+        ...error,
+        error: { ...(typeof error.error === 'object' ? error.error : {}), message: errorMessage },
+        friendlyMessage: errorMessage
+      }));
     })
   );
 };

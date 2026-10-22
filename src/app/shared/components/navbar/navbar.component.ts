@@ -179,6 +179,21 @@ import { ButtonComponent } from '../button/button.component';
                       My Services
                     </a>
                   }
+                  <a routerLink="/dashboard/earnings" class="navbar__dropdown-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="12" y1="1" x2="12" y2="23"/>
+                      <path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+                    </svg>
+                    Earnings
+                  </a>
+                  @if (isAdmin()) {
+                    <a routerLink="/admin" class="navbar__dropdown-item">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                      </svg>
+                      Admin
+                    </a>
+                  }
                   <a routerLink="/messages" class="navbar__dropdown-item">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
@@ -926,6 +941,10 @@ export class NavbarComponent implements OnInit, OnDestroy {
   /**
    * Check if user can provide services (helper or all)
    */
+  isAdmin(): boolean {
+    return this.auth.currentUser()?.role === 'admin';
+  }
+
   canProvideServices(): boolean {
     const userType = this.auth.currentUser()?.userType;
     return userType === 'helper' || userType === 'all';

@@ -34,7 +34,7 @@ export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type TaskStatus = 'pending' | 'in_progress' | 'done' | 'cancelled';
 
 export interface TaskCreateData {
-  event: string;
+  eventId: string;
   taskName: string;
   description?: string;
   category: TaskCategory;

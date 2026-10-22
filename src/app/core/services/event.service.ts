@@ -35,12 +35,17 @@ export class EventService {
     return this.api.get<EventsResponse>(`${this.endpoint}/nearby`, { lat, lng, radius });
   }
 
-  getEventBySlug(slug: string): Observable<EventResponse> {
-    return this.api.get<EventResponse>(`${this.endpoint}/slug/${slug}`);
+  // inviteCode unlocks private events shared through an invite link
+  getEventBySlug(slug: string, inviteCode?: string | null): Observable<EventResponse> {
+    return this.api.get<EventResponse>(`${this.endpoint}/slug/${slug}`, { invite: inviteCode });
   }
 
-  getEventById(id: string): Observable<EventResponse> {
-    return this.api.get<EventResponse>(`${this.endpoint}/${id}`);
+  getEventById(id: string, inviteCode?: string | null): Observable<EventResponse> {
+    return this.api.get<EventResponse>(`${this.endpoint}/${id}`, { invite: inviteCode });
+  }
+
+  regenerateInvite(id: string): Observable<{ success: boolean; data: { inviteCode: string; inviteUrl: string } }> {
+    return this.api.post(`${this.endpoint}/${id}/invite/regenerate`, {});
   }
 
   // Protected endpoints

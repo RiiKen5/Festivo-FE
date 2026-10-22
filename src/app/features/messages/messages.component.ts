@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, OnInit } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -10,6 +10,10 @@ import { UserService } from '../../core/services/user.service';
 import { ToastService } from '../../core/services/toast.service';
 import { Conversation, Message } from '../../core/models/message.model';
 import { User } from '../../core/models/user.model';
+
+// How often to check for new messages while the page is open
+const MESSAGE_POLL_MS = 8000;
+const CONVERSATION_POLL_EVERY = 4; // conversation list refresh, in message polls
 
 @Component({
   selector: 'app-messages',
@@ -538,7 +542,10 @@ import { User } from '../../core/models/user.model';
     }
   `]
 })
-export class MessagesComponent implements OnInit {
+export class MessagesComponent implements OnInit, OnDestroy {
+  private pollTimer?: ReturnType<typeof setInterval>;
+  private pollCount = 0;
+
   private auth = inject(AuthService);
   private route = inject(ActivatedRoute);
   private messageService = inject(MessageService);
@@ -564,6 +571,7 @@ export class MessagesComponent implements OnInit {
     // Check if we're navigating to a specific user
     this.targetUserId = this.route.snapshot.paramMap.get('userId');
     this.loadConversations();
+    this.pollTimer = setInterval(() => this.poll(), MESSAGE_POLL_MS);
   }
 
   loadConversations(): void {
@@ -656,6 +664,36 @@ export class MessagesComponent implements OnInit {
     }
   }
 
+  ngOnDestroy(): void {
+    clearInterval(this.pollTimer);
+  }
+
+  // Quietly pick up new messages (no loading spinners)
+  private poll(): void {
+    if (document.hidden) return;
+    this.pollCount += 1;
+
+    const userId = this.selectedUserId();
+    if (userId) {
+      this.messageService.getConversation(userId).subscribe({
+        next: (response) => {
+          const current = this.messages();
+          const latest = response.data;
+          if (this.selectedUserId() === userId &&
+              (latest.length !== current.length || latest[latest.length - 1]?._id !== current[current.length - 1]?._id)) {
+            this.messages.set(latest);
+          }
+        }
+      });
+    }
+
+    if (this.pollCount % CONVERSATION_POLL_EVERY === 0) {
+      this.messageService.getConversations().subscribe({
+        next: (response) => this.conversations.set(response.data)
+      });
+    }
+  }
+
   loadMessages(userId: string): void {
     this.isLoadingMessages.set(true);
     this.messageService.getConversation(userId).subscribe({
@@ -686,7 +724,7 @@ export class MessagesComponent implements OnInit {
 
     this.isSending.set(true);
     this.messageService.sendMessage({
-      receiver: this.selectedUserId()!,
+      receiverId: this.selectedUserId()!,
       messageText: this.newMessage.trim()
     }).subscribe({
       next: (response) => {

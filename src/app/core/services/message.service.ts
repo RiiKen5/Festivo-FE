@@ -1,5 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-import { Observable, tap } from 'rxjs';
+import { Observable, map, tap } from 'rxjs';
 import { ApiService } from './api.service';
 import {
   Message,
@@ -34,7 +34,14 @@ export class MessageService {
    * GET /api/v1/messages/conversation/:userId
    */
   getConversation(userId: string, page: number = 1, limit: number = 50): Observable<MessagesResponse> {
-    return this.api.get<MessagesResponse>(`${this.endpoint}/conversation/${userId}`, { page, limit });
+    // The API returns { messages, otherUser } inside data
+    return this.api.get<any>(`${this.endpoint}/conversation/${userId}`, { page, limit }).pipe(
+      map(response => ({
+        success: response.success,
+        count: response.meta?.total ?? response.data.messages.length,
+        data: response.data.messages as Message[]
+      }))
+    );
   }
 
   /**
@@ -42,7 +49,15 @@ export class MessageService {
    * GET /api/v1/messages/conversations
    */
   getConversations(): Observable<ConversationsResponse> {
-    return this.api.get<ConversationsResponse>(`${this.endpoint}/conversations`);
+    // The API names the other participant `otherUser`
+    return this.api.get<any>(`${this.endpoint}/conversations`).pipe(
+      map(response => ({
+        success: response.success,
+        data: (response.data as any[])
+          .filter(c => c.otherUser)
+          .map(c => ({ user: c.otherUser, lastMessage: c.lastMessage, unreadCount: c.unreadCount }))
+      }))
+    );
   }
 
   /**
@@ -52,17 +67,17 @@ export class MessageService {
   getUnreadCount(): Observable<UnreadMessagesCountResponse> {
     return this.api.get<UnreadMessagesCountResponse>(`${this.endpoint}/unread-count`).pipe(
       tap(response => {
-        this.unreadCount.set(response.data.count);
+        this.unreadCount.set(response.data.unreadCount);
       })
     );
   }
 
   /**
    * Mark messages in a conversation as read
-   * PUT /api/v1/messages/conversation/:userId/read
+   * PUT /api/v1/messages/read/:userId
    */
   markConversationAsRead(userId: string): Observable<{ success: boolean; message: string }> {
-    return this.api.put<{ success: boolean; message: string }>(`${this.endpoint}/conversation/${userId}/read`, {});
+    return this.api.put<{ success: boolean; message: string }>(`${this.endpoint}/read/${userId}`, {});
   }
 
   /**

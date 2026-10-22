@@ -26,6 +26,8 @@ export interface Event {
   budgetSpent: number;
   currency: string;
   isPublic: boolean;
+  // Only returned to the event's organizers
+  inviteCode?: string;
   isPublished: boolean;
   status: EventStatus;
   entryFee: number;
