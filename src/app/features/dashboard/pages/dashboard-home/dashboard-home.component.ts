@@ -974,7 +974,9 @@ export class DashboardHomeComponent implements OnInit {
         this.myEvents.set(response.data);
         const now = new Date();
         this.upcomingEvents.set(
-          response.data.filter(e => new Date(e.date) >= now)
+          response.data
+            .filter(e => new Date(e.date) >= now && !['cancelled', 'completed'].includes(e.status))
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
         );
         this.isLoadingEvents.set(false);
       },
