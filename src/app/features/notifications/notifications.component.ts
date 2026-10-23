@@ -4,12 +4,14 @@ import { Router, RouterModule } from '@angular/router';
 import { NotificationService } from '../../core/services/notification.service';
 import { Notification, NotificationType } from '../../core/models/notification.model';
 import { ButtonComponent } from '../../shared/components/button/button.component';
+import { NavbarComponent } from '../../shared/components/navbar/navbar.component';
 
 @Component({
   selector: 'app-notifications',
   standalone: true,
-  imports: [CommonModule, RouterModule, ButtonComponent],
+  imports: [CommonModule, RouterModule, ButtonComponent, NavbarComponent],
   template: `
+    <app-navbar></app-navbar>
     <div class="notifications">
       <div class="notifications__container">
         <!-- Header -->
@@ -506,6 +508,7 @@ export class NotificationsComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadNotifications();
+    this.notificationService.refreshUnreadCount();
   }
 
   loadNotifications(): void {

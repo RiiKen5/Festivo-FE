@@ -160,7 +160,7 @@ import { User } from '../../../../core/models/user.model';
                         (onClick)="showCancelModal($event, booking)"
                       >Cancel</app-button>
                     }
-                    @if (activeTab() === 'vendor' && booking.status === 'confirmed') {
+                    @if (activeTab() === 'organizer' && booking.status === 'confirmed') {
                       <app-button
                         variant="secondary"
                         size="sm"

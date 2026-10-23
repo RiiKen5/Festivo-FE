@@ -155,8 +155,8 @@ import { Event, EventType, EventFilters } from '../../../../core/models/event.mo
                 </p>
                 <div class="events-sort">
                   <select [(ngModel)]="sortBy" (change)="loadEvents()">
-                    <option value="-date">Date (Nearest)</option>
-                    <option value="date">Date (Furthest)</option>
+                    <option value="date">Date (Soonest)</option>
+                    <option value="-date">Date (Latest)</option>
                     <option value="-views">Most Popular</option>
                     <option value="-createdAt">Newest</option>
                   </select>
@@ -683,7 +683,7 @@ export class EventListComponent implements OnInit {
 
   searchQuery = '';
   cityFilter = '';
-  sortBy = '-date';
+  sortBy = 'date';
   dateFilter: 'today' | 'week' | 'month' | 'all' = 'all';
   priceFilter: 'all' | 'free' | 'paid' = 'all';
   selectedTypes: EventType[] = [];
@@ -715,25 +715,25 @@ export class EventListComponent implements OnInit {
 
     if (this.searchQuery) filters.search = this.searchQuery;
     if (this.cityFilter) filters.city = this.cityFilter;
-    if (this.selectedTypes.length === 1) filters.eventType = this.selectedTypes[0];
+    if (this.selectedTypes.length) filters.eventType = this.selectedTypes.join(',');
     if (this.priceFilter === 'free') filters.isPaid = false;
     if (this.priceFilter === 'paid') filters.isPaid = true;
 
-    // Date filters
-    const today = new Date();
+    // Date filters: from the start of today to the end of the chosen range
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
     if (this.dateFilter === 'today') {
-      filters.minDate = today.toISOString().split('T')[0];
-      filters.maxDate = today.toISOString().split('T')[0];
+      end.setDate(end.getDate() + 1);
     } else if (this.dateFilter === 'week') {
-      const weekEnd = new Date(today);
-      weekEnd.setDate(today.getDate() + 7);
-      filters.minDate = today.toISOString().split('T')[0];
-      filters.maxDate = weekEnd.toISOString().split('T')[0];
+      end.setDate(end.getDate() + 8);
     } else if (this.dateFilter === 'month') {
-      const monthEnd = new Date(today);
-      monthEnd.setMonth(today.getMonth() + 1);
-      filters.minDate = today.toISOString().split('T')[0];
-      filters.maxDate = monthEnd.toISOString().split('T')[0];
+      end.setMonth(end.getMonth() + 1);
+      end.setDate(end.getDate() + 1);
+    }
+    if (this.dateFilter !== 'all') {
+      filters.dateFrom = start.toISOString();
+      filters.dateTo = new Date(end.getTime() - 1).toISOString();
     }
 
     this.eventService.getEvents(filters).subscribe({

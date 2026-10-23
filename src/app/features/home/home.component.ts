@@ -236,14 +236,13 @@ import { Service } from '../../core/models/service.model';
           </div>
           <div class="footer__links">
             <h4>Company</h4>
-            <a href="#">About Us</a>
-            <a href="#">Contact</a>
-            <a href="#">Blog</a>
+            <a routerLink="/contact">Contact</a>
           </div>
           <div class="footer__links">
             <h4>Legal</h4>
-            <a href="#">Privacy Policy</a>
-            <a href="#">Terms of Service</a>
+            <a routerLink="/privacy">Privacy Policy</a>
+            <a routerLink="/terms">Terms of Service</a>
+            <a routerLink="/refund-policy">Cancellations &amp; Refunds</a>
           </div>
         </div>
         <div class="footer__bottom">

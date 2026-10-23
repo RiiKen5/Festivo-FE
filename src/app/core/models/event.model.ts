@@ -68,10 +68,11 @@ export type VibeScore =
 
 export interface EventFilters {
   city?: string;
-  eventType?: EventType;
+  // One type, or several comma-separated
+  eventType?: EventType | string;
   status?: EventStatus;
-  minDate?: string;
-  maxDate?: string;
+  dateFrom?: string;
+  dateTo?: string;
   minBudget?: number;
   maxBudget?: number;
   search?: string;

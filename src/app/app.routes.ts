@@ -49,6 +49,26 @@ export const routes: Routes = [
     loadComponent: () => import('./features/admin/admin.component').then(m => m.AdminComponent)
   },
   {
+    path: 'terms',
+    loadComponent: () => import('./features/legal/legal.component').then(m => m.LegalComponent),
+    data: { page: 'terms' }
+  },
+  {
+    path: 'privacy',
+    loadComponent: () => import('./features/legal/legal.component').then(m => m.LegalComponent),
+    data: { page: 'privacy' }
+  },
+  {
+    path: 'refund-policy',
+    loadComponent: () => import('./features/legal/legal.component').then(m => m.LegalComponent),
+    data: { page: 'refunds' }
+  },
+  {
+    path: 'contact',
+    loadComponent: () => import('./features/legal/legal.component').then(m => m.LegalComponent),
+    data: { page: 'contact' }
+  },
+  {
     path: '**',
     loadComponent: () => import('./features/not-found/not-found.component').then(m => m.NotFoundComponent)
   }
