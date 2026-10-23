@@ -1,7 +1,6 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute } from '@angular/router';
-import { NavbarComponent } from '../../../../shared/components/navbar/navbar.component';
 import { ButtonComponent } from '../../../../shared/components/button/button.component';
 import { CardComponent } from '../../../../shared/components/card/card.component';
 import { AuthService } from '../../../../core/services/auth.service';
@@ -15,9 +14,8 @@ import { Booking } from '../../../../core/models/booking.model';
 @Component({
   selector: 'app-dashboard-home',
   standalone: true,
-  imports: [CommonModule, RouterModule, NavbarComponent, ButtonComponent, CardComponent],
+  imports: [CommonModule, RouterModule, ButtonComponent, CardComponent],
   template: `
-    <app-navbar></app-navbar>
 
     <main class="dashboard">
       <div class="container">
@@ -284,7 +282,7 @@ import { Booking } from '../../../../core/models/booking.model';
                         <app-card
                           [title]="event.title"
                           [subtitle]="formatDate(event.date)"
-                          [image]="event.coverPhoto || 'assets/images/event-placeholder.jpg'"
+                          [image]="event.coverPhoto || 'assets/images/event-placeholder.svg'"
                           [badge]="event.isPublished ? 'Published' : 'Draft'"
                           [badgeType]="event.isPublished ? 'success' : 'warning'"
                           hoverable

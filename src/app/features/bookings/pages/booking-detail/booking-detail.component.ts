@@ -3,7 +3,6 @@ import { firstValueFrom } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { NavbarComponent } from '../../../../shared/components/navbar/navbar.component';
 import { ButtonComponent } from '../../../../shared/components/button/button.component';
 import { ModalComponent } from '../../../../shared/components/modal/modal.component';
 import { BookingService } from '../../../../core/services/booking.service';
@@ -20,9 +19,8 @@ import { User } from '../../../../core/models/user.model';
 @Component({
   selector: 'app-booking-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, NavbarComponent, ButtonComponent, ModalComponent],
+  imports: [CommonModule, RouterModule, FormsModule, ButtonComponent, ModalComponent],
   template: `
-    <app-navbar></app-navbar>
 
     @if (isLoading()) {
       <div class="loading-state">
@@ -1065,7 +1063,7 @@ export class BookingDetailComponent implements OnInit {
 
   getServiceImage(): string {
     const service = this.booking()?.service as Service;
-    return service?.coverImage || 'assets/images/service-placeholder.jpeg';
+    return service?.coverImage || 'assets/images/service-placeholder.svg';
   }
 
   getServiceCategory(): string {

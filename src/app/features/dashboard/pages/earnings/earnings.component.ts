@@ -2,7 +2,6 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { NavbarComponent } from '../../../../shared/components/navbar/navbar.component';
 import { ButtonComponent } from '../../../../shared/components/button/button.component';
 import { ToastService } from '../../../../core/services/toast.service';
 import {
@@ -15,9 +14,8 @@ import {
 @Component({
   selector: 'app-earnings',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, NavbarComponent, ButtonComponent],
+  imports: [CommonModule, RouterModule, FormsModule, ButtonComponent],
   template: `
-    <app-navbar></app-navbar>
 
     <main class="earnings-page">
       <div class="container">

@@ -1,0 +1,257 @@
+// Layout for browse pages (events, vendors): header, search toolbar,
+// filter chips, result grid, pagination.
+@use '../../../styles/variables' as *;
+@use '../../../styles/mixins' as *;
+
+.page {
+  padding: $spacing-8 0 0;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-2;
+  margin-bottom: $spacing-4;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: $spacing-2;
+  height: 44px;
+  padding: 0 $spacing-3;
+  border: 1px solid $border-default;
+  border-radius: $radius-default;
+  background: $bg-primary;
+  box-shadow: $shadow-xs;
+  color: $text-tertiary;
+  flex: 1 1 180px;
+  transition: border-color $transition-fast, box-shadow $transition-fast;
+
+  &:focus-within {
+    border-color: $border-focus;
+    box-shadow: $focus-ring;
+  }
+
+  &--grow {
+    flex: 3 1 260px;
+  }
+
+  &--select {
+    flex: 1 1 190px;
+    padding: 0;
+  }
+
+  input,
+  select {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    border: none;
+    background: transparent;
+    font: inherit;
+    font-size: $font-size-sm;
+    color: $text-primary;
+    outline: none;
+
+    &::placeholder {
+      color: $text-muted;
+    }
+  }
+
+  select {
+    padding: 0 $spacing-3;
+    cursor: pointer;
+  }
+}
+
+.filters {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-3;
+  margin-bottom: $spacing-4;
+}
+
+.filters__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $spacing-2 $spacing-3;
+}
+
+// Horizontal chips; scroll sideways on narrow screens
+.chips {
+  display: flex;
+  gap: $spacing-2;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  @include md {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  height: 36px;
+  padding: 0 $spacing-3;
+  border: 1px solid $border-default;
+  border-radius: $radius-full;
+  background: $bg-primary;
+  color: $text-secondary;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  cursor: pointer;
+  transition: background-color $transition-fast, border-color $transition-fast, color $transition-fast;
+
+  &:hover {
+    border-color: $neutral-400;
+    color: $text-primary;
+  }
+
+  &--on {
+    border-color: $primary-600;
+    background: $primary-50;
+    color: $primary-800;
+
+    &:hover {
+      border-color: $primary-700;
+      color: $primary-900;
+    }
+  }
+}
+
+.segmented {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: $radius-default;
+  background: $neutral-100;
+
+  button {
+    height: 30px;
+    padding: 0 $spacing-3;
+    border: none;
+    border-radius: 6px;
+    background: none;
+    color: $text-secondary;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    white-space: nowrap;
+    cursor: pointer;
+
+    &:hover {
+      color: $text-primary;
+    }
+
+    &.active {
+      background: $bg-primary;
+      color: $text-primary;
+      box-shadow: $shadow-sm;
+    }
+  }
+}
+
+.link-btn {
+  border: none;
+  background: none;
+  color: $primary-700;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  cursor: pointer;
+  border-radius: $radius-sm;
+
+  &:hover {
+    color: $primary-900;
+    text-decoration: underline;
+  }
+}
+
+.count {
+  min-height: 20px;
+  margin: 0 0 $spacing-3;
+  font-size: $font-size-sm;
+  color: $text-tertiary;
+}
+
+.grid {
+  display: grid;
+  gap: $spacing-5;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+.panel {
+  @include card;
+  padding: 0;
+}
+
+.skeleton-card {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-3;
+  padding-bottom: $spacing-4;
+  border: 1px solid $border-light;
+  border-radius: $radius-lg;
+  background: $bg-primary;
+  overflow: hidden;
+
+  .skeleton--title,
+  .skeleton--text {
+    margin: 0 $spacing-4;
+    width: auto;
+  }
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-2;
+  margin-top: $spacing-8;
+}
+
+.pagination__btn,
+.pagination__page {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-1;
+  height: 36px;
+  min-width: 36px;
+  justify-content: center;
+  padding: 0 $spacing-3;
+  border: 1px solid $border-default;
+  border-radius: $radius-default;
+  background: $bg-primary;
+  color: $text-secondary;
+  font-size: $font-size-sm;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    border-color: $neutral-400;
+    color: $text-primary;
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+.pagination__pages {
+  display: flex;
+  gap: $spacing-1;
+}
+
+.pagination__page.active {
+  border-color: $primary-600;
+  background: $primary-600;
+  color: $text-inverse;
+}

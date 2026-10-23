@@ -1,7 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
-import { NavbarComponent } from '../../shared/components/navbar/navbar.component';
 
 // Business details shown on the legal and contact pages.
 // TODO(owner): replace every bracketed value before going live.
@@ -19,9 +18,8 @@ type Page = 'terms' | 'privacy' | 'refunds' | 'contact';
 @Component({
   selector: 'app-legal',
   standalone: true,
-  imports: [CommonModule, RouterModule, NavbarComponent],
+  imports: [CommonModule, RouterModule],
   template: `
-    <app-navbar></app-navbar>
 
     <main class="legal-page">
       <article class="legal">

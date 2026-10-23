@@ -24,6 +24,7 @@ html {
 
 body {
   font-family: $font-family-base;
+  font-feature-settings: 'cv11', 'ss01';
   font-size: $font-size-base;
   font-weight: $font-weight-regular;
   line-height: $line-height-normal;
@@ -90,6 +91,72 @@ strong, b {
 
 small {
   font-size: $font-size-sm;
+}
+
+// ============================================
+// FOCUS & MOTION
+// ============================================
+
+// Keyboard focus is always visible; mouse clicks don't show a ring
+:focus-visible {
+  outline: 2px solid $primary-500;
+  outline-offset: 2px;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+// Skip link for keyboard users
+.skip-link {
+  position: absolute;
+  left: $spacing-4;
+  top: -100px;
+  z-index: $z-toast;
+  padding: $spacing-2 $spacing-4;
+  background: $primary-700;
+  color: $text-inverse;
+  border-radius: $radius-default;
+
+  &:focus {
+    top: $spacing-2;
+    color: $text-inverse;
+  }
+}
+
+.visually-hidden {
+  @include visually-hidden;
+}
+
+// Page header used across app screens
+.page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: $spacing-4;
+  flex-wrap: wrap;
+  margin-bottom: $spacing-6;
+
+  h1 {
+    margin: 0;
+  }
+
+  &__subtitle {
+    margin: $spacing-1 0 0;
+    color: $text-secondary;
+    font-size: $font-size-sm;
+  }
 }
 
 // ============================================

@@ -1,649 +1,518 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { NavbarComponent } from '../../shared/components/navbar/navbar.component';
 import { ButtonComponent } from '../../shared/components/button/button.component';
-import { CardComponent } from '../../shared/components/card/card.component';
+import { IconComponent } from '../../shared/components/icon/icon.component';
+import { EventCardComponent } from '../../shared/components/listing-cards/event-card.component';
+import { VendorCardComponent } from '../../shared/components/listing-cards/vendor-card.component';
 import { EventService } from '../../core/services/event.service';
 import { ServiceService } from '../../core/services/service.service';
+import { AuthService } from '../../core/services/auth.service';
 import { Event } from '../../core/models/event.model';
 import { Service } from '../../core/models/service.model';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, RouterModule, NavbarComponent, ButtonComponent, CardComponent],
+  imports: [CommonModule, RouterModule, ButtonComponent, IconComponent, EventCardComponent, VendorCardComponent],
   template: `
-    <app-navbar></app-navbar>
-
-    <!-- Hero Section -->
     <section class="hero">
-      <div class="hero__container">
-        <div class="hero__content">
-          <h1 class="hero__title">
-            Plan events that<br>
-            <span class="hero__highlight">people remember</span>
-          </h1>
-          <p class="hero__subtitle">
-            The all-in-one platform to create, manage, and discover amazing events.
-            Connect with trusted vendors and make every celebration unforgettable.
+      <div class="container hero__inner">
+        <div class="hero__copy">
+          <p class="eyebrow">Designed by people. Organised by community.</p>
+          <h1 class="hero__title">Plan the event. Book the people who make it happen.</h1>
+          <p class="hero__lead">
+            Find local bakers, decorators, photographers and more. Pay through Festivo and your money is held
+            until the job is done.
           </p>
           <div class="hero__actions">
-            <app-button routerLink="/events" size="lg">Explore Events</app-button>
-            <app-button routerLink="/auth/register" variant="secondary" size="lg">Get Started Free</app-button>
+            <app-button routerLink="/services" size="lg">Find vendors</app-button>
+            <app-button [routerLink]="auth.isAuthenticated() ? '/events/create' : '/auth/register'" variant="secondary" size="lg">Plan an event</app-button>
           </div>
-          <div class="hero__stats">
-            <div class="hero__stat">
-              <span class="hero__stat-value">10K+</span>
-              <span class="hero__stat-label">Events Created</span>
-            </div>
-            <div class="hero__stat">
-              <span class="hero__stat-value">50K+</span>
-              <span class="hero__stat-label">Happy Guests</span>
-            </div>
-            <div class="hero__stat">
-              <span class="hero__stat-value">1K+</span>
-              <span class="hero__stat-label">Verified Vendors</span>
-            </div>
-          </div>
+          <ul class="hero__trust">
+            <li><app-icon name="shield-check" [size]="18"></app-icon>Payments held until completion</li>
+            <li><app-icon name="check-circle" [size]="18"></app-icon>Clear refund policy</li>
+            <li><app-icon name="ticket" [size]="18"></app-icon>Tickets &amp; guest check-in</li>
+          </ul>
         </div>
-        <div class="hero__visual">
-          <div class="hero__cards">
-            <div class="hero__card hero__card--1">🎂 Birthday Party</div>
-            <div class="hero__card hero__card--2">💒 Wedding</div>
-            <div class="hero__card hero__card--3">🎉 House Party</div>
-            <div class="hero__card hero__card--4">🤝 Corporate Event</div>
-          </div>
-        </div>
-      </div>
-    </section>
 
-    <!-- Features Section -->
-    <section class="features section">
-      <div class="container">
-        <div class="section-header">
-          <h2 class="section-title">Everything you need to plan the perfect event</h2>
-          <p class="section-subtitle">From planning to execution, we've got you covered</p>
-        </div>
-        <div class="features__grid">
-          <div class="feature-card">
-            <div class="feature-card__icon">📅</div>
-            <h3 class="feature-card__title">Event Management</h3>
-            <p class="feature-card__desc">Create, manage, and track all your events in one place with our intuitive dashboard.</p>
-          </div>
-          <div class="feature-card">
-            <div class="feature-card__icon">🛠️</div>
-            <h3 class="feature-card__title">Vendor Marketplace</h3>
-            <p class="feature-card__desc">Browse and book verified vendors for catering, decoration, photography, and more.</p>
-          </div>
-          <div class="feature-card">
-            <div class="feature-card__icon">💰</div>
-            <h3 class="feature-card__title">Budget Tracking</h3>
-            <p class="feature-card__desc">Keep your spending on track with real-time budget monitoring and expense tracking.</p>
-          </div>
-          <div class="feature-card">
-            <div class="feature-card__icon">📋</div>
-            <h3 class="feature-card__title">Task Management</h3>
-            <p class="feature-card__desc">Never miss a detail with task lists, reminders, and collaboration tools.</p>
-          </div>
-          <div class="feature-card">
-            <div class="feature-card__icon">🎫</div>
-            <h3 class="feature-card__title">RSVP & Check-in</h3>
-            <p class="feature-card__desc">Manage guest lists, send invitations, and streamline check-in with QR codes.</p>
-          </div>
-          <div class="feature-card">
-            <div class="feature-card__icon">💬</div>
-            <h3 class="feature-card__title">Real-time Messaging</h3>
-            <p class="feature-card__desc">Communicate seamlessly with vendors and guests through our built-in messaging.</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Upcoming Events Section -->
-    <section class="events-section section">
-      <div class="container">
-        <div class="section-header">
-          <div>
-            <h2 class="section-title">Discover upcoming events</h2>
-            <p class="section-subtitle">Find and join exciting events happening near you</p>
-          </div>
-          <a routerLink="/events" class="section-link">View all events →</a>
-        </div>
-        <div class="events-grid">
-          @if (isLoadingEvents()) {
-            @for (i of [1,2,3,4]; track i) {
-              <div class="skeleton-card">
-                <div class="skeleton skeleton--image"></div>
-                <div class="skeleton-content">
-                  <div class="skeleton skeleton--title"></div>
-                  <div class="skeleton skeleton--text"></div>
-                  <div class="skeleton skeleton--text" style="width: 60%"></div>
-                </div>
+        <!-- Illustration of how a booking looks; not real data -->
+        <div class="hero__visual" aria-hidden="true">
+          <div class="preview">
+            <div class="preview__head">
+              <span class="preview__avatar"><app-icon name="cake" [size]="20"></app-icon></span>
+              <div>
+                <p class="preview__title">Custom birthday cake</p>
+                <p class="preview__sub">Booked for Sat, 6:30 pm</p>
               </div>
-            }
-          } @else {
-            @for (event of upcomingEvents(); track event._id) {
-              <app-card
-                [title]="event.title"
-                [subtitle]="formatEventDate(event.date)"
-                [image]="event.coverPhoto || 'assets/images/event-placeholder.jpg'"
-                [badge]="event.eventType"
-                badgeType="primary"
-                hoverable
-                clickable
-                [routerLink]="['/events', event.slug]"
-              >
-                <div class="event-card-content">
-                  <p class="event-location">📍 {{ event.locationName || event.city }}</p>
-                  <div class="event-meta">
-                    <span>👥 {{ event.currentAttendees }}/{{ event.maxAttendees || '∞' }}</span>
-                    @if (event.isPaid) {
-                      <span class="event-price">₹{{ event.entryFee }}</span>
-                    } @else {
-                      <span class="event-free">Free</span>
-                    }
-                  </div>
-                </div>
-              </app-card>
-            }
-          }
-        </div>
-      </div>
-    </section>
-
-    <!-- Services Section -->
-    <section class="services-section section">
-      <div class="container">
-        <div class="section-header">
-          <div>
-            <h2 class="section-title">Top-rated vendors</h2>
-            <p class="section-subtitle">Book trusted professionals for your next event</p>
+              <span class="preview__status">Confirmed</span>
+            </div>
+            <div class="preview__row"><span>Vendor's quote</span><strong>₹2,000</strong></div>
+            <div class="preview__row"><span>Advance paid</span><strong>₹600</strong></div>
+            <div class="preview__note">
+              <app-icon name="shield-check" [size]="16"></app-icon>
+              Held by Festivo until you mark it delivered
+            </div>
           </div>
-          <a routerLink="/services" class="section-link">Browse all services →</a>
-        </div>
-        <div class="services-grid">
-          @if (isLoadingServices()) {
-            @for (i of [1,2,3,4]; track i) {
-              <div class="skeleton-card">
-                <div class="skeleton skeleton--image"></div>
-                <div class="skeleton-content">
-                  <div class="skeleton skeleton--title"></div>
-                  <div class="skeleton skeleton--text"></div>
-                </div>
-              </div>
-            }
-          } @else {
-            @for (service of topServices(); track service._id) {
-              <app-card
-                [title]="service.serviceName"
-                [subtitle]="service.category | titlecase"
-                [image]="service.coverImage || 'assets/images/service-placeholder.jpeg'"
-                [badge]="service.isVerified ? 'Verified' : ''"
-                badgeType="success"
-                hoverable
-                clickable
-                [routerLink]="['/services', service.slug]"
-              >
-                <div class="service-card-content">
-                  <div class="service-rating">
-                    <span class="rating-stars">⭐</span>
-                    <span>{{ service.ratingAverage | number:'1.1-1' }}</span>
-                    <span class="rating-count">({{ service.totalRatings }})</span>
-                  </div>
-                  <div class="service-price">
-                    <span class="price-value">₹{{ service.basePrice | number }}</span>
-                    <span class="price-unit">{{ formatPriceUnit(service.priceUnit) }}</span>
-                  </div>
-                </div>
-              </app-card>
-            }
-          }
-        </div>
-      </div>
-    </section>
-
-    <!-- CTA Section -->
-    <section class="cta section">
-      <div class="container">
-        <div class="cta__content">
-          <h2 class="cta__title">Ready to create your next event?</h2>
-          <p class="cta__subtitle">Join thousands of organizers making memories with Festivo</p>
-          <div class="cta__actions">
-            <app-button routerLink="/auth/register" size="lg">Start Planning Free</app-button>
-            <app-button routerLink="/services" variant="ghost" size="lg">Become a Vendor</app-button>
+          <div class="preview preview--small">
+            <span class="preview__avatar preview__avatar--soft"><app-icon name="users" [size]="18"></app-icon></span>
+            <div>
+              <p class="preview__title">Guest list</p>
+              <p class="preview__sub">18 going · 6 checked in</p>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Footer -->
-    <footer class="footer">
+    <section class="section">
       <div class="container">
-        <div class="footer__grid">
-          <div class="footer__brand">
-            <a routerLink="/" class="footer__logo">
-              <span class="footer__logo-icon">🎉</span>
-              <span class="footer__logo-text">Festivo</span>
-            </a>
-            <p class="footer__tagline">Making every celebration unforgettable</p>
+        <div class="section__head">
+          <h2>How booking works</h2>
+          <p>No advance cash to strangers, no chasing refunds.</p>
+        </div>
+        <ol class="steps">
+          <li class="step">
+            <span class="step__num">1</span>
+            <h3>Request a vendor</h3>
+            <p>Pick your event and tell the vendor what you need. They confirm with their final price.</p>
+          </li>
+          <li class="step">
+            <span class="step__num">2</span>
+            <h3>Pay securely</h3>
+            <p>Pay the full amount or a 30% advance by UPI or card. Festivo holds it for you.</p>
+          </li>
+          <li class="step">
+            <span class="step__num">3</span>
+            <h3>Celebrate</h3>
+            <p>After the event, mark the booking complete and the vendor is paid. Then leave a review.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    @if (isLoadingEvents() || upcomingEvents().length) {
+      <section class="section section--muted">
+        <div class="container">
+          <div class="section__head section__head--row">
+            <div>
+              <h2>Upcoming events</h2>
+              <p>Public events you can join or buy tickets for.</p>
+            </div>
+            <a routerLink="/events" class="section__link">See all events <app-icon name="arrow-right" [size]="16"></app-icon></a>
           </div>
-          <div class="footer__links">
-            <h4>Platform</h4>
-            <a routerLink="/events">Explore Events</a>
-            <a routerLink="/services">Find Services</a>
-            <a routerLink="/auth/register">Create Account</a>
-          </div>
-          <div class="footer__links">
-            <h4>Company</h4>
-            <a routerLink="/contact">Contact</a>
-          </div>
-          <div class="footer__links">
-            <h4>Legal</h4>
-            <a routerLink="/privacy">Privacy Policy</a>
-            <a routerLink="/terms">Terms of Service</a>
-            <a routerLink="/refund-policy">Cancellations &amp; Refunds</a>
+          <div class="grid">
+            @if (isLoadingEvents()) {
+              @for (i of [1, 2, 3, 4]; track i) {
+                <div class="skeleton-card"><div class="skeleton skeleton--image"></div><div class="skeleton skeleton--title"></div><div class="skeleton skeleton--text"></div></div>
+              }
+            } @else {
+              @for (event of upcomingEvents(); track event._id) {
+                <app-event-card [event]="event"></app-event-card>
+              }
+            }
           </div>
         </div>
-        <div class="footer__bottom">
-          <p>© 2024 Festivo. All rights reserved.</p>
+      </section>
+    }
+
+    @if (isLoadingServices() || topServices().length) {
+      <section class="section">
+        <div class="container">
+          <div class="section__head section__head--row">
+            <div>
+              <h2>Vendors on Festivo</h2>
+              <p>Cakes, decor, photography, music and more.</p>
+            </div>
+            <a routerLink="/services" class="section__link">Browse vendors <app-icon name="arrow-right" [size]="16"></app-icon></a>
+          </div>
+          <div class="grid">
+            @if (isLoadingServices()) {
+              @for (i of [1, 2, 3, 4]; track i) {
+                <div class="skeleton-card"><div class="skeleton skeleton--image"></div><div class="skeleton skeleton--title"></div><div class="skeleton skeleton--text"></div></div>
+              }
+            } @else {
+              @for (service of topServices(); track service._id) {
+                <app-vendor-card [service]="service"></app-vendor-card>
+              }
+            }
+          </div>
+        </div>
+      </section>
+    }
+
+    <section class="section">
+      <div class="container">
+        <div class="vendors">
+          <div class="vendors__copy">
+            <p class="eyebrow">For vendors</p>
+            <h2>Get booked for events near you</h2>
+            <p>List your service with photos and prices. Accept requests, send your quote and get paid to your UPI or bank account after each event.</p>
+            <ul class="vendors__list">
+              <li><app-icon name="check" [size]="18"></app-icon>Free to list. A fee applies only to bookings paid through Festivo.</li>
+              <li><app-icon name="check" [size]="18"></app-icon>Payment is collected before the event, so no last-minute ghosting.</li>
+              <li><app-icon name="check" [size]="18"></app-icon>Reviews only come from real, completed bookings.</li>
+            </ul>
+            <app-button [routerLink]="auth.isAuthenticated() ? '/services/create' : '/auth/register'">List your service</app-button>
+          </div>
+          <div class="vendors__panel" aria-hidden="true">
+            <div class="vendors__stat"><app-icon name="inbox" [size]="20"></app-icon><span>New booking request</span></div>
+            <div class="vendors__stat"><app-icon name="wallet" [size]="20"></app-icon><span>Payout sent to your UPI</span></div>
+            <div class="vendors__stat"><app-icon name="star" [size]="20"></app-icon><span>New 5-star review</span></div>
+          </div>
         </div>
       </div>
-    </footer>
+    </section>
   `,
   styles: [`
     @use '../../../styles/variables' as *;
     @use '../../../styles/mixins' as *;
 
-    // Hero Section
-    .hero {
-      background: $bg-gradient-hero;
-      color: $text-inverse;
-      overflow: hidden;
+    .eyebrow {
+      margin: 0 0 $spacing-3;
+      font-size: $font-size-sm;
+      font-weight: $font-weight-semibold;
+      color: $primary-700;
     }
 
-    .hero__container {
-      @include container;
+    // Hero
+    .hero {
+      background: linear-gradient(180deg, $primary-50 0%, $bg-secondary 100%);
+      border-bottom: 1px solid $border-light;
+    }
+
+    .hero__inner {
       display: grid;
-      grid-template-columns: 1fr;
       gap: $spacing-12;
-      padding: $spacing-12 $spacing-4;
-      min-height: calc(100vh - $navbar-height);
       align-items: center;
+      padding-top: $spacing-16;
+      padding-bottom: $spacing-16;
 
       @include lg {
-        grid-template-columns: 1fr 1fr;
-        padding: $spacing-16 $spacing-8;
+        grid-template-columns: 1.15fr 1fr;
+        padding-top: $spacing-20;
+        padding-bottom: $spacing-20;
       }
     }
 
     .hero__title {
-      font-size: $font-size-4xl;
-      font-weight: $font-weight-extrabold;
-      line-height: 1.1;
-      margin-bottom: $spacing-6;
-
-      @include md {
-        font-size: $font-size-5xl;
-      }
-
-      @include lg {
-        font-size: $font-size-6xl;
-      }
+      @include display;
+      color: $neutral-900;
+      max-width: 14ch;
     }
 
-    .hero__highlight {
-      background: linear-gradient(135deg, $secondary-300 0%, $secondary-500 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    .hero__subtitle {
+    .hero__lead {
+      margin: $spacing-5 0 0;
+      max-width: 34rem;
       font-size: $font-size-lg;
-      opacity: 0.9;
-      margin-bottom: $spacing-8;
-      max-width: 540px;
-
-      @include md {
-        font-size: $font-size-xl;
-      }
+      color: $text-secondary;
     }
 
     .hero__actions {
       display: flex;
       flex-wrap: wrap;
-      gap: $spacing-4;
-      margin-bottom: $spacing-10;
+      gap: $spacing-3;
+      margin-top: $spacing-8;
     }
 
-    .hero__stats {
+    .hero__trust {
       display: flex;
-      gap: $spacing-8;
-    }
+      flex-wrap: wrap;
+      gap: $spacing-3 $spacing-6;
+      margin-top: $spacing-8;
 
-    .hero__stat {
-      text-align: center;
-    }
-
-    .hero__stat-value {
-      display: block;
-      font-size: $font-size-2xl;
-      font-weight: $font-weight-bold;
-
-      @include md {
-        font-size: $font-size-3xl;
+      li {
+        display: inline-flex;
+        align-items: center;
+        gap: $spacing-2;
+        font-size: $font-size-sm;
+        color: $text-secondary;
       }
-    }
 
-    .hero__stat-label {
-      font-size: $font-size-sm;
-      opacity: 0.8;
+      app-icon {
+        color: $primary-600;
+      }
     }
 
     .hero__visual {
-      display: none;
-
-      @include lg {
-        display: block;
-        position: relative;
-        height: 400px;
-      }
-    }
-
-    .hero__cards {
       position: relative;
-      height: 100%;
-    }
-
-    .hero__card {
-      position: absolute;
-      padding: $spacing-4 $spacing-6;
-      background: rgba(255, 255, 255, 0.15);
-      backdrop-filter: blur(10px);
-      border-radius: $radius-lg;
-      font-weight: $font-weight-semibold;
-      box-shadow: $shadow-lg;
-
-      &--1 { top: 10%; left: 10%; animation: float 6s ease-in-out infinite; }
-      &--2 { top: 30%; right: 10%; animation: float 6s ease-in-out infinite 1s; }
-      &--3 { bottom: 30%; left: 20%; animation: float 6s ease-in-out infinite 2s; }
-      &--4 { bottom: 10%; right: 20%; animation: float 6s ease-in-out infinite 3s; }
-    }
-
-    @keyframes float {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-20px); }
-    }
-
-    // Section styles
-    .section {
-      @include section;
-    }
-
-    .section-header {
-      display: flex;
-      flex-direction: column;
-      gap: $spacing-2;
-      margin-bottom: $spacing-10;
+      display: none;
+      justify-self: center;
+      width: 100%;
+      max-width: 420px;
 
       @include md {
-        flex-direction: row;
-        justify-content: space-between;
-        align-items: flex-end;
+        display: block;
       }
     }
 
-    .section-title {
-      @include heading-2;
+    .preview {
+      padding: $spacing-5;
+      border: 1px solid $border-light;
+      border-radius: $radius-xl;
+      background: $bg-primary;
+      box-shadow: $shadow-md;
+
+      &--small {
+        position: absolute;
+        right: -$spacing-6;
+        bottom: -$spacing-10;
+        display: flex;
+        align-items: center;
+        gap: $spacing-3;
+        padding: $spacing-4;
+        width: 230px;
+      }
     }
 
-    .section-subtitle {
+    .preview__head {
+      display: flex;
+      align-items: center;
+      gap: $spacing-3;
+      padding-bottom: $spacing-4;
+      margin-bottom: $spacing-2;
+      border-bottom: 1px solid $border-light;
+    }
+
+    .preview__avatar {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      flex-shrink: 0;
+      border-radius: $radius-md;
+      background: $primary-100;
+      color: $primary-700;
+
+      &--soft {
+        background: $neutral-100;
+        color: $text-secondary;
+      }
+    }
+
+    .preview__title {
+      margin: 0;
+      font-size: $font-size-sm;
+      font-weight: $font-weight-semibold;
+    }
+
+    .preview__sub {
+      margin: 0;
+      font-size: $font-size-xs;
+      color: $text-tertiary;
+    }
+
+    .preview__status {
+      margin-left: auto;
+      @include badge;
+      background: $success-light;
+      color: $success-dark;
+    }
+
+    .preview__row {
+      display: flex;
+      justify-content: space-between;
+      padding: $spacing-2 0;
+      font-size: $font-size-sm;
       color: $text-secondary;
-      font-size: $font-size-lg;
+
+      strong {
+        color: $text-primary;
+      }
     }
 
-    .section-link {
-      color: $primary-600;
+    .preview__note {
+      display: flex;
+      align-items: center;
+      gap: $spacing-2;
+      margin-top: $spacing-3;
+      padding: $spacing-3;
+      border-radius: $radius-default;
+      background: $primary-50;
+      color: $primary-800;
+      font-size: $font-size-xs;
       font-weight: $font-weight-medium;
-      white-space: nowrap;
+    }
 
-      &:hover {
-        color: $primary-700;
+    // Sections
+    .section {
+      padding: $spacing-16 0;
+
+      &--muted {
+        background: $bg-primary;
+        border-top: 1px solid $border-light;
+        border-bottom: 1px solid $border-light;
       }
     }
 
-    // Features
-    .features__grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: $spacing-6;
+    .section__head {
+      margin-bottom: $spacing-8;
 
-      @include sm {
-        grid-template-columns: repeat(2, 1fr);
+      h2 {
+        font-size: $font-size-2xl;
+        letter-spacing: -0.02em;
       }
 
-      @include lg {
+      p {
+        margin: $spacing-1 0 0;
+        color: $text-secondary;
+      }
+
+      &--row {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: $spacing-4;
+        flex-wrap: wrap;
+      }
+    }
+
+    .section__link {
+      display: inline-flex;
+      align-items: center;
+      gap: $spacing-1;
+      font-size: $font-size-sm;
+      font-weight: $font-weight-semibold;
+    }
+
+    .steps {
+      display: grid;
+      gap: $spacing-4;
+      counter-reset: none;
+
+      @include md {
         grid-template-columns: repeat(3, 1fr);
       }
     }
 
-    .feature-card {
+    .step {
       @include card;
-      text-align: center;
+
+      h3 {
+        margin: $spacing-4 0 $spacing-1;
+        font-size: $font-size-base;
+      }
+
+      p {
+        margin: 0;
+        font-size: $font-size-sm;
+        color: $text-secondary;
+      }
     }
 
-    .feature-card__icon {
-      font-size: 2.5rem;
-      margin-bottom: $spacing-4;
-    }
-
-    .feature-card__title {
-      font-size: $font-size-lg;
-      font-weight: $font-weight-semibold;
-      margin-bottom: $spacing-2;
-    }
-
-    .feature-card__desc {
-      color: $text-secondary;
+    .step__num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: $radius-full;
+      background: $primary-600;
+      color: $text-inverse;
       font-size: $font-size-sm;
+      font-weight: $font-weight-semibold;
     }
 
-    // Events & Services Grid
-    .events-grid,
-    .services-grid {
+    .grid {
       display: grid;
-      grid-template-columns: 1fr;
-      gap: $spacing-6;
-
-      @include sm {
-        grid-template-columns: repeat(2, 1fr);
-      }
-
-      @include lg {
-        grid-template-columns: repeat(4, 1fr);
-      }
+      gap: $spacing-5;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     }
 
     .skeleton-card {
-      background: $bg-primary;
+      display: flex;
+      flex-direction: column;
+      gap: $spacing-3;
+      padding-bottom: $spacing-4;
+      border: 1px solid $border-light;
       border-radius: $radius-lg;
+      background: $bg-primary;
       overflow: hidden;
+
+      .skeleton--title, .skeleton--text {
+        margin: 0 $spacing-4;
+        width: auto;
+      }
     }
 
-    .skeleton-content {
-      padding: $spacing-4;
-      display: flex;
-      flex-direction: column;
-      gap: $spacing-2;
-    }
-
-    .event-card-content,
-    .service-card-content {
-      display: flex;
-      flex-direction: column;
-      gap: $spacing-2;
-    }
-
-    .event-location {
-      font-size: $font-size-sm;
-      color: $text-secondary;
-    }
-
-    .event-meta {
-      display: flex;
-      justify-content: space-between;
-      font-size: $font-size-sm;
-    }
-
-    .event-price {
-      color: $primary-600;
-      font-weight: $font-weight-semibold;
-    }
-
-    .event-free {
-      color: $success;
-      font-weight: $font-weight-medium;
-    }
-
-    .service-rating {
-      display: flex;
-      align-items: center;
-      gap: $spacing-1;
-      font-size: $font-size-sm;
-    }
-
-    .rating-count {
-      color: $text-muted;
-    }
-
-    .service-price {
-      display: flex;
-      align-items: baseline;
-      gap: $spacing-1;
-    }
-
-    .price-value {
-      font-size: $font-size-lg;
-      font-weight: $font-weight-bold;
-      color: $primary-600;
-    }
-
-    .price-unit {
-      font-size: $font-size-sm;
-      color: $text-secondary;
-    }
-
-    // Services Section Background
-    .services-section {
-      background: $bg-tertiary;
-    }
-
-    // CTA Section
-    .cta {
-      background: $bg-gradient-hero;
-      color: $text-inverse;
-      text-align: center;
-    }
-
-    .cta__content {
-      max-width: 640px;
-      margin: 0 auto;
-    }
-
-    .cta__title {
-      @include heading-2;
-      margin-bottom: $spacing-4;
-    }
-
-    .cta__subtitle {
-      font-size: $font-size-lg;
-      opacity: 0.9;
-      margin-bottom: $spacing-8;
-    }
-
-    .cta__actions {
-      display: flex;
-      justify-content: center;
-      flex-wrap: wrap;
-      gap: $spacing-4;
-    }
-
-    // Footer
-    .footer {
-      background: $neutral-900;
-      color: $text-inverse;
-      padding: $spacing-16 0 $spacing-8;
-    }
-
-    .footer__grid {
+    // For vendors
+    .vendors {
       display: grid;
-      grid-template-columns: 1fr;
-      gap: $spacing-8;
-      margin-bottom: $spacing-12;
+      gap: $spacing-10;
+      align-items: center;
+      padding: $spacing-10;
+      border-radius: $radius-xl;
+      background: $neutral-900;
+      color: $neutral-200;
 
-      @include sm {
-        grid-template-columns: repeat(2, 1fr);
+      @include md {
+        grid-template-columns: 1.3fr 1fr;
       }
 
-      @include lg {
-        grid-template-columns: 2fr 1fr 1fr 1fr;
+      @include max-sm {
+        padding: $spacing-6;
+      }
+
+      h2 {
+        color: $text-inverse;
+        font-size: $font-size-2xl;
+        letter-spacing: -0.02em;
+      }
+
+      .eyebrow {
+        color: $primary-300;
       }
     }
 
-    .footer__logo {
+    .vendors__copy > p {
+      margin: $spacing-3 0 0;
+      color: $neutral-300;
+    }
+
+    .vendors__list {
+      display: grid;
+      gap: $spacing-2;
+      margin: $spacing-5 0 $spacing-6;
+
+      li {
+        display: flex;
+        gap: $spacing-2;
+        font-size: $font-size-sm;
+      }
+
+      app-icon {
+        color: $primary-300;
+        margin-top: 2px;
+      }
+    }
+
+    .vendors__panel {
+      display: grid;
+      gap: $spacing-3;
+    }
+
+    .vendors__stat {
       display: flex;
       align-items: center;
-      gap: $spacing-2;
-      margin-bottom: $spacing-4;
-      text-decoration: none;
-    }
-
-    .footer__logo-icon {
-      font-size: 1.5rem;
-    }
-
-    .footer__logo-text {
-      font-family: $font-family-heading;
-      font-size: $font-size-xl;
-      font-weight: $font-weight-bold;
+      gap: $spacing-3;
+      padding: $spacing-4;
+      border: 1px solid $neutral-700;
+      border-radius: $radius-lg;
+      background: $neutral-800;
       color: $text-inverse;
-    }
-
-    .footer__tagline {
-      color: $neutral-400;
-    }
-
-    .footer__links {
-      h4 {
-        font-weight: $font-weight-semibold;
-        margin-bottom: $spacing-4;
-      }
-
-      a {
-        display: block;
-        color: $neutral-400;
-        margin-bottom: $spacing-2;
-        transition: color $transition-fast;
-
-        &:hover {
-          color: $text-inverse;
-        }
-      }
-    }
-
-    .footer__bottom {
-      padding-top: $spacing-8;
-      border-top: 1px solid $neutral-800;
-      text-align: center;
-      color: $neutral-500;
       font-size: $font-size-sm;
+
+      app-icon {
+        color: $primary-300;
+      }
     }
   `]
 })
 export class HomeComponent implements OnInit {
   private eventService = inject(EventService);
   private serviceService = inject(ServiceService);
+  auth = inject(AuthService);
 
   upcomingEvents = signal<Event[]>([]);
   topServices = signal<Service[]>([]);
@@ -651,49 +520,21 @@ export class HomeComponent implements OnInit {
   isLoadingServices = signal(true);
 
   ngOnInit(): void {
-    this.loadUpcomingEvents();
-    this.loadTopServices();
-  }
-
-  loadUpcomingEvents(): void {
     this.eventService.getUpcomingEvents().subscribe({
       next: (response) => {
         this.upcomingEvents.set(response.data.slice(0, 4));
         this.isLoadingEvents.set(false);
       },
-      error: () => {
-        this.isLoadingEvents.set(false);
-      }
+      error: () => this.isLoadingEvents.set(false)
     });
-  }
 
-  loadTopServices(): void {
-    this.serviceService.getTopRatedServices().subscribe({
+    // Highest rated first; new vendors still appear before anyone has reviews
+    this.serviceService.getServices({ sort: '-ratingAverage', limit: 4 }).subscribe({
       next: (response) => {
         this.topServices.set(response.data.slice(0, 4));
         this.isLoadingServices.set(false);
       },
-      error: () => {
-        this.isLoadingServices.set(false);
-      }
+      error: () => this.isLoadingServices.set(false)
     });
-  }
-
-  formatEventDate(date: Date): string {
-    return new Date(date).toLocaleDateString('en-IN', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric'
-    });
-  }
-
-  formatPriceUnit(unit: string): string {
-    const units: Record<string, string> = {
-      'per_event': '/event',
-      'per_hour': '/hour',
-      'per_day': '/day',
-      'per_person': '/person'
-    };
-    return units[unit] || '';
   }
 }

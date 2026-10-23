@@ -3,7 +3,6 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { NavbarComponent } from '../../../../shared/components/navbar/navbar.component';
 import { ButtonComponent } from '../../../../shared/components/button/button.component';
 import { InputComponent } from '../../../../shared/components/input/input.component';
 import { EventService } from '../../../../core/services/event.service';
@@ -14,9 +13,8 @@ import { CustomValidators } from '../../../../shared/validators/custom-validator
 @Component({
   selector: 'app-event-create',
   standalone: true,
-  imports: [CommonModule, RouterModule, ReactiveFormsModule, NavbarComponent, ButtonComponent, InputComponent, ImageUploadComponent],
+  imports: [CommonModule, RouterModule, ReactiveFormsModule, ButtonComponent, InputComponent, ImageUploadComponent],
   template: `
-    <app-navbar></app-navbar>
 
     <main class="create-event">
       <div class="container">

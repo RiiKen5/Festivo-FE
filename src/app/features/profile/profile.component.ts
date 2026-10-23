@@ -2,7 +2,6 @@ import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { NavbarComponent } from '../../shared/components/navbar/navbar.component';
 import { ButtonComponent } from '../../shared/components/button/button.component';
 import { InputComponent } from '../../shared/components/input/input.component';
 import { AuthService } from '../../core/services/auth.service';
@@ -11,9 +10,8 @@ import { ToastService } from '../../core/services/toast.service';
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, RouterModule, ReactiveFormsModule, NavbarComponent, ButtonComponent, InputComponent],
+  imports: [CommonModule, RouterModule, ReactiveFormsModule, ButtonComponent, InputComponent],
   template: `
-    <app-navbar></app-navbar>
 
     <main class="profile-page">
       <div class="container">

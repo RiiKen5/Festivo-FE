@@ -1,3 +1,4 @@
+import { LogoComponent } from '../../../../shared/components/logo/logo.component';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
@@ -9,10 +10,11 @@ type VerificationStatus = 'verifying' | 'success' | 'error' | 'no-token';
 @Component({
   selector: 'app-verify-email',
   standalone: true,
-  imports: [CommonModule, RouterModule, ButtonComponent],
+  imports: [LogoComponent, CommonModule, RouterModule, ButtonComponent],
   template: `
     <div class="verify-email-page">
       <div class="verify-card">
+        <a routerLink="/" class="verify-logo" aria-label="Festivo home"><app-logo [size]="34"></app-logo></a>
         @switch (status()) {
           @case ('verifying') {
             <div class="status-icon status-icon--loading">
@@ -84,6 +86,11 @@ type VerificationStatus = 'verifying' | 'success' | 'error' | 'no-token';
       @include flex-center;
       background: $bg-gradient-primary;
       padding: $spacing-4;
+    }
+
+    .verify-logo {
+      display: inline-flex;
+      margin-bottom: $spacing-6;
     }
 
     .verify-card {

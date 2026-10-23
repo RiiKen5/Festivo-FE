@@ -2,7 +2,6 @@ import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { NavbarComponent } from '../../shared/components/navbar/navbar.component';
 import { ButtonComponent } from '../../shared/components/button/button.component';
 import { AuthService } from '../../core/services/auth.service';
 import { MessageService } from '../../core/services/message.service';
@@ -18,9 +17,8 @@ const CONVERSATION_POLL_EVERY = 4; // conversation list refresh, in message poll
 @Component({
   selector: 'app-messages',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, NavbarComponent, ButtonComponent],
+  imports: [CommonModule, RouterModule, FormsModule, ButtonComponent],
   template: `
-    <app-navbar></app-navbar>
 
     <main class="messages-page">
       <div class="messages-container">

@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, booleanAttribute } from '@angular/core';
+import { Component, Input, Output, EventEmitter, HostBinding, booleanAttribute } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'success';
@@ -13,6 +13,7 @@ export type ButtonSize = 'sm' | 'md' | 'lg';
       [type]="type"
       [class]="buttonClasses"
       [disabled]="disabled || loading"
+      [attr.aria-busy]="loading || null"
       (click)="onClick.emit($event)"
     >
       @if (loading) {
@@ -33,9 +34,18 @@ export type ButtonSize = 'sm' | 'md' | 'lg';
     @use '../../../../styles/variables' as *;
     @use '../../../../styles/mixins' as *;
 
+    :host {
+      display: inline-flex;
+    }
+
+    :host(.btn-host--full) {
+      display: flex;
+    }
+
     button {
       @include button-base;
       position: relative;
+      font-weight: $font-weight-semibold;
 
       &.btn--primary {
         @include button-primary;
@@ -50,24 +60,16 @@ export type ButtonSize = 'sm' | 'md' | 'lg';
       }
 
       &.btn--danger {
-        background: linear-gradient(135deg, $error 0%, $error-dark 100%);
-        color: $text-inverse;
-        box-shadow: 0 10px 40px -10px rgba($error, 0.4);
-
-        &:hover:not(:disabled) {
-          transform: translateY(-2px);
-          box-shadow: 0 14px 44px -10px rgba($error, 0.5);
-        }
+        @include button-danger;
       }
 
       &.btn--success {
-        background: linear-gradient(135deg, $success 0%, $success-dark 100%);
+        @include button-base;
+        background: $success-dark;
         color: $text-inverse;
-        box-shadow: 0 10px 40px -10px rgba($success, 0.4);
 
         &:hover:not(:disabled) {
-          transform: translateY(-2px);
-          box-shadow: 0 14px 44px -10px rgba($success, 0.5);
+          background: #166534;
         }
       }
 
@@ -94,8 +96,8 @@ export type ButtonSize = 'sm' | 'md' | 'lg';
     }
 
     .btn__spinner {
-      width: 18px;
-      height: 18px;
+      width: 16px;
+      height: 16px;
       border: 2px solid currentColor;
       border-top-color: transparent;
       border-radius: 50%;
@@ -139,6 +141,10 @@ export class ButtonComponent {
   @Input() iconOnly = false;
 
   @Output() onClick = new EventEmitter<MouseEvent>();
+
+  @HostBinding('class.btn-host--full') get hostFull(): boolean {
+    return this.fullWidth;
+  }
 
   get buttonClasses(): string {
     const classes = [

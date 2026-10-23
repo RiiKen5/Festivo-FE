@@ -1,3 +1,4 @@
+import { LogoComponent } from '../../../../shared/components/logo/logo.component';
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
@@ -10,15 +11,12 @@ import { InputComponent } from '../../../../shared/components/input/input.compon
 @Component({
   selector: 'app-reset-password',
   standalone: true,
-  imports: [CommonModule, RouterModule, ReactiveFormsModule, ButtonComponent, InputComponent],
+  imports: [LogoComponent, CommonModule, RouterModule, ReactiveFormsModule, ButtonComponent, InputComponent],
   template: `
     <div class="auth-page">
       <div class="auth-container">
         <div class="auth-card">
-          <a routerLink="/" class="auth-logo">
-            <span class="auth-logo-icon">🎉</span>
-            <span class="auth-logo-text">Festivo</span>
-          </a>
+          <a routerLink="/" class="auth-logo" aria-label="Festivo home"><app-logo [size]="34"></app-logo></a>
 
           @if (!resetSuccess()) {
             <div class="auth-header">

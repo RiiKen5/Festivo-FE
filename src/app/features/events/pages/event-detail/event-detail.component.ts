@@ -3,7 +3,6 @@ import { Observable, firstValueFrom } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { NavbarComponent } from '../../../../shared/components/navbar/navbar.component';
 import { ButtonComponent } from '../../../../shared/components/button/button.component';
 import { ModalComponent } from '../../../../shared/components/modal/modal.component';
 import { EventService } from '../../../../core/services/event.service';
@@ -22,9 +21,8 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
 @Component({
   selector: 'app-event-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, NavbarComponent, ButtonComponent, ModalComponent],
+  imports: [CommonModule, RouterModule, FormsModule, ButtonComponent, ModalComponent],
   template: `
-    <app-navbar></app-navbar>
 
     @if (isLoading()) {
       <div class="loading-state">
@@ -38,7 +36,7 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
     } @else if (event()) {
       <main class="event-detail">
         <!-- Hero Image -->
-        <div class="event-hero" [style.background-image]="'url(' + (event()?.coverPhoto || 'assets/images/event-placeholder.jpg') + ')'">
+        <div class="event-hero" [style.background-image]="'url(' + (event()?.coverPhoto || 'assets/images/event-placeholder.svg') + ')'">
           <div class="event-hero__overlay"></div>
           <div class="event-hero__content container">
             <div class="event-badges">

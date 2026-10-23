@@ -15,22 +15,44 @@ export interface Notification {
     senderId?: string;
     reviewId?: string;
   };
+  // In-app path to open for this notification
+  actionUrl?: string;
+  relatedBooking?: string;
+  relatedEvent?: string;
   isRead: boolean;
   readAt?: Date;
   createdAt: Date;
 }
 
+// Types the API sends (see backend config/constants NOTIFICATION_TYPES)
 export type NotificationType =
-  | 'booking_request'
-  | 'booking_confirmed'
-  | 'booking_cancelled'
-  | 'booking_completed'
-  | 'payment_received'
-  | 'review_received'
+  | 'booking'
+  | 'message'
+  | 'review'
   | 'event_reminder'
-  | 'rsvp_received'
-  | 'message_received'
-  | 'system';
+  | 'payment'
+  | 'system'
+  | 'rsvp'
+  | 'task_assigned';
+
+export const NOTIFICATION_ICONS: Record<string, string> = {
+  booking: 'calendar',
+  message: 'message',
+  review: 'star',
+  event_reminder: 'bell',
+  payment: 'wallet',
+  system: 'info',
+  rsvp: 'users',
+  task_assigned: 'clipboard'
+};
+
+// Where clicking a notification should take the user
+export function notificationLink(n: Notification): string {
+  if (n.actionUrl) return n.actionUrl;
+  if (n.relatedBooking) return `/bookings/${n.relatedBooking}`;
+  if (n.relatedEvent) return `/events/${n.relatedEvent}`;
+  return '/notifications';
+}
 
 export interface NotificationsResponse {
   success: boolean;

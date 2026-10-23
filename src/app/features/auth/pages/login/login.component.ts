@@ -1,3 +1,5 @@
+import { LogoComponent } from '../../../../shared/components/logo/logo.component';
+import { AuthAsideComponent } from '../../../../shared/components/auth-aside/auth-aside.component';
 import { Component, inject, signal, OnInit, NgZone, PLATFORM_ID, Inject } from '@angular/core';
 import { isPlatformBrowser, CommonModule } from '@angular/common';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
@@ -13,16 +15,13 @@ declare const google: any;
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, RouterModule, ReactiveFormsModule, ButtonComponent, InputComponent],
+  imports: [AuthAsideComponent, LogoComponent, CommonModule, RouterModule, ReactiveFormsModule, ButtonComponent, InputComponent],
   template: `
     <div class="auth-page">
       <div class="auth-container">
         <div class="auth-card">
           <div class="auth-header">
-            <a routerLink="/" class="auth-logo">
-              <span class="auth-logo-icon">🎉</span>
-              <span class="auth-logo-text">Festivo</span>
-            </a>
+            <a routerLink="/" class="auth-logo" aria-label="Festivo home"><app-logo [size]="34"></app-logo></a>
             <h1 class="auth-title">Welcome back</h1>
             <p class="auth-subtitle">Sign in to continue planning amazing events</p>
           </div>
@@ -96,26 +95,7 @@ declare const google: any;
         </div>
       </div>
 
-      <div class="auth-banner">
-        <div class="auth-banner-content">
-          <h2>Plan events that<br>people remember</h2>
-          <p>Join thousands of organizers creating unforgettable experiences with Festivo</p>
-          <div class="auth-stats">
-            <div class="auth-stat">
-              <span class="auth-stat-value">10K+</span>
-              <span class="auth-stat-label">Events Created</span>
-            </div>
-            <div class="auth-stat">
-              <span class="auth-stat-value">50K+</span>
-              <span class="auth-stat-label">Happy Guests</span>
-            </div>
-            <div class="auth-stat">
-              <span class="auth-stat-value">1K+</span>
-              <span class="auth-stat-label">Vendors</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <app-auth-aside></app-auth-aside>
     </div>
   `,
   styles: [`

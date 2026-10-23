@@ -2,7 +2,6 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { NavbarComponent } from '../../../../shared/components/navbar/navbar.component';
 import { ButtonComponent } from '../../../../shared/components/button/button.component';
 import { ErrorStateComponent } from '../../../../shared/components/error-state/error-state.component';
 import { BookingService } from '../../../../core/services/booking.service';
@@ -16,9 +15,8 @@ import { User } from '../../../../core/models/user.model';
 @Component({
   selector: 'app-booking-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, NavbarComponent, ButtonComponent, ErrorStateComponent],
+  imports: [CommonModule, RouterModule, FormsModule, ButtonComponent, ErrorStateComponent],
   template: `
-    <app-navbar></app-navbar>
 
     <main class="bookings-page">
       <div class="container">

@@ -1,3 +1,5 @@
+import { LogoComponent } from '../../../../shared/components/logo/logo.component';
+import { AuthAsideComponent } from '../../../../shared/components/auth-aside/auth-aside.component';
 import { Component, inject, signal, OnInit, NgZone, PLATFORM_ID, Inject } from '@angular/core';
 import { isPlatformBrowser, CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
@@ -13,7 +15,7 @@ declare const google: any;
 @Component({
   selector: 'app-register',
   standalone: true,
-  imports: [CommonModule, RouterModule, ReactiveFormsModule, ButtonComponent, InputComponent],
+  imports: [AuthAsideComponent, LogoComponent, CommonModule, RouterModule, ReactiveFormsModule, ButtonComponent, InputComponent],
   template: `
     <div class="auth-page">
       <div class="auth-container">
@@ -64,10 +66,7 @@ declare const google: any;
           } @else {
             <!-- Normal Registration Form -->
             <div class="auth-header">
-              <a routerLink="/" class="auth-logo">
-                <span class="auth-logo-icon">🎉</span>
-                <span class="auth-logo-text">Festivo</span>
-              </a>
+              <a routerLink="/" class="auth-logo" aria-label="Festivo home"><app-logo [size]="34"></app-logo></a>
               <h1 class="auth-title">Create your account</h1>
               <p class="auth-subtitle">Start planning and attending amazing events</p>
             </div>
@@ -198,29 +197,7 @@ declare const google: any;
         </div>
       </div>
 
-      <div class="auth-banner">
-        <div class="auth-banner-content">
-          <h2>Your events,<br>your way</h2>
-          <ul class="auth-features">
-            <li>
-              <span class="feature-icon">✨</span>
-              <span class="feature-text">Create and manage events effortlessly</span>
-            </li>
-            <li>
-              <span class="feature-icon">🤝</span>
-              <span class="feature-text">Connect with verified vendors</span>
-            </li>
-            <li>
-              <span class="feature-icon">📊</span>
-              <span class="feature-text">Track budgets and bookings</span>
-            </li>
-            <li>
-              <span class="feature-icon">🎫</span>
-              <span class="feature-text">Easy RSVP and check-in system</span>
-            </li>
-          </ul>
-        </div>
-      </div>
+      <app-auth-aside></app-auth-aside>
     </div>
   `,
   styles: [`

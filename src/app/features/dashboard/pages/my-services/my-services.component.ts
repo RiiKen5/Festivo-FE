@@ -1,7 +1,6 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { NavbarComponent } from '../../../../shared/components/navbar/navbar.component';
 import { ButtonComponent } from '../../../../shared/components/button/button.component';
 import { ServiceService } from '../../../../core/services/service.service';
 import { ToastService } from '../../../../core/services/toast.service';
@@ -10,9 +9,8 @@ import { Service, ServiceCategory } from '../../../../core/models/service.model'
 @Component({
   selector: 'app-my-services',
   standalone: true,
-  imports: [CommonModule, RouterModule, NavbarComponent, ButtonComponent],
+  imports: [CommonModule, RouterModule, ButtonComponent],
   template: `
-    <app-navbar></app-navbar>
 
     <main class="my-services-page">
       <div class="container">
@@ -73,7 +71,7 @@ import { Service, ServiceCategory } from '../../../../core/models/service.model'
           <div class="services-list">
             @for (service of services(); track service._id) {
               <div class="service-card" [class.inactive]="!service.isActive">
-                <div class="service-image" [style.background-image]="'url(' + (service.coverImage || 'assets/images/service-placeholder.jpeg') + ')'">
+                <div class="service-image" [style.background-image]="'url(' + (service.coverImage || 'assets/images/service-placeholder.svg') + ')'">
                   <span class="category-badge">{{ getCategoryLabel(service.category) }}</span>
                   @if (!service.isActive) {
                     <span class="status-badge status--inactive">Inactive</span>

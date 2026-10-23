@@ -7,8 +7,7 @@
 @use 'styles/mixins' as *;
 @use 'styles/base';
 
-// Import Google Fonts
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700;800&display=swap');
+// Fonts are loaded from index.html (a CSS @import here lands after other rules and is ignored)
 
 // ============================================
 // APP-WIDE COMPONENT STYLES
@@ -54,7 +53,7 @@
   animation: slideInRight $transition-default;
 
   &--success {
-    border-left: 4px solid $success;
+    border-left: 3px solid $success;
   }
 
   &--error {

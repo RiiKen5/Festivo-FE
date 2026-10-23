@@ -2,7 +2,6 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { NavbarComponent } from '../../shared/components/navbar/navbar.component';
 import { ButtonComponent } from '../../shared/components/button/button.component';
 import { ToastService } from '../../core/services/toast.service';
 import { AdminService, AdminStats, PayoutItem } from '../../core/services/admin.service';
@@ -12,9 +11,8 @@ type Tab = 'overview' | 'payouts' | 'verification' | 'reviews';
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, NavbarComponent, ButtonComponent],
+  imports: [CommonModule, RouterModule, FormsModule, ButtonComponent],
   template: `
-    <app-navbar></app-navbar>
 
     <main class="admin-page">
       <div class="container">

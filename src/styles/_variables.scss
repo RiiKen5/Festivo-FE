@@ -6,19 +6,20 @@
 // COLOR PALETTE
 // ============================================
 
-// Primary Colors - Festive Purple
-$primary-50: #f5f3ff;
-$primary-100: #ede9fe;
-$primary-200: #ddd6fe;
-$primary-300: #c4b5fd;
-$primary-400: #a78bfa;
-$primary-500: #8b5cf6;
-$primary-600: #7c3aed;
-$primary-700: #6d28d9;
-$primary-800: #5b21b6;
-$primary-900: #4c1d95;
+// Primary - Festivo berry, from the logo (#bb5782 = 500).
+// Filled buttons and links use 600+ so white text / small text pass WCAG AA.
+$primary-50: #fbf4f7;
+$primary-100: #f6e7ee;
+$primary-200: #ecccdb;
+$primary-300: #dea4bf;
+$primary-400: #cc7b9f;
+$primary-500: #bb5782;
+$primary-600: #9e3f68;
+$primary-700: #843455;
+$primary-800: #6b2b46;
+$primary-900: #55243a;
 
-// Secondary Colors - Warm Orange
+// Secondary - warm orange. Illustration/accent only, not UI chrome.
 $secondary-50: #fff7ed;
 $secondary-100: #ffedd5;
 $secondary-200: #fed7aa;
@@ -30,7 +31,7 @@ $secondary-700: #c2410c;
 $secondary-800: #9a3412;
 $secondary-900: #7c2d12;
 
-// Accent Colors - Teal
+// Accent - teal. Illustration/accent only, not UI chrome.
 $accent-50: #f0fdfa;
 $accent-100: #ccfbf1;
 $accent-200: #99f6e4;
@@ -80,9 +81,15 @@ $bg-tertiary: $neutral-100;
 $bg-dark: $neutral-900;
 $bg-dark-secondary: $neutral-800;
 
-$bg-gradient-primary: linear-gradient(135deg, $primary-600 0%, $primary-800 100%);
-$bg-gradient-secondary: linear-gradient(135deg, $secondary-500 0%, $secondary-700 100%);
-$bg-gradient-hero: linear-gradient(135deg, $primary-600 0%, $secondary-500 100%);
+// Legacy gradient names, now solid fills: the UI doesn't use gradients
+$bg-gradient-primary: $primary-600;
+$bg-gradient-secondary: $primary-700;
+$bg-gradient-hero: $primary-800;
+
+// Surfaces
+$surface: #ffffff;
+$surface-subtle: $neutral-50;
+$surface-tint: $primary-50;
 
 // ============================================
 // TEXT COLORS
@@ -93,7 +100,7 @@ $text-tertiary: $neutral-500;
 $text-muted: $neutral-400;
 $text-inverse: #ffffff;
 $text-link: $primary-600;
-$text-link-hover: $primary-700;
+$text-link-hover: $primary-800;
 
 // ============================================
 // BORDER COLORS
@@ -102,6 +109,7 @@ $border-light: $neutral-200;
 $border-default: $neutral-300;
 $border-dark: $neutral-400;
 $border-focus: $primary-500;
+$focus-ring: 0 0 0 3px rgba($primary-500, 0.35);
 
 // ============================================
 // TYPOGRAPHY
@@ -109,7 +117,9 @@ $border-focus: $primary-500;
 
 // Font Families
 $font-family-base: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-$font-family-heading: 'Poppins', $font-family-base;
+$font-family-heading: $font-family-base;
+// Serif display face, echoing the logo's monogram. Wordmark and landing headline only.
+$font-family-display: 'Fraunces', Georgia, 'Times New Roman', serif;
 $font-family-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
 // Font Sizes
@@ -170,26 +180,28 @@ $spacing-24: 6rem;     // 96px
 $radius-none: 0;
 $radius-sm: 0.25rem;   // 4px
 $radius-default: 0.5rem; // 8px
-$radius-md: 0.75rem;   // 12px
-$radius-lg: 1rem;      // 16px
-$radius-xl: 1.5rem;    // 24px
-$radius-2xl: 2rem;     // 32px
+// Rule: controls 8px (default), cards 12px (lg), dialogs/sheets 16px (xl), pills/avatars full
+$radius-md: 0.625rem;  // 10px
+$radius-lg: 0.75rem;   // 12px
+$radius-xl: 1rem;      // 16px
+$radius-2xl: 1.25rem;  // 20px
 $radius-full: 9999px;
 
 // ============================================
 // SHADOWS
 // ============================================
-$shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-$shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
-$shadow-default: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-$shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
-$shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-$shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-$shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05);
+// Restrained elevation: surfaces rely on borders; shadows are for things that float
+$shadow-xs: 0 1px 2px 0 rgba(24, 24, 27, 0.04);
+$shadow-sm: 0 1px 2px 0 rgba(24, 24, 27, 0.05);
+$shadow-default: 0 1px 3px 0 rgba(24, 24, 27, 0.08), 0 1px 2px -1px rgba(24, 24, 27, 0.05);
+$shadow-md: 0 8px 24px -6px rgba(24, 24, 27, 0.12);   // dropdowns, popovers
+$shadow-lg: 0 20px 40px -12px rgba(24, 24, 27, 0.2);  // dialogs
+$shadow-xl: $shadow-lg;
+$shadow-inner: inset 0 1px 2px 0 rgba(24, 24, 27, 0.05);
 
-// Colored Shadows
-$shadow-primary: 0 10px 40px -10px rgba($primary-600, 0.4);
-$shadow-secondary: 0 10px 40px -10px rgba($secondary-500, 0.4);
+// Legacy coloured shadows, intentionally flat
+$shadow-primary: 0 0 0 0 transparent;
+$shadow-secondary: 0 0 0 0 transparent;
 
 // ============================================
 // TRANSITIONS
@@ -235,18 +247,19 @@ $container-2xl: 1440px;
 // ============================================
 
 // Buttons
-$btn-height-sm: 2rem;      // 32px
+$btn-height-sm: 2.25rem;   // 36px
 $btn-height-default: 2.5rem; // 40px
 $btn-height-lg: 3rem;      // 48px
 
 // Inputs
 $input-height-sm: 2rem;
-$input-height-default: 2.75rem;
+$input-height-default: 2.5rem;
 $input-height-lg: 3.25rem;
 
 // Cards
 $card-padding: $spacing-6;
 $card-radius: $radius-lg;
+$card-border: 1px solid $border-light;
 
 // Navbar
 $navbar-height: 4rem;      // 64px

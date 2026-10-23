@@ -104,52 +104,60 @@
 // ============================================
 // TYPOGRAPHY
 // ============================================
+// App type scale. Page titles are h1; marketing headlines use display().
+@mixin display {
+  font-family: $font-family-display;
+  font-size: 2.5rem;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+
+  @include md {
+    font-size: 3.5rem;
+  }
+}
+
+// Page title
 @mixin heading-1 {
   font-family: $font-family-heading;
-  font-size: $font-size-4xl;
-  font-weight: $font-weight-bold;
-  line-height: $line-height-tight;
-  letter-spacing: $letter-spacing-tight;
-
-  @include md {
-    font-size: $font-size-5xl;
-  }
-
-  @include lg {
-    font-size: $font-size-6xl;
-  }
-}
-
-@mixin heading-2 {
-  font-family: $font-family-heading;
-  font-size: $font-size-3xl;
-  font-weight: $font-weight-bold;
-  line-height: $line-height-tight;
-
-  @include md {
-    font-size: $font-size-4xl;
-  }
-}
-
-@mixin heading-3 {
-  font-family: $font-family-heading;
   font-size: $font-size-2xl;
-  font-weight: $font-weight-semibold;
-  line-height: $line-height-snug;
+  font-weight: $font-weight-bold;
+  line-height: $line-height-tight;
+  letter-spacing: -0.02em;
 
   @include md {
-    font-size: $font-size-3xl;
+    font-size: 1.75rem;
   }
 }
 
-@mixin heading-4 {
+// Section title
+@mixin heading-2 {
   font-family: $font-family-heading;
   font-size: $font-size-xl;
   font-weight: $font-weight-semibold;
   line-height: $line-height-snug;
+  letter-spacing: -0.01em;
+}
 
-  @include md {
-    font-size: $font-size-2xl;
+// Card / sub-section title
+@mixin heading-3 {
+  font-family: $font-family-heading;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  line-height: $line-height-snug;
+}
+
+@mixin heading-4 {
+  font-family: $font-family-heading;
+  font-size: $font-size-base;
+  font-weight: $font-weight-semibold;
+  line-height: $line-height-snug;
+}
+
+@mixin focus-ring {
+  &:focus-visible {
+    outline: none;
+    box-shadow: $focus-ring;
   }
 }
 
@@ -186,52 +194,70 @@
   font-weight: $font-weight-medium;
   border-radius: $radius-default;
   cursor: pointer;
-  transition: all $transition-default;
-  border: none;
+  transition: background-color $transition-fast, border-color $transition-fast, color $transition-fast, box-shadow $transition-fast;
+  border: 1px solid transparent;
   outline: none;
   text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+
+  @include focus-ring;
 
   &:disabled {
-    opacity: 0.5;
+    opacity: 0.45;
     cursor: not-allowed;
   }
 }
 
 @mixin button-primary {
   @include button-base;
-  background: $bg-gradient-primary;
+  background: $primary-600;
   color: $text-inverse;
-  box-shadow: $shadow-primary;
 
   &:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 14px 44px -10px rgba($primary-600, 0.5);
+    background: $primary-700;
   }
 
   &:active:not(:disabled) {
-    transform: translateY(0);
+    background: $primary-800;
   }
 }
 
 @mixin button-secondary {
   @include button-base;
   background: $bg-primary;
-  color: $primary-600;
-  border: 2px solid $primary-600;
+  color: $text-primary;
+  border-color: $border-default;
+  box-shadow: $shadow-xs;
 
   &:hover:not(:disabled) {
-    background: $primary-50;
-    border-color: $primary-700;
+    background: $neutral-50;
+    border-color: $neutral-400;
+  }
+
+  &:active:not(:disabled) {
+    background: $neutral-100;
   }
 }
 
 @mixin button-ghost {
   @include button-base;
   background: transparent;
-  color: $text-primary;
+  color: $text-secondary;
 
   &:hover:not(:disabled) {
     background: $neutral-100;
+    color: $text-primary;
+  }
+}
+
+@mixin button-danger {
+  @include button-base;
+  background: #c81e1e;
+  color: $text-inverse;
+
+  &:hover:not(:disabled) {
+    background: $error-dark;
   }
 }
 
@@ -244,14 +270,14 @@
 
 @mixin button-md {
   height: $btn-height-default;
-  padding: 0 $spacing-5;
-  font-size: $font-size-base;
+  padding: 0 $spacing-4;
+  font-size: $font-size-sm;
 }
 
 @mixin button-lg {
   height: $btn-height-lg;
-  padding: 0 $spacing-8;
-  font-size: $font-size-lg;
+  padding: 0 $spacing-6;
+  font-size: $font-size-base;
 }
 
 // ============================================
@@ -260,11 +286,12 @@
 @mixin input-base {
   width: 100%;
   font-family: $font-family-base;
-  font-size: $font-size-base;
+  font-size: $font-size-sm;
   color: $text-primary;
   background: $bg-primary;
   border: 1px solid $border-default;
   border-radius: $radius-default;
+  box-shadow: $shadow-xs;
   transition: all $transition-default;
   outline: none;
 
@@ -272,9 +299,13 @@
     color: $text-muted;
   }
 
+  &:hover:not(:disabled):not(:focus) {
+    border-color: $neutral-400;
+  }
+
   &:focus {
     border-color: $border-focus;
-    box-shadow: 0 0 0 3px rgba($primary-500, 0.1);
+    box-shadow: $focus-ring;
   }
 
   &:disabled {
@@ -291,7 +322,7 @@
 
 @mixin input-md {
   height: $input-height-default;
-  padding: 0 $spacing-4;
+  padding: 0 $spacing-3;
 }
 
 @mixin input-lg {
@@ -305,16 +336,17 @@
 // ============================================
 @mixin card {
   background: $bg-primary;
+  border: $card-border;
   border-radius: $card-radius;
   padding: $card-padding;
-  box-shadow: $shadow-sm;
-  transition: all $transition-default;
+  box-shadow: $shadow-xs;
+  transition: border-color $transition-fast, box-shadow $transition-fast;
 }
 
 @mixin card-hover {
   &:hover {
-    box-shadow: $shadow-md;
-    transform: translateY(-4px);
+    border-color: $border-default;
+    box-shadow: $shadow-default;
   }
 }
 
@@ -492,9 +524,9 @@
   padding: $spacing-1 $spacing-2;
   font-size: $font-size-xs;
   font-weight: $font-weight-medium;
+  line-height: 1.4;
   border-radius: $radius-full;
-  text-transform: uppercase;
-  letter-spacing: $letter-spacing-wide;
+  white-space: nowrap;
 }
 
 @mixin badge-primary {

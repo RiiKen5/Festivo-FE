@@ -2,7 +2,6 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
-import { NavbarComponent } from '../../../../shared/components/navbar/navbar.component';
 import { ButtonComponent } from '../../../../shared/components/button/button.component';
 import { ModalComponent } from '../../../../shared/components/modal/modal.component';
 import { ServiceService } from '../../../../core/services/service.service';
@@ -21,9 +20,8 @@ import { BookingCreateData } from '../../../../core/models/booking.model';
 @Component({
   selector: 'app-service-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, NavbarComponent, ButtonComponent, ModalComponent],
+  imports: [CommonModule, FormsModule, RouterModule, ButtonComponent, ModalComponent],
   template: `
-    <app-navbar></app-navbar>
 
     @if (isLoading()) {
       <div class="loading-state">
@@ -39,7 +37,7 @@ import { BookingCreateData } from '../../../../core/models/booking.model';
           <!-- Gallery -->
           <div class="service-gallery">
             <div class="gallery-main">
-              <img [src]="selectedImage() || service()?.coverImage || 'assets/images/service-placeholder.jpeg'" [alt]="service()?.serviceName">
+              <img [src]="selectedImage() || service()?.coverImage || 'assets/images/service-placeholder.svg'" [alt]="service()?.serviceName">
               @if (service()?.isVerified) {
                 <div class="verified-badge">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">

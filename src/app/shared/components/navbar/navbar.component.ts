@@ -1,274 +1,190 @@
-import { Component, inject, signal, OnInit, OnDestroy, effect } from '@angular/core';
+import { Component, inject, signal, OnInit, OnDestroy, effect, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterModule } from '@angular/router';
+import { NavigationEnd, Router, RouterModule } from '@angular/router';
+import { filter } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { Notification } from '../../../core/models/notification.model';
+import { Notification, NOTIFICATION_ICONS, notificationLink } from '../../../core/models/notification.model';
 import { ButtonComponent } from '../button/button.component';
+import { IconComponent } from '../icon/icon.component';
+import { LogoComponent } from '../logo/logo.component';
 
 @Component({
   selector: 'app-navbar',
   standalone: true,
-  imports: [CommonModule, RouterModule, ButtonComponent],
+  imports: [CommonModule, RouterModule, ButtonComponent, IconComponent, LogoComponent],
   template: `
-    <nav class="navbar">
+    <header class="navbar">
       <div class="navbar__container">
-        <!-- Logo -->
-        <a routerLink="/" class="navbar__logo">
-          <span class="navbar__logo-icon">🎉</span>
-          <span class="navbar__logo-text">Festivo</span>
+        <a routerLink="/" class="navbar__logo" aria-label="Festivo home">
+          <app-logo [size]="30"></app-logo>
         </a>
 
-        <!-- Desktop Navigation -->
-        <div class="navbar__nav hide-mobile">
-          <a routerLink="/events" routerLinkActive="active" class="navbar__link">Explore Events</a>
-          <a routerLink="/services" routerLinkActive="active" class="navbar__link">Find Services</a>
+        <nav class="navbar__nav" aria-label="Main">
+          <a routerLink="/events" routerLinkActive="active" class="navbar__link">Events</a>
+          <a routerLink="/services" routerLinkActive="active" class="navbar__link">Vendors</a>
           @if (auth.isAuthenticated()) {
             <a routerLink="/dashboard" routerLinkActive="active" class="navbar__link">Dashboard</a>
+            <a routerLink="/messages" routerLinkActive="active" class="navbar__link">Messages</a>
           }
-        </div>
+        </nav>
 
-        <!-- Auth Buttons -->
         <div class="navbar__actions">
           @if (auth.isAuthenticated()) {
-            <!-- Notifications Bell -->
-            <div class="navbar__notifications" (click)="toggleNotifications($event)">
-              <div class="navbar__notification-bell">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                  <path d="M13.73 21a2 2 0 01-3.46 0"/>
-                </svg>
+            <!-- Notifications -->
+            <div class="navbar__menu navbar__notifications">
+              <button
+                type="button"
+                class="navbar__icon-btn"
+                [attr.aria-expanded]="isNotificationsOpen()"
+                aria-haspopup="true"
+                [attr.aria-label]="'Notifications' + (notificationService.unreadCount() ? ', ' + notificationService.unreadCount() + ' unread' : '')"
+                (click)="toggleNotifications($event)"
+              >
+                <app-icon name="bell" [size]="20"></app-icon>
                 @if (notificationService.unreadCount() > 0) {
-                  <span class="navbar__notification-badge">
+                  <span class="navbar__badge" aria-hidden="true">
                     {{ notificationService.unreadCount() > 99 ? '99+' : notificationService.unreadCount() }}
                   </span>
                 }
-              </div>
+              </button>
 
               @if (isNotificationsOpen()) {
-                <div class="navbar__notification-dropdown" (click)="$event.stopPropagation()">
-                  <div class="navbar__notification-header">
-                    <span class="navbar__notification-title">Notifications</span>
+                <div class="navbar__panel navbar__panel--notifications" role="dialog" aria-label="Notifications">
+                  <div class="navbar__panel-header">
+                    <span class="navbar__panel-title">Notifications</span>
                     @if (notificationService.unreadCount() > 0) {
-                      <button class="navbar__mark-read" (click)="markAllAsRead()">Mark all read</button>
+                      <button type="button" class="navbar__text-btn" (click)="markAllAsRead()">Mark all read</button>
                     }
                   </div>
 
                   @if (isLoadingNotifications()) {
-                    <div class="navbar__notification-loading">
-                      <div class="navbar__notification-spinner"></div>
+                    <div class="navbar__panel-state">
+                      <div class="navbar__spinner" aria-label="Loading"></div>
                     </div>
                   } @else if (notifications().length === 0) {
-                    <div class="navbar__notification-empty">
-                      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                        <path d="M13.73 21a2 2 0 01-3.46 0"/>
-                      </svg>
-                      <span>No notifications yet</span>
+                    <div class="navbar__panel-state">
+                      <app-icon name="bell" [size]="28"></app-icon>
+                      <p>You're all caught up. Booking updates and messages will show here.</p>
                     </div>
                   } @else {
-                    <div class="navbar__notification-list">
+                    <ul class="navbar__notification-list">
                       @for (notification of notifications(); track notification._id) {
-                        <div
-                          class="navbar__notification-item"
-                          [class.navbar__notification-item--unread]="!notification.isRead"
-                          (click)="handleNotificationClick(notification)">
-                          <div class="navbar__notification-icon" [ngClass]="getNotificationIconClass(notification.type)">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                              @switch (notification.type) {
-                                @case ('booking_request') {
-                                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                                  <line x1="16" y1="2" x2="16" y2="6"/>
-                                  <line x1="8" y1="2" x2="8" y2="6"/>
-                                  <line x1="3" y1="10" x2="21" y2="10"/>
-                                }
-                                @case ('booking_confirmed') {
-                                  <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
-                                  <polyline points="22 4 12 14.01 9 11.01"/>
-                                }
-                                @case ('payment_received') {
-                                  <line x1="12" y1="1" x2="12" y2="23"/>
-                                  <path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
-                                }
-                                @case ('review_received') {
-                                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                                }
-                                @case ('message_received') {
-                                  <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
-                                }
-                                @case ('rsvp_received') {
-                                  <path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-                                  <circle cx="8.5" cy="7" r="4"/>
-                                  <line x1="20" y1="8" x2="20" y2="14"/>
-                                  <line x1="23" y1="11" x2="17" y2="11"/>
-                                }
-                                @default {
-                                  <circle cx="12" cy="12" r="10"/>
-                                  <line x1="12" y1="16" x2="12" y2="12"/>
-                                  <line x1="12" y1="8" x2="12.01" y2="8"/>
-                                }
-                              }
-                            </svg>
-                          </div>
-                          <div class="navbar__notification-content">
-                            <div class="navbar__notification-text">{{ notification.title }}</div>
-                            <div class="navbar__notification-time">{{ getTimeAgo(notification.createdAt) }}</div>
-                          </div>
-                          @if (!notification.isRead) {
-                            <div class="navbar__notification-unread-dot"></div>
-                          }
-                        </div>
+                        <li>
+                          <button
+                            type="button"
+                            class="navbar__notification"
+                            [class.navbar__notification--unread]="!notification.isRead"
+                            (click)="handleNotificationClick(notification)"
+                          >
+                            <span class="navbar__notification-icon">
+                              <app-icon [name]="iconFor(notification)" [size]="16"></app-icon>
+                            </span>
+                            <span class="navbar__notification-body">
+                              <span class="navbar__notification-title">{{ notification.title }}</span>
+                              <span class="navbar__notification-time">{{ getTimeAgo(notification.createdAt) }}</span>
+                            </span>
+                            @if (!notification.isRead) {
+                              <span class="navbar__unread-dot"><span class="visually-hidden">Unread</span></span>
+                            }
+                          </button>
+                        </li>
                       }
-                    </div>
+                    </ul>
                   }
 
-                  <a routerLink="/notifications" class="navbar__notification-footer" (click)="closeNotifications()">
-                    View all notifications
-                  </a>
+                  <a routerLink="/notifications" class="navbar__panel-footer" (click)="closeMenus()">View all notifications</a>
                 </div>
               }
             </div>
 
-            <!-- User Menu -->
-            <div class="navbar__user-menu" (click)="toggleUserMenu()">
-              <div class="navbar__avatar">
-                @if (auth.currentUser()?.profilePhoto) {
-                  <img [src]="auth.currentUser()?.profilePhoto" [alt]="auth.currentUser()?.name">
-                } @else {
-                  <span>{{ auth.currentUser()?.name?.charAt(0)?.toUpperCase() }}</span>
-                }
-              </div>
-              <div class="navbar__user-info hide-mobile">
-                <span class="navbar__username">{{ auth.currentUser()?.name }}</span>
-                <span class="navbar__role-badge" [ngClass]="getUserRoleClass()">{{ getUserRoleLabel() }}</span>
-              </div>
-              <svg class="navbar__chevron" [class.navbar__chevron--open]="isUserMenuOpen()" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                <path d="M4.646 5.646a.5.5 0 01.708 0L8 8.293l2.646-2.647a.5.5 0 01.708.708l-3 3a.5.5 0 01-.708 0l-3-3a.5.5 0 010-.708z"/>
-              </svg>
+            <!-- Account menu -->
+            <div class="navbar__menu navbar__user-menu">
+              <button
+                type="button"
+                class="navbar__account"
+                [attr.aria-expanded]="isUserMenuOpen()"
+                aria-haspopup="true"
+                (click)="toggleUserMenu($event)"
+              >
+                <span class="navbar__avatar">
+                  @if (auth.currentUser()?.profilePhoto) {
+                    <img [src]="auth.currentUser()?.profilePhoto" alt="">
+                  } @else {
+                    {{ initial() }}
+                  }
+                </span>
+                <span class="navbar__account-name">{{ firstName() }}</span>
+                <app-icon name="chevron-down" [size]="16" class="navbar__chevron" [class.navbar__chevron--open]="isUserMenuOpen()"></app-icon>
+              </button>
 
               @if (isUserMenuOpen()) {
-                <div class="navbar__dropdown">
-                  <a routerLink="/profile" class="navbar__dropdown-item">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
-                      <circle cx="12" cy="7" r="4"/>
-                    </svg>
-                    My Profile
-                  </a>
-                  <a routerLink="/dashboard/events" class="navbar__dropdown-item">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                      <line x1="16" y1="2" x2="16" y2="6"/>
-                      <line x1="8" y1="2" x2="8" y2="6"/>
-                      <line x1="3" y1="10" x2="21" y2="10"/>
-                    </svg>
-                    My Events
-                  </a>
-                  <a routerLink="/bookings" class="navbar__dropdown-item">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
-                      <rect x="9" y="3" width="6" height="4" rx="1"/>
-                    </svg>
-                    My Bookings
-                  </a>
-                  @if (canProvideServices()) {
-                    <a routerLink="/dashboard/my-services" class="navbar__dropdown-item">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>
-                      </svg>
-                      My Services
-                    </a>
-                  }
-                  <a routerLink="/dashboard/earnings" class="navbar__dropdown-item">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <line x1="12" y1="1" x2="12" y2="23"/>
-                      <path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
-                    </svg>
-                    Earnings
-                  </a>
-                  @if (isAdmin()) {
-                    <a routerLink="/admin" class="navbar__dropdown-item">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                      </svg>
-                      Admin
-                    </a>
-                  }
-                  <a routerLink="/messages" class="navbar__dropdown-item">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
-                    </svg>
-                    Messages
-                  </a>
-                  <div class="navbar__dropdown-divider"></div>
-                  <button class="navbar__dropdown-item navbar__dropdown-item--danger" (click)="logout()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
-                      <polyline points="16 17 21 12 16 7"/>
-                      <line x1="21" y1="12" x2="9" y2="12"/>
-                    </svg>
-                    Logout
-                  </button>
+                <div class="navbar__panel navbar__panel--account" role="menu">
+                  <div class="navbar__account-summary">
+                    <span class="navbar__account-fullname">{{ auth.currentUser()?.name }}</span>
+                    <span class="navbar__account-meta">{{ auth.currentUser()?.email }}</span>
+                    <span class="navbar__role">{{ getUserRoleLabel() }}</span>
+                  </div>
+                  <div class="navbar__menu-group">
+                    <a role="menuitem" routerLink="/dashboard" class="navbar__menu-item" (click)="closeMenus()"><app-icon name="home" [size]="16"></app-icon>Dashboard</a>
+                    <a role="menuitem" routerLink="/bookings" class="navbar__menu-item" (click)="closeMenus()"><app-icon name="calendar" [size]="16"></app-icon>Bookings</a>
+                    <a role="menuitem" routerLink="/dashboard/events" class="navbar__menu-item" (click)="closeMenus()"><app-icon name="party" [size]="16"></app-icon>My events</a>
+                    @if (canProvideServices()) {
+                      <a role="menuitem" routerLink="/dashboard/my-services" class="navbar__menu-item" (click)="closeMenus()"><app-icon name="store" [size]="16"></app-icon>My services</a>
+                    }
+                    <a role="menuitem" routerLink="/dashboard/earnings" class="navbar__menu-item" (click)="closeMenus()"><app-icon name="wallet" [size]="16"></app-icon>Earnings &amp; payouts</a>
+                    @if (isAdmin()) {
+                      <a role="menuitem" routerLink="/admin" class="navbar__menu-item" (click)="closeMenus()"><app-icon name="shield" [size]="16"></app-icon>Admin</a>
+                    }
+                  </div>
+                  <div class="navbar__menu-group">
+                    <a role="menuitem" routerLink="/profile" class="navbar__menu-item" (click)="closeMenus()"><app-icon name="settings" [size]="16"></app-icon>Profile &amp; settings</a>
+                    <button role="menuitem" type="button" class="navbar__menu-item" (click)="logout()"><app-icon name="log-out" [size]="16"></app-icon>Log out</button>
+                  </div>
                 </div>
               }
             </div>
           } @else {
-            <a routerLink="/auth/login" class="navbar__link hide-mobile">Login</a>
-            <app-button routerLink="/auth/register" size="sm">Get Started</app-button>
+            <a routerLink="/auth/login" class="navbar__link navbar__login">Log in</a>
+            <app-button routerLink="/auth/register" size="sm">Sign up</app-button>
           }
 
-          <!-- Mobile Menu Toggle -->
-          <button class="navbar__mobile-toggle hide-desktop" (click)="toggleMobileMenu()">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              @if (isMobileMenuOpen()) {
-                <path d="M18 6L6 18M6 6l12 12"/>
-              } @else {
-                <path d="M3 12h18M3 6h18M3 18h18"/>
-              }
-            </svg>
+          <button
+            type="button"
+            class="navbar__icon-btn navbar__mobile-toggle"
+            [attr.aria-expanded]="isMobileMenuOpen()"
+            aria-controls="mobile-menu"
+            [attr.aria-label]="isMobileMenuOpen() ? 'Close menu' : 'Open menu'"
+            (click)="toggleMobileMenu()"
+          >
+            <app-icon [name]="isMobileMenuOpen() ? 'x' : 'menu'" [size]="22"></app-icon>
           </button>
         </div>
       </div>
 
-      <!-- Mobile Menu -->
       @if (isMobileMenuOpen()) {
-        <div class="navbar__mobile-menu">
-          <a routerLink="/events" routerLinkActive="active" class="navbar__mobile-link" (click)="closeMobileMenu()">
-            Explore Events
-          </a>
-          <a routerLink="/services" routerLinkActive="active" class="navbar__mobile-link" (click)="closeMobileMenu()">
-            Find Services
-          </a>
+        <nav id="mobile-menu" class="navbar__mobile" aria-label="Mobile">
+          <a routerLink="/events" routerLinkActive="active" class="navbar__mobile-link"><app-icon name="party"></app-icon>Events</a>
+          <a routerLink="/services" routerLinkActive="active" class="navbar__mobile-link"><app-icon name="store"></app-icon>Vendors</a>
           @if (auth.isAuthenticated()) {
-            <a routerLink="/dashboard" routerLinkActive="active" class="navbar__mobile-link" (click)="closeMobileMenu()">
-              Dashboard
-            </a>
-            <a routerLink="/bookings" routerLinkActive="active" class="navbar__mobile-link" (click)="closeMobileMenu()">
-              My Bookings
-            </a>
+            <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="navbar__mobile-link"><app-icon name="home"></app-icon>Dashboard</a>
+            <a routerLink="/bookings" routerLinkActive="active" class="navbar__mobile-link"><app-icon name="calendar"></app-icon>Bookings</a>
+            <a routerLink="/messages" routerLinkActive="active" class="navbar__mobile-link"><app-icon name="message"></app-icon>Messages</a>
             @if (canProvideServices()) {
-              <a routerLink="/dashboard/my-services" routerLinkActive="active" class="navbar__mobile-link" (click)="closeMobileMenu()">
-                My Services
-              </a>
+              <a routerLink="/dashboard/my-services" routerLinkActive="active" class="navbar__mobile-link"><app-icon name="store"></app-icon>My services</a>
             }
-            <a routerLink="/messages" routerLinkActive="active" class="navbar__mobile-link" (click)="closeMobileMenu()">
-              Messages
-            </a>
-            <a routerLink="/profile" routerLinkActive="active" class="navbar__mobile-link" (click)="closeMobileMenu()">
-              Profile
-            </a>
-            <button class="navbar__mobile-link navbar__mobile-link--danger" (click)="logout()">
-              Logout
-            </button>
+            <a routerLink="/dashboard/earnings" routerLinkActive="active" class="navbar__mobile-link"><app-icon name="wallet"></app-icon>Earnings &amp; payouts</a>
+            @if (isAdmin()) {
+              <a routerLink="/admin" routerLinkActive="active" class="navbar__mobile-link"><app-icon name="shield"></app-icon>Admin</a>
+            }
+            <a routerLink="/profile" routerLinkActive="active" class="navbar__mobile-link"><app-icon name="settings"></app-icon>Profile &amp; settings</a>
+            <button type="button" class="navbar__mobile-link" (click)="logout()"><app-icon name="log-out"></app-icon>Log out</button>
           } @else {
-            <a routerLink="/auth/login" class="navbar__mobile-link" (click)="closeMobileMenu()">Login</a>
-            <a routerLink="/auth/register" class="navbar__mobile-link navbar__mobile-link--primary" (click)="closeMobileMenu()">
-              Get Started
-            </a>
+            <a routerLink="/auth/login" class="navbar__mobile-link"><app-icon name="user"></app-icon>Log in</a>
           }
-        </div>
+        </nav>
       }
-    </nav>
+    </header>
   `,
   styles: [`
     @use '../../../../styles/variables' as *;
@@ -277,51 +193,41 @@ import { ButtonComponent } from '../button/button.component';
     .navbar {
       position: sticky;
       top: 0;
-      background: $bg-primary;
-      border-bottom: 1px solid $border-light;
       z-index: $z-sticky;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: saturate(180%) blur(8px);
+      border-bottom: 1px solid $border-light;
     }
 
     .navbar__container {
       @include container;
       height: $navbar-height;
-      @include flex-between;
+      display: flex;
+      align-items: center;
+      gap: $spacing-8;
     }
 
     .navbar__logo {
-      display: flex;
-      align-items: center;
-      gap: $spacing-2;
-      text-decoration: none;
-    }
-
-    .navbar__logo-icon {
-      font-size: 1.5rem;
-    }
-
-    .navbar__logo-text {
-      font-family: $font-family-heading;
-      font-size: $font-size-xl;
-      font-weight: $font-weight-bold;
-      background: $bg-gradient-hero;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      display: inline-flex;
+      border-radius: $radius-default;
     }
 
     .navbar__nav {
-      display: flex;
-      align-items: center;
+      display: none;
       gap: $spacing-1;
+
+      @include md {
+        display: flex;
+      }
     }
 
     .navbar__link {
-      padding: $spacing-2 $spacing-4;
-      color: $text-secondary;
-      font-weight: $font-weight-medium;
+      padding: $spacing-2 $spacing-3;
       border-radius: $radius-default;
-      transition: all $transition-fast;
-      text-decoration: none;
+      font-size: $font-size-sm;
+      font-weight: $font-weight-medium;
+      color: $text-secondary;
+      transition: color $transition-fast, background-color $transition-fast;
 
       &:hover {
         color: $text-primary;
@@ -329,166 +235,42 @@ import { ButtonComponent } from '../button/button.component';
       }
 
       &.active {
-        color: $primary-600;
+        color: $primary-700;
         background: $primary-50;
       }
     }
 
-    .navbar__actions {
-      display: flex;
-      align-items: center;
-      gap: $spacing-3;
+    .navbar__login {
+      display: none;
+
+      @include sm {
+        display: inline-flex;
+      }
     }
 
-    .navbar__user-menu {
-      position: relative;
+    .navbar__actions {
+      margin-left: auto;
       display: flex;
       align-items: center;
       gap: $spacing-2;
-      padding: $spacing-2;
-      border-radius: $radius-default;
-      cursor: pointer;
-      transition: background $transition-fast;
-
-      &:hover {
-        background: $neutral-100;
-      }
     }
 
-    .navbar__avatar {
-      @include avatar(36px);
-      @include flex-center;
-      background: $bg-gradient-primary;
-      color: $text-inverse;
-      font-weight: $font-weight-semibold;
-
-      img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        border-radius: inherit;
-      }
+    .navbar__menu {
+      position: relative;
     }
 
-    .navbar__user-info {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 2px;
-    }
-
-    .navbar__username {
-      font-weight: $font-weight-medium;
-      color: $text-primary;
-      font-size: $font-size-sm;
-      line-height: 1.2;
-    }
-
-    .navbar__role-badge {
-      display: inline-block;
-      padding: 1px 6px;
-      font-size: 10px;
-      font-weight: $font-weight-semibold;
-      border-radius: $radius-full;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-
-      &.role--organizer {
-        background: $info-light;
-        color: $info-dark;
-      }
-
-      &.role--vendor {
-        background: $success-light;
-        color: $success-dark;
-      }
-
-      &.role--attendee {
-        background: $neutral-100;
-        color: $text-secondary;
-      }
-
-      &.role--pro {
-        background: linear-gradient(135deg, $primary-500, $secondary-500);
-        color: white;
-      }
-    }
-
-    .navbar__chevron {
-      color: $text-muted;
-      transition: transform $transition-fast;
-
-      &--open {
-        transform: rotate(180deg);
-      }
-    }
-
-    .navbar__dropdown {
-      position: absolute;
-      top: 100%;
-      right: 0;
-      margin-top: $spacing-2;
-      min-width: 200px;
-      background: $bg-primary;
-      border-radius: $radius-lg;
-      box-shadow: $shadow-lg;
-      padding: $spacing-2;
-      z-index: $z-dropdown;
-    }
-
-    .navbar__dropdown-item {
-      display: flex;
+    .navbar__icon-btn {
+      position: relative;
+      display: inline-flex;
       align-items: center;
-      gap: $spacing-3;
-      padding: $spacing-3 $spacing-4;
-      border-radius: $radius-default;
-      color: $text-primary;
-      font-weight: $font-weight-medium;
-      text-decoration: none;
-      transition: background $transition-fast;
-      cursor: pointer;
-      width: 100%;
-      border: none;
-      background: none;
-      text-align: left;
-
-      &:hover {
-        background: $neutral-100;
-      }
-
-      &--danger {
-        color: $error;
-
-        &:hover {
-          background: $error-light;
-        }
-      }
-
-      svg {
-        color: $text-secondary;
-      }
-    }
-
-    .navbar__dropdown-divider {
-      height: 1px;
-      background: $border-light;
-      margin: $spacing-2 0;
-    }
-
-    // Notifications Styles
-    .navbar__notifications {
-      position: relative;
-    }
-
-    .navbar__notification-bell {
-      position: relative;
-      @include flex-center;
+      justify-content: center;
       width: 40px;
       height: 40px;
-      border-radius: $radius-full;
-      cursor: pointer;
-      transition: background $transition-fast;
+      border: none;
+      border-radius: $radius-default;
+      background: transparent;
       color: $text-secondary;
+      cursor: pointer;
 
       &:hover {
         background: $neutral-100;
@@ -496,112 +278,181 @@ import { ButtonComponent } from '../button/button.component';
       }
     }
 
-    .navbar__notification-badge {
+    .navbar__badge {
       position: absolute;
       top: 4px;
-      right: 4px;
+      right: 2px;
       min-width: 18px;
       height: 18px;
       padding: 0 5px;
-      background: $error;
-      color: white;
-      font-size: 10px;
-      font-weight: $font-weight-bold;
       border-radius: $radius-full;
-      @include flex-center;
+      border: 2px solid $bg-primary;
+      background: $primary-600;
+      color: $text-inverse;
+      font-size: 10px;
+      font-weight: $font-weight-semibold;
+      line-height: 14px;
+      text-align: center;
     }
 
-    .navbar__notification-dropdown {
-      position: absolute;
-      top: calc(100% + $spacing-2);
-      right: 0;
-      width: 360px;
-      max-height: 480px;
-      background: $bg-primary;
-      border-radius: $radius-lg;
-      box-shadow: $shadow-xl;
-      overflow: hidden;
-      z-index: $z-dropdown;
+    .navbar__account {
+      display: inline-flex;
+      align-items: center;
+      gap: $spacing-2;
+      height: 40px;
+      padding: 0 $spacing-2 0 $spacing-1;
+      border: none;
+      border-radius: $radius-full;
+      background: transparent;
+      color: $text-primary;
+      cursor: pointer;
 
-      @include max-md {
-        position: fixed;
-        top: $navbar-height;
-        right: 0;
-        left: 0;
-        width: 100%;
-        max-height: calc(100vh - $navbar-height);
-        border-radius: 0;
+      &:hover {
+        background: $neutral-100;
       }
     }
 
-    .navbar__notification-header {
-      @include flex-between;
-      padding: $spacing-4;
+    .navbar__avatar {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: $radius-full;
+      overflow: hidden;
+      background: $primary-100;
+      color: $primary-800;
+      font-size: $font-size-sm;
+      font-weight: $font-weight-semibold;
+
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+    }
+
+    .navbar__account-name {
+      display: none;
+      font-size: $font-size-sm;
+      font-weight: $font-weight-medium;
+
+      @include md {
+        display: inline;
+      }
+    }
+
+    .navbar__chevron {
+      display: none;
+      color: $text-tertiary;
+      transition: transform $transition-fast;
+
+      &--open {
+        transform: rotate(180deg);
+      }
+
+      @include md {
+        display: inline-flex;
+      }
+    }
+
+    .navbar__panel {
+      position: absolute;
+      top: calc(100% + #{$spacing-2});
+      right: 0;
+      z-index: $z-dropdown;
+      background: $bg-primary;
+      border: 1px solid $border-light;
+      border-radius: $radius-lg;
+      box-shadow: $shadow-md;
+      animation: panel-in 120ms ease-out;
+      overflow: hidden;
+
+      &--notifications {
+        width: min(380px, calc(100vw - #{$spacing-8}));
+        right: -48px;
+
+        @include sm {
+          right: 0;
+        }
+      }
+
+      &--account {
+        width: 260px;
+      }
+    }
+
+    @keyframes panel-in {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .navbar__panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: $spacing-3 $spacing-4;
       border-bottom: 1px solid $border-light;
     }
 
-    .navbar__notification-title {
+    .navbar__panel-title {
+      font-size: $font-size-sm;
       font-weight: $font-weight-semibold;
-      color: $text-primary;
     }
 
-    .navbar__mark-read {
-      background: none;
+    .navbar__text-btn {
       border: none;
+      background: none;
       color: $primary-600;
-      font-size: $font-size-sm;
+      font-size: $font-size-xs;
       font-weight: $font-weight-medium;
       cursor: pointer;
-      padding: 0;
+      border-radius: $radius-sm;
 
       &:hover {
-        text-decoration: underline;
+        color: $primary-800;
       }
     }
 
-    .navbar__notification-loading {
-      @include flex-center;
-      padding: $spacing-8;
+    .navbar__panel-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: $spacing-2;
+      padding: $spacing-8 $spacing-6;
+      color: $text-tertiary;
+      text-align: center;
+
+      p {
+        margin: 0;
+        font-size: $font-size-sm;
+      }
     }
 
-    .navbar__notification-spinner {
-      width: 24px;
-      height: 24px;
-      border: 2px solid $border-light;
+    .navbar__spinner {
+      width: 22px;
+      height: 22px;
+      border: 2px solid $neutral-200;
       border-top-color: $primary-600;
       border-radius: $radius-full;
       animation: spin 0.8s linear infinite;
     }
 
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    .navbar__notification-empty {
-      @include flex-center;
-      flex-direction: column;
-      gap: $spacing-3;
-      padding: $spacing-8;
-      color: $text-muted;
-
-      svg {
-        opacity: 0.5;
-      }
-    }
-
     .navbar__notification-list {
-      max-height: 340px;
+      max-height: 360px;
       overflow-y: auto;
     }
 
-    .navbar__notification-item {
+    .navbar__notification {
       display: flex;
       align-items: flex-start;
       gap: $spacing-3;
+      width: 100%;
       padding: $spacing-3 $spacing-4;
+      border: none;
+      background: none;
+      text-align: left;
       cursor: pointer;
-      transition: background $transition-fast;
-      position: relative;
 
       &:hover {
         background: $neutral-50;
@@ -617,160 +468,154 @@ import { ButtonComponent } from '../button/button.component';
     }
 
     .navbar__notification-icon {
-      @include flex-center;
-      width: 36px;
-      height: 36px;
-      border-radius: $radius-full;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
       flex-shrink: 0;
-
-      &.icon--booking {
-        background: $info-light;
-        color: $info-dark;
-      }
-
-      &.icon--success {
-        background: $success-light;
-        color: $success-dark;
-      }
-
-      &.icon--payment {
-        background: $warning-light;
-        color: $warning-dark;
-      }
-
-      &.icon--review {
-        background: #fef3c7;
-        color: #d97706;
-      }
-
-      &.icon--message {
-        background: $primary-50;
-        color: $primary-600;
-      }
-
-      &.icon--default {
-        background: $neutral-100;
-        color: $text-secondary;
-      }
+      border-radius: $radius-full;
+      background: $neutral-100;
+      color: $text-secondary;
     }
 
-    .navbar__notification-content {
-      flex: 1;
+    .navbar__notification-body {
+      display: flex;
+      flex-direction: column;
       min-width: 0;
+      flex: 1;
     }
 
-    .navbar__notification-text {
+    .navbar__notification-title {
       font-size: $font-size-sm;
       color: $text-primary;
-      line-height: 1.4;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
     }
 
     .navbar__notification-time {
       font-size: $font-size-xs;
-      color: $text-muted;
-      margin-top: 2px;
+      color: $text-tertiary;
     }
 
-    .navbar__notification-unread-dot {
+    .navbar__unread-dot {
       width: 8px;
       height: 8px;
-      background: $primary-600;
-      border-radius: $radius-full;
-      flex-shrink: 0;
       margin-top: 6px;
+      border-radius: $radius-full;
+      background: $primary-600;
+      flex-shrink: 0;
     }
 
-    .navbar__notification-footer {
+    .navbar__panel-footer {
       display: block;
-      padding: $spacing-3 $spacing-4;
-      text-align: center;
-      color: $primary-600;
-      font-weight: $font-weight-medium;
-      font-size: $font-size-sm;
-      text-decoration: none;
+      padding: $spacing-3;
       border-top: 1px solid $border-light;
-      transition: background $transition-fast;
+      text-align: center;
+      font-size: $font-size-sm;
+      font-weight: $font-weight-medium;
+    }
+
+    .navbar__account-summary {
+      display: flex;
+      flex-direction: column;
+      padding: $spacing-3 $spacing-4;
+      border-bottom: 1px solid $border-light;
+    }
+
+    .navbar__account-fullname {
+      font-size: $font-size-sm;
+      font-weight: $font-weight-semibold;
+    }
+
+    .navbar__account-meta {
+      font-size: $font-size-xs;
+      color: $text-tertiary;
+      @include truncate;
+    }
+
+    .navbar__role {
+      align-self: flex-start;
+      margin-top: $spacing-2;
+      @include badge;
+      background: $neutral-100;
+      color: $text-secondary;
+    }
+
+    .navbar__menu-group {
+      padding: $spacing-1;
+
+      & + & {
+        border-top: 1px solid $border-light;
+      }
+    }
+
+    .navbar__menu-item {
+      display: flex;
+      align-items: center;
+      gap: $spacing-3;
+      width: 100%;
+      padding: $spacing-2 $spacing-3;
+      border: none;
+      border-radius: $radius-default;
+      background: none;
+      color: $text-primary;
+      font-size: $font-size-sm;
+      text-align: left;
+      cursor: pointer;
+
+      app-icon {
+        color: $text-tertiary;
+      }
 
       &:hover {
-        background: $neutral-50;
+        background: $neutral-100;
+        color: $text-primary;
       }
     }
 
     .navbar__mobile-toggle {
-      @include flex-center;
-      width: 40px;
-      height: 40px;
-      border-radius: $radius-default;
-      color: $text-primary;
-      transition: background $transition-fast;
-
-      &:hover {
-        background: $neutral-100;
+      @include md {
+        display: none;
       }
     }
 
-    .navbar__mobile-menu {
+    .navbar__mobile {
       display: flex;
       flex-direction: column;
-      padding: $spacing-4;
+      padding: $spacing-2 $spacing-4 $spacing-4;
       border-top: 1px solid $border-light;
       background: $bg-primary;
+
+      @include md {
+        display: none;
+      }
     }
 
     .navbar__mobile-link {
-      display: block;
-      padding: $spacing-3 $spacing-4;
-      color: $text-primary;
-      font-weight: $font-weight-medium;
-      border-radius: $radius-default;
-      text-decoration: none;
-      transition: background $transition-fast;
+      display: flex;
+      align-items: center;
+      gap: $spacing-3;
+      min-height: 48px;
+      padding: 0 $spacing-3;
       border: none;
+      border-radius: $radius-default;
       background: none;
+      color: $text-primary;
+      font-size: $font-size-base;
+      font-weight: $font-weight-medium;
       text-align: left;
       cursor: pointer;
-      width: 100%;
 
-      &:hover {
-        background: $neutral-100;
+      app-icon {
+        color: $text-tertiary;
       }
 
       &.active {
-        color: $primary-600;
         background: $primary-50;
-      }
+        color: $primary-700;
 
-      &--primary {
-        color: $primary-600;
-        background: $primary-50;
-
-        &:hover {
-          background: $primary-100;
+        app-icon {
+          color: $primary-600;
         }
-      }
-
-      &--danger {
-        color: $error;
-
-        &:hover {
-          background: $error-light;
-        }
-      }
-    }
-
-    @include max-md {
-      .hide-mobile {
-        display: none !important;
-      }
-    }
-
-    @include md {
-      .hide-desktop {
-        display: none !important;
       }
     }
   `]
@@ -790,29 +635,29 @@ export class NavbarComponent implements OnInit, OnDestroy {
   private notificationCountLoaded = false;
 
   constructor() {
-    // Use effect to watch for auth state changes and load notification count
+    // Load the unread count once auth has settled, and again after each login
     effect(() => {
       const isAuthenticated = this.auth.isAuthenticated();
       const isLoading = this.auth.isLoading();
 
-      // Only load notifications when auth is done loading and user is authenticated
       if (!isLoading && isAuthenticated && !this.notificationCountLoaded) {
         this.notificationCountLoaded = true;
         this.notificationService.refreshUnreadCount();
       }
 
-      // Reset flag when user logs out
       if (!isAuthenticated) {
         this.notificationCountLoaded = false;
       }
     });
+
+    // Navigating anywhere closes open menus
+    this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe(() => this.closeMenus());
   }
 
   ngOnInit(): void {
-    // Close dropdowns when clicking outside
     this.documentClickListener = (event: Event) => {
       const target = event.target as HTMLElement;
-      if (!target.closest('.navbar__notifications') && !target.closest('.navbar__user-menu')) {
+      if (!target.closest('.navbar__menu')) {
         this.isNotificationsOpen.set(false);
         this.isUserMenuOpen.set(false);
       }
@@ -826,7 +671,27 @@ export class NavbarComponent implements OnInit, OnDestroy {
     }
   }
 
-  toggleUserMenu(): void {
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    this.closeMenus();
+  }
+
+  initial(): string {
+    return this.auth.currentUser()?.name?.charAt(0)?.toUpperCase() || '?';
+  }
+
+  firstName(): string {
+    return this.auth.currentUser()?.name?.split(' ')[0] || '';
+  }
+
+  closeMenus(): void {
+    this.isUserMenuOpen.set(false);
+    this.isNotificationsOpen.set(false);
+    this.isMobileMenuOpen.set(false);
+  }
+
+  toggleUserMenu(event: Event): void {
+    event.stopPropagation();
     this.isNotificationsOpen.set(false);
     this.isUserMenuOpen.update(v => !v);
   }
@@ -835,22 +700,13 @@ export class NavbarComponent implements OnInit, OnDestroy {
     this.isMobileMenuOpen.update(v => !v);
   }
 
-  closeMobileMenu(): void {
-    this.isMobileMenuOpen.set(false);
-  }
-
   toggleNotifications(event: Event): void {
     event.stopPropagation();
     this.isUserMenuOpen.set(false);
-
     if (!this.isNotificationsOpen()) {
       this.loadNotifications();
     }
     this.isNotificationsOpen.update(v => !v);
-  }
-
-  closeNotifications(): void {
-    this.isNotificationsOpen.set(false);
   }
 
   loadNotifications(): void {
@@ -875,51 +731,22 @@ export class NavbarComponent implements OnInit, OnDestroy {
   }
 
   handleNotificationClick(notification: Notification): void {
-    // Mark as read if not already
     if (!notification.isRead) {
       this.notificationService.markAsRead(notification._id).subscribe();
       this.notifications.update(notifications =>
-        notifications.map(n =>
-          n._id === notification._id ? { ...n, isRead: true } : n
-        )
+        notifications.map(n => n._id === notification._id ? { ...n, isRead: true } : n)
       );
     }
-
-    // Navigate based on notification type
-    this.closeNotifications();
-    const data = notification.data;
-
-    if (data?.bookingId) {
-      this.router.navigate(['/bookings', data.bookingId]);
-    } else if (data?.eventId) {
-      this.router.navigate(['/events', data.eventId]);
-    } else if (data?.serviceId) {
-      this.router.navigate(['/services', data.serviceId]);
-    } else {
-      this.router.navigate(['/notifications']);
-    }
+    this.closeMenus();
+    this.router.navigateByUrl(notificationLink(notification));
   }
 
-  getNotificationIconClass(type: string): string {
-    const iconClasses: Record<string, string> = {
-      'booking_request': 'icon--booking',
-      'booking_confirmed': 'icon--success',
-      'booking_cancelled': 'icon--default',
-      'booking_completed': 'icon--success',
-      'payment_received': 'icon--payment',
-      'review_received': 'icon--review',
-      'event_reminder': 'icon--booking',
-      'rsvp_received': 'icon--success',
-      'message_received': 'icon--message',
-      'system': 'icon--default'
-    };
-    return iconClasses[type] || 'icon--default';
+  iconFor(notification: Notification): string {
+    return NOTIFICATION_ICONS[notification.type] || 'info';
   }
 
   getTimeAgo(date: Date): string {
-    const now = new Date();
-    const past = new Date(date);
-    const diffMs = now.getTime() - past.getTime();
+    const diffMs = Date.now() - new Date(date).getTime();
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
@@ -928,19 +755,14 @@ export class NavbarComponent implements OnInit, OnDestroy {
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
-    return past.toLocaleDateString();
+    return new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
   }
 
   logout(): void {
-    this.isUserMenuOpen.set(false);
-    this.isMobileMenuOpen.set(false);
-    this.isNotificationsOpen.set(false);
+    this.closeMenus();
     this.auth.logout().subscribe();
   }
 
-  /**
-   * Check if user can provide services (helper or all)
-   */
   isAdmin(): boolean {
     return this.auth.currentUser()?.role === 'admin';
   }
@@ -950,31 +772,14 @@ export class NavbarComponent implements OnInit, OnDestroy {
     return userType === 'helper' || userType === 'all';
   }
 
-  /**
-   * Get user role display label
-   */
   getUserRoleLabel(): string {
-    const userType = this.auth.currentUser()?.userType;
-    const roleLabels: Record<string, string> = {
-      'organizer': 'Organizer',
-      'helper': 'Vendor',
-      'attendee': 'Attendee',
-      'all': 'Pro'
+    if (this.isAdmin()) return 'Admin';
+    const labels: Record<string, string> = {
+      organizer: 'Organizer',
+      helper: 'Vendor',
+      attendee: 'Attendee',
+      all: 'Organizer & vendor'
     };
-    return roleLabels[userType || ''] || 'User';
-  }
-
-  /**
-   * Get role badge color class
-   */
-  getUserRoleClass(): string {
-    const userType = this.auth.currentUser()?.userType;
-    const roleClasses: Record<string, string> = {
-      'organizer': 'role--organizer',
-      'helper': 'role--vendor',
-      'attendee': 'role--attendee',
-      'all': 'role--pro'
-    };
-    return roleClasses[userType || ''] || '';
+    return labels[this.auth.currentUser()?.userType || ''] || 'Member';
   }
 }

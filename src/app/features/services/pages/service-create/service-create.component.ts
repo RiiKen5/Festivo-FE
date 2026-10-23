@@ -3,7 +3,6 @@ import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormArray } from '@angular/forms';
-import { NavbarComponent } from '../../../../shared/components/navbar/navbar.component';
 import { ButtonComponent } from '../../../../shared/components/button/button.component';
 import { InputComponent } from '../../../../shared/components/input/input.component';
 import { ServiceService } from '../../../../core/services/service.service';
@@ -18,12 +17,10 @@ import { CustomValidators } from '../../../../shared/validators/custom-validator
     CommonModule,
     RouterModule,
     ReactiveFormsModule,
-    NavbarComponent,
     ButtonComponent,
     InputComponent
   , ImageUploadComponent],
   template: `
-    <app-navbar></app-navbar>
 
     <main class="service-create-page">
       <div class="container">
@@ -684,7 +681,7 @@ export class ServiceCreateComponent implements OnInit {
 
   onImageError(event: Event): void {
     const img = event.target as HTMLImageElement;
-    img.src = 'assets/images/placeholder.jpg';
+    img.src = 'assets/images/service-placeholder.svg';
   }
 
   onSubmit(): void {
