@@ -3,7 +3,7 @@ import { AuthAsideComponent } from '../../../../shared/components/auth-aside/aut
 import { Component, inject, signal, OnInit, NgZone, PLATFORM_ID, Inject } from '@angular/core';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { isPlatformBrowser, CommonModule } from '@angular/common';
-import { RouterModule, Router } from '@angular/router';
+import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ToastService } from '../../../../core/services/toast.service';
@@ -582,6 +582,7 @@ export class RegisterComponent implements OnInit {
   private auth = inject(AuthService);
   private toast = inject(ToastService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private ngZone = inject(NgZone);
 
   isLoading = signal(false);
@@ -614,6 +615,10 @@ export class RegisterComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    // Links from the vendor landing page arrive with ?as=vendor
+    const as = this.route.snapshot.queryParamMap.get('as');
+    if (as === 'vendor') this.form.patchValue({ userType: 'helper' });
+    if (as === 'organizer' || as === 'attendee') this.form.patchValue({ userType: as });
     if (this.isBrowser) {
       this.loadGoogleScript();
     }
@@ -696,10 +701,10 @@ export class RegisterComponent implements OnInit {
     if (response.credential) {
       this.ngZone.run(() => {
         this.isGoogleLoading.set(true);
-        this.auth.googleAuth({ credential: response.credential }).subscribe({
-          next: () => {
+        this.auth.googleAuth({ credential: response.credential, userType: this.form.value.userType }).subscribe({
+          next: (res) => {
             this.toast.success('Welcome!', 'You have been signed in with Google.');
-            this.router.navigate(['/dashboard']);
+            this.router.navigateByUrl((res.data as any)?.isNewUser ? this.auth.homeAfterSignup() : '/dashboard');
           },
           error: (error) => {
             this.isGoogleLoading.set(false);
@@ -753,7 +758,7 @@ export class RegisterComponent implements OnInit {
         } else if (response.data?.tokens) {
           // Direct login (email verification disabled)
           this.toast.success('Account Created!', 'Welcome to Festivo. Let\'s get started!');
-          this.router.navigate(['/dashboard']);
+          this.router.navigateByUrl(this.auth.homeAfterSignup());
         } else {
           // Fallback - show verification message
           this.registeredEmail.set(email);

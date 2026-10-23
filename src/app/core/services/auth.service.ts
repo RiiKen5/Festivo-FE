@@ -3,6 +3,8 @@ import { Router } from '@angular/router';
 import { Observable, tap, catchError, throwError, Subscription } from 'rxjs';
 import { ApiService } from './api.service';
 import { StorageService } from './storage.service';
+import { AttributionService } from './attribution.service';
+import { AnalyticsService } from './analytics.service';
 import {
   User,
   AuthResponse,
@@ -31,7 +33,9 @@ export class AuthService implements OnDestroy {
   constructor(
     private api: ApiService,
     private storage: StorageService,
-    private router: Router
+    private router: Router,
+    private attribution: AttributionService,
+    private analytics: AnalyticsService
   ) {
     this.initializeAuth();
   }
@@ -180,8 +184,11 @@ export class AuthService implements OnDestroy {
   }
 
   register(data: RegisterData): Observable<RegisterResponse> {
-    return this.api.post<RegisterResponse>('/auth/register', data).pipe(
+    const payload = { ...data, acquisition: this.attribution.get() };
+    return this.api.post<RegisterResponse>('/auth/register', payload).pipe(
       tap(response => {
+        const first = payload.acquisition;
+        this.analytics.track('signup_completed', { method: 'email', userType: data.userType, source: first?.source, campaign: first?.campaign });
         // If registration returns tokens (email verification disabled), handle auth
         if (response.success && response.data?.tokens) {
           this.handleAuthSuccess(response as unknown as AuthResponse);
@@ -198,10 +205,14 @@ export class AuthService implements OnDestroy {
    * Google OAuth login/register
    */
   googleAuth(data: GoogleAuthData): Observable<AuthResponse> {
-    return this.api.post<AuthResponse>('/auth/google', data).pipe(
+    const payload = { ...data, acquisition: this.attribution.get() };
+    return this.api.post<AuthResponse>('/auth/google', payload).pipe(
       tap(response => {
         if (response.success) {
           this.handleAuthSuccess(response);
+          if ((response.data as any)?.isNewUser) {
+            this.analytics.track('signup_completed', { method: 'google', userType: data.userType, source: payload.acquisition?.source, campaign: payload.acquisition?.campaign });
+          }
         }
       }),
       catchError(error => {
@@ -261,9 +272,15 @@ export class AuthService implements OnDestroy {
           this.currentUserSignal.set(user);
           this.isAuthenticatedSignal.set(true);
           this.startRefreshTokenTimer(tokens.accessToken);
+          this.analytics.identify(user);
         }
       })
     );
+  }
+
+  /** Where a brand-new account should land: vendors go straight to listing a service. */
+  homeAfterSignup(): string {
+    return this.currentUserSignal()?.userType === 'helper' ? '/services/create' : '/dashboard';
   }
 
   changePassword(currentPassword: string, newPassword: string): Observable<any> {
@@ -313,9 +330,11 @@ export class AuthService implements OnDestroy {
     this.currentUserSignal.set(user);
     this.isAuthenticatedSignal.set(true);
     this.startRefreshTokenTimer(accessToken);
+    this.analytics.identify(user);
   }
 
   private clearAuth(): void {
+    this.analytics.reset();
     this.stopRefreshTokenTimer();
     this.storage.clearAll();
     this.currentUserSignal.set(null);

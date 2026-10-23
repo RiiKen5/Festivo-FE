@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, tap } from 'rxjs';
 import { ApiService } from './api.service';
+import { AnalyticsService } from './analytics.service';
 import {
   Booking,
   BookingFilters,
@@ -18,7 +19,7 @@ import {
 export class BookingService {
   private endpoint = '/bookings';
 
-  constructor(private api: ApiService) {}
+  constructor(private api: ApiService, private analytics: AnalyticsService) {}
 
   getBookings(filters?: BookingFilters): Observable<BookingsResponse> {
     return this.api.get<BookingsResponse>(this.endpoint, filters);
@@ -41,7 +42,9 @@ export class BookingService {
   }
 
   createBooking(data: BookingCreateData): Observable<BookingResponse> {
-    return this.api.post<BookingResponse>(this.endpoint, data);
+    return this.api.post<BookingResponse>(this.endpoint, data).pipe(
+      tap(res => this.analytics.track('booking_requested', { bookingId: res.data?._id, serviceId: data.serviceId, price: data.priceAgreed }))
+    );
   }
 
   updateBooking(id: string, data: BookingUpdateData): Observable<BookingResponse> {
@@ -50,7 +53,9 @@ export class BookingService {
 
   // Vendor accepts, optionally at a revised price (their quote)
   confirmBooking(id: string, priceAgreed?: number): Observable<BookingResponse> {
-    return this.api.post<BookingResponse>(`${this.endpoint}/${id}/confirm`, { priceAgreed });
+    return this.api.post<BookingResponse>(`${this.endpoint}/${id}/confirm`, { priceAgreed }).pipe(
+      tap(res => this.analytics.track('booking_confirmed', { bookingId: id, price: res.data?.priceAgreed }))
+    );
   }
 
   cancelBooking(id: string, reason?: string): Observable<BookingResponse> {

@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, tap } from 'rxjs';
 import { ApiService } from './api.service';
+import { AnalyticsService } from './analytics.service';
 import {
   Event,
   EventFilters,
@@ -16,7 +17,7 @@ import {
 export class EventService {
   private endpoint = '/events';
 
-  constructor(private api: ApiService) {}
+  constructor(private api: ApiService, private analytics: AnalyticsService) {}
 
   // Public endpoints
   getEvents(filters?: EventFilters): Observable<EventsResponse> {
@@ -54,7 +55,9 @@ export class EventService {
   }
 
   createEvent(data: EventCreateData): Observable<EventResponse> {
-    return this.api.post<EventResponse>(this.endpoint, data);
+    return this.api.post<EventResponse>(this.endpoint, data).pipe(
+      tap(res => this.analytics.track('event_created', { eventId: res.data?._id, eventType: res.data?.eventType, isPublic: res.data?.isPublic, isPaid: res.data?.isPaid }))
+    );
   }
 
   updateEvent(id: string, data: EventUpdateData): Observable<EventResponse> {

@@ -14,3 +14,5 @@ export * from './task.service';
 export * from './payment.service';
 export * from './admin.service';
 export * from './upload.service';
+export * from './attribution.service';
+export * from './analytics.service';

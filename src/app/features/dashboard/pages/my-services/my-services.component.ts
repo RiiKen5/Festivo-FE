@@ -6,6 +6,8 @@ import { RouterModule } from '@angular/router';
 import { ButtonComponent } from '../../../../shared/components/button/button.component';
 import { ServiceService } from '../../../../core/services/service.service';
 import { ToastService } from '../../../../core/services/toast.service';
+import { AttributionService } from '../../../../core/services/attribution.service';
+import { AnalyticsService } from '../../../../core/services/analytics.service';
 import { Service, ServiceCategory } from '../../../../core/models/service.model';
 
 @Component({
@@ -68,6 +70,15 @@ import { Service, ServiceCategory } from '../../../../core/models/service.model'
               <span class="stat-value">{{ getAverageRating() | number:'1.1-1' }}</span>
               <span class="stat-label">Avg Rating</span>
             </div>
+          </div>
+
+          <div class="share-tip">
+            <app-icon name="share" [size]="18"></app-icon>
+            <p>
+              <strong>Get paid before the event.</strong>
+              Put your Festivo link in your Instagram bio and send it with your quotes on WhatsApp.
+              Customers book and pay here, and the money is released to you after the job.
+            </p>
           </div>
 
           <div class="services-list">
@@ -134,6 +145,10 @@ import { Service, ServiceCategory } from '../../../../core/models/service.model'
                           <circle cx="12" cy="12" r="3"/>
                         </svg>
                         View
+                      </app-button>
+                      <app-button variant="secondary" size="sm" (onClick)="share(service)">
+                        <app-icon name="share" [size]="16"></app-icon>
+                        Share
                       </app-button>
                       <app-button
                         variant="secondary"
@@ -216,6 +231,23 @@ import { Service, ServiceCategory } from '../../../../core/models/service.model'
       @include md {
         grid-template-columns: repeat(4, 1fr);
       }
+    }
+
+    .share-tip {
+      display: flex;
+      gap: $spacing-3;
+      align-items: flex-start;
+      padding: $spacing-4;
+      margin-bottom: $spacing-6;
+      border-radius: $radius-lg;
+      background: $bg-secondary;
+      border: 1px solid $border-light;
+      color: $text-secondary;
+      font-size: $font-size-sm;
+
+      app-icon { color: $primary-600; flex-shrink: 0; margin-top: 2px; }
+      p { margin: 0; }
+      strong { color: $text-primary; }
     }
 
     .stat-card {
@@ -520,12 +552,34 @@ import { Service, ServiceCategory } from '../../../../core/models/service.model'
 export class MyServicesComponent implements OnInit {
   private serviceService = inject(ServiceService);
   private toast = inject(ToastService);
+  private attribution = inject(AttributionService);
+  private analytics = inject(AnalyticsService);
 
   services = signal<Service[]>([]);
   isLoading = signal(true);
   showDeleteModal = signal(false);
   serviceToDelete = signal<Service | null>(null);
   isDeleting = signal(false);
+
+  // The vendor's own booking link, tagged so customers it brings are counted
+  async share(service: Service): Promise<void> {
+    const url = this.attribution.tagged(`/services/${service.slug || service._id}`, 'vendor_share', 'link');
+    this.analytics.track('listing_shared', { serviceId: service._id, channel: 'my_services', own: true });
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: service.serviceName, text: `Book ${service.serviceName} on Festivo`, url });
+        return;
+      } catch (err: any) {
+        if (err?.name === 'AbortError') return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      this.toast.success('Link copied', 'Paste it in your Instagram bio or send it to customers on WhatsApp.');
+    } catch {
+      this.toast.info('Your booking link', url);
+    }
+  }
 
   categories = [
     { value: 'food', label: 'Food & Catering' },

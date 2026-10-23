@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, tap } from 'rxjs';
 import { ApiService } from './api.service';
+import { AnalyticsService } from './analytics.service';
 import {
   ServiceFilters,
   ServiceCreateData,
@@ -16,7 +17,7 @@ import {
 export class ServiceService {
   private endpoint = '/services';
 
-  constructor(private api: ApiService) {}
+  constructor(private api: ApiService, private analytics: AnalyticsService) {}
 
   // Public endpoints
   getServices(filters?: ServiceFilters): Observable<ServicesResponse> {
@@ -53,7 +54,9 @@ export class ServiceService {
   }
 
   createService(data: ServiceCreateData): Observable<ServiceResponse> {
-    return this.api.post<ServiceResponse>(this.endpoint, data);
+    return this.api.post<ServiceResponse>(this.endpoint, data).pipe(
+      tap(res => this.analytics.track('service_created', { serviceId: res.data?._id, category: res.data?.category }))
+    );
   }
 
   updateService(id: string, data: ServiceUpdateData): Observable<ServiceResponse> {

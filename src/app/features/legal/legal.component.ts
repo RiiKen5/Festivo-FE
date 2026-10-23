@@ -89,6 +89,7 @@ type Page = 'terms' | 'privacy' | 'refunds' | 'contact';
               <li><strong>Payments:</strong> payments are processed by Razorpay. We store payment references and amounts, never your card or UPI PIN.</li>
               <li><strong>Payout details:</strong> UPI ID or bank account, for vendors and organizers who receive money.</li>
               <li><strong>Technical data:</strong> IP address and basic logs, to keep the service secure.</li>
+              <li><strong>How you found us:</strong> the link or website that first brought you to Festivo (for example a campaign tag or a shared link) and the first page you visited, saved in your browser and with your account when you sign up. If product analytics is enabled, which pages and features you use, linked to your account ID only.</li>
             </ul>
 
             <h2>How we use it</h2>

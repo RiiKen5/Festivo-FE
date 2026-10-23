@@ -4,6 +4,8 @@ import { filter } from 'rxjs';
 import { ToastComponent } from './shared/components/toast/toast.component';
 import { NavbarComponent } from './shared/components/navbar/navbar.component';
 import { SiteFooterComponent } from './shared/components/site-footer/site-footer.component';
+import { AttributionService } from './core/services/attribution.service';
+import { AnalyticsService } from './core/services/analytics.service';
 
 // App shell: one header and footer for every screen except the full-screen
 // auth pages and the messages workspace (which needs the full height).
@@ -33,11 +35,15 @@ import { SiteFooterComponent } from './shared/components/site-footer/site-footer
 })
 export class AppComponent {
   private router = inject(Router);
+  private analytics = inject(AnalyticsService);
   private url = signal(this.router.url);
 
   constructor() {
+    inject(AttributionService).capture();
+    this.analytics.init();
     this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe(e => {
       this.url.set((e as NavigationEnd).urlAfterRedirects);
+      this.analytics.page((e as NavigationEnd).urlAfterRedirects.split('?')[0]);
     });
   }
 

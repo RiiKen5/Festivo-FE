@@ -1,3 +1,4 @@
+import { Acquisition } from '../services/attribution.service';
 export interface User {
   _id: string;
   email: string;
@@ -76,6 +77,7 @@ export interface RegisterData {
   phone?: string;
   city: string;
   userType: 'organizer' | 'helper' | 'attendee' | 'all';
+  acquisition?: Acquisition | null;
 }
 
 export interface TokenResponse {
@@ -118,4 +120,6 @@ export interface RegisterResponse {
 export interface GoogleAuthData {
   credential: string;
   clientId?: string;
+  userType?: 'organizer' | 'helper' | 'attendee' | 'all';
+  acquisition?: Acquisition | null;
 }

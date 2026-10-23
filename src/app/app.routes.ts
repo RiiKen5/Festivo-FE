@@ -49,6 +49,10 @@ export const routes: Routes = [
     loadComponent: () => import('./features/admin/admin.component').then(m => m.AdminComponent)
   },
   {
+    path: 'for-vendors',
+    loadComponent: () => import('./features/for-vendors/for-vendors.component').then(m => m.ForVendorsComponent)
+  },
+  {
     path: 'terms',
     loadComponent: () => import('./features/legal/legal.component').then(m => m.LegalComponent),
     data: { page: 'terms' }

@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, tap } from 'rxjs';
 import { ApiService } from './api.service';
+import { AnalyticsService } from './analytics.service';
 import {
   Rsvp,
   RsvpCreateData,
@@ -16,14 +17,16 @@ import {
 export class RsvpService {
   private endpoint = '/rsvps';
 
-  constructor(private api: ApiService) {}
+  constructor(private api: ApiService, private analytics: AnalyticsService) {}
 
   /**
    * Create a new RSVP for an event
    * POST /api/v1/rsvps
    */
   createRsvp(data: RsvpCreateData): Observable<RsvpResponse> {
-    return this.api.post<RsvpResponse>(this.endpoint, data);
+    return this.api.post<RsvpResponse>(this.endpoint, data).pipe(
+      tap(res => this.analytics.track('rsvp_created', { eventId: data.eventId, status: res.data?.status, viaInvite: !!data.inviteCode }))
+    );
   }
 
   /**

@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Observable, firstValueFrom, map, shareReplay } from 'rxjs';
 import { ApiService } from './api.service';
+import { AnalyticsService } from './analytics.service';
 
 export interface PaymentConfig {
   enabled: boolean;
@@ -64,7 +65,7 @@ export class PaymentService {
   private config$?: Observable<PaymentConfig>;
   private scriptLoad?: Promise<void>;
 
-  constructor(private api: ApiService) {}
+  constructor(private api: ApiService, private analytics: AnalyticsService) {}
 
   getConfig(): Observable<PaymentConfig> {
     this.config$ ??= this.api.get<{ data: PaymentConfig }>(`${this.endpoint}/config`).pipe(
@@ -135,6 +136,7 @@ export class PaymentService {
       razorpay_payment_id: response.razorpay_payment_id,
       razorpay_signature: response.razorpay_signature
     }));
+    this.analytics.track('payment_completed', { amount: details.amount, currency: details.currency });
     return 'paid';
   }
 

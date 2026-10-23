@@ -19,6 +19,7 @@ import { LogoComponent } from '../logo/logo.component';
             <h2>Explore</h2>
             <a routerLink="/events">Events</a>
             <a routerLink="/services">Vendors</a>
+            <a routerLink="/for-vendors">Sell on Festivo</a>
             <a routerLink="/auth/register">Create an account</a>
           </div>
           <div>

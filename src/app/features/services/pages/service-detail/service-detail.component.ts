@@ -14,6 +14,8 @@ import { EventService } from '../../../../core/services/event.service';
 import { FavoriteService } from '../../../../core/services/favorite.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ToastService } from '../../../../core/services/toast.service';
+import { AttributionService } from '../../../../core/services/attribution.service';
+import { AnalyticsService } from '../../../../core/services/analytics.service';
 import { Service } from '../../../../core/models/service.model';
 import { Review } from '../../../../core/models/review.model';
 import { User } from '../../../../core/models/user.model';
@@ -1734,6 +1736,8 @@ export class ServiceDetailComponent implements OnInit {
   private eventService = inject(EventService);
   private favoriteService = inject(FavoriteService);
   private toast = inject(ToastService);
+  private attribution = inject(AttributionService);
+  private analytics = inject(AnalyticsService);
   auth = inject(AuthService);
 
   // Service
@@ -1953,20 +1957,29 @@ export class ServiceDetailComponent implements OnInit {
     });
   }
 
+  // A vendor sharing their own page is the main supply-led demand channel,
+  // so it is tagged separately from anyone else sharing a listing
+  private shareUrl(medium: string): string {
+    const service = this.service();
+    const source = this.isOwnService() ? 'vendor_share' : 'listing_share';
+    this.analytics.track('listing_shared', { serviceId: service?._id, channel: medium, own: this.isOwnService() });
+    return this.attribution.tagged(`/services/${service?.slug || service?._id}`, source, medium);
+  }
+
   shareOnWhatsApp(): void {
-    const url = window.location.href;
+    const url = this.shareUrl('whatsapp');
     const text = `Check out this service: ${this.service()?.serviceName}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`, '_blank');
   }
 
   shareOnTwitter(): void {
-    const url = window.location.href;
+    const url = this.shareUrl('x');
     const text = `Check out this service: ${this.service()?.serviceName}`;
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank');
   }
 
   copyLink(): void {
-    navigator.clipboard.writeText(window.location.href);
+    navigator.clipboard.writeText(this.shareUrl('copy'));
     this.toast.success('Link Copied!', 'Service link has been copied to clipboard.');
   }
 

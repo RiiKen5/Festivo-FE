@@ -20,6 +20,30 @@ export interface AdminStats {
   flaggedReviews: number;
 }
 
+export interface GrowthSourceRow {
+  source: string;
+  signups: number;
+  requestedBooking: number;
+  listedService: number;
+  createdEvent: number;
+  activated: number;
+}
+
+export interface GrowthMetrics {
+  days: number;
+  signups: number;
+  bySource: GrowthSourceRow[];
+  funnel: {
+    bookingRequests: number;
+    paidBookings: number;
+    completedPaidBookings: number;
+    completedPaidGmv: number;
+    eventsCreated: number;
+    eventsWithThreeGuests: number;
+  };
+  supply: { activeVendors: number; vendorsWithAcceptedBooking: number };
+}
+
 export interface PayoutItem extends PaymentRecord {
   payee: { _id: string; name: string; email: string; phone?: string; payoutDetails?: PayoutDetails };
 }
@@ -34,6 +58,10 @@ export class AdminService {
 
   getStats(): Observable<AdminStats> {
     return this.api.get<{ data: AdminStats }>(`${this.endpoint}/stats`).pipe(map(r => r.data));
+  }
+
+  getGrowth(days: number): Observable<GrowthMetrics> {
+    return this.api.get<{ data: GrowthMetrics }>(`${this.endpoint}/growth`, { days }).pipe(map(r => r.data));
   }
 
   getPayouts(status: 'pending' | 'paid' = 'pending'): Observable<PayoutItem[]> {

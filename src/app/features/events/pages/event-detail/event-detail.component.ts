@@ -16,6 +16,8 @@ import { FavoriteService } from '../../../../core/services/favorite.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { PaymentService, CheckoutDetails } from '../../../../core/services/payment.service';
+import { AttributionService } from '../../../../core/services/attribution.service';
+import { AnalyticsService } from '../../../../core/services/analytics.service';
 import { Event } from '../../../../core/models/event.model';
 import { User } from '../../../../core/models/user.model';
 import { Rsvp, RsvpStatus } from '../../../../core/models/rsvp.model';
@@ -472,6 +474,14 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
                     </div>
                   </div>
                 </div>
+
+                @if (!isOrganizer()) {
+                  <div class="host-cta">
+                    <p class="host-cta-title">Planning your own event?</p>
+                    <p class="host-cta-text">Invite guests, sell tickets, and book cake, decor and photos, with your payment held until the job is done.</p>
+                    <a class="host-cta-link" routerLink="/events/create" [queryParams]="{ from: 'event' }" (click)="onHostCta()">Start planning, free</a>
+                  </div>
+                }
               </aside>
             </div>
           </div>
@@ -1020,6 +1030,30 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
       flex-direction: column;
       gap: $spacing-3;
       margin-bottom: $spacing-6;
+    }
+
+    .host-cta {
+      margin-top: $spacing-4;
+      padding: $spacing-4;
+      border: 1px solid $border-light;
+      border-radius: $radius-lg;
+      background: $bg-secondary;
+    }
+
+    .host-cta-title {
+      font-weight: 600;
+      margin: 0 0 $spacing-1;
+    }
+
+    .host-cta-text {
+      font-size: $font-size-sm;
+      color: $text-secondary;
+      margin: 0 0 $spacing-3;
+    }
+
+    .host-cta-link {
+      font-weight: 600;
+      color: $primary-600;
     }
 
     .sidebar-share {
@@ -1609,6 +1643,8 @@ export class EventDetailComponent implements OnInit {
   private favoriteService = inject(FavoriteService);
   private toast = inject(ToastService);
   private payments = inject(PaymentService);
+  private attribution = inject(AttributionService);
+  private analytics = inject(AnalyticsService);
   auth = inject(AuthService);
 
   // From a private invite link (?invite=...)
@@ -1936,6 +1972,7 @@ export class EventDetailComponent implements OnInit {
       name: user?.name, email: user?.email, contact: user?.phone
     });
     if (result === 'paid') {
+      this.analytics.track('ticket_purchased', { eventId: this.event()?._id, amount: checkout.amount });
       this.toast.success('Ticket Confirmed!', 'See you there. Your check-in code is on this page.');
       this.loadEvent(this.event()!._id);
     } else {
@@ -1943,12 +1980,22 @@ export class EventDetailComponent implements OnInit {
     }
   }
 
-  private inviteUrl(): string {
+  // Invite and share links carry UTM tags so signups from guests can be counted
+  private inviteUrl(medium = 'copy'): string {
     const event = this.event();
-    return `${window.location.origin}/events/${event?.slug}?invite=${event?.inviteCode}`;
+    return this.attribution.tagged(`/events/${event?.slug}?invite=${event?.inviteCode}`, 'invite', medium);
+  }
+
+  private shareUrl(medium: string): string {
+    return this.attribution.tagged(`/events/${this.event()?.slug}`, 'event_share', medium);
+  }
+
+  onHostCta(): void {
+    this.analytics.track('host_cta_clicked', { eventId: this.event()?._id });
   }
 
   copyInviteLink(): void {
+    this.analytics.track('invite_shared', { eventId: this.event()?._id, channel: 'copy', private: true });
     navigator.clipboard.writeText(this.inviteUrl()).then(
       () => this.toast.success('Copied', 'Invite link copied to clipboard.'),
       () => this.toast.error('Copy failed', this.inviteUrl())
@@ -1956,7 +2003,8 @@ export class EventDetailComponent implements OnInit {
   }
 
   shareInviteOnWhatsApp(): void {
-    const text = `You're invited to ${this.event()?.title}! ${this.inviteUrl()}`;
+    this.analytics.track('invite_shared', { eventId: this.event()?._id, channel: 'whatsapp', private: true });
+    const text = `You're invited to ${this.event()?.title}! ${this.inviteUrl('whatsapp')}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   }
 
@@ -2090,19 +2138,22 @@ export class EventDetailComponent implements OnInit {
   }
 
   shareOnTwitter(): void {
-    const url = window.location.href;
+    this.analytics.track('invite_shared', { eventId: this.event()?._id, channel: 'x' });
+    const url = this.shareUrl('x');
     const text = `Check out this event: ${this.event()?.title}`;
     window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`, '_blank');
   }
 
   shareOnWhatsApp(): void {
-    const url = window.location.href;
+    this.analytics.track('invite_shared', { eventId: this.event()?._id, channel: 'whatsapp' });
+    const url = this.shareUrl('whatsapp');
     const text = `Check out this event: ${this.event()?.title}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`, '_blank');
   }
 
   copyLink(): void {
-    navigator.clipboard.writeText(window.location.href);
+    this.analytics.track('invite_shared', { eventId: this.event()?._id, channel: 'copy' });
+    navigator.clipboard.writeText(this.shareUrl('copy'));
     this.toast.success('Link Copied!', 'Event link has been copied to clipboard.');
   }
 

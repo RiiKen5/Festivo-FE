@@ -241,7 +241,7 @@ export class VerifyEmailComponent implements OnInit {
     if (this.countdownInterval) {
       clearInterval(this.countdownInterval);
     }
-    this.router.navigate(['/dashboard']);
+    this.router.navigateByUrl(this.auth.homeAfterSignup());
   }
 
   resendVerification(): void {
