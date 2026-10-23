@@ -1,3 +1,5 @@
+import { ModalComponent } from '../../../../shared/components/modal/modal.component';
+import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
@@ -9,7 +11,7 @@ import { Service, ServiceCategory } from '../../../../core/models/service.model'
 @Component({
   selector: 'app-my-services',
   standalone: true,
-  imports: [CommonModule, RouterModule, ButtonComponent],
+  imports: [IconComponent, CommonModule, RouterModule, ButtonComponent, ModalComponent],
   template: `
 
     <main class="my-services-page">
@@ -43,7 +45,7 @@ import { Service, ServiceCategory } from '../../../../core/models/service.model'
           </div>
         } @else if (services().length === 0) {
           <div class="empty-state">
-            <span class="empty-icon">🛠️</span>
+            <span class="empty-icon" aria-hidden="true"><app-icon name="store" [size]="28"></app-icon></span>
             <h2>No services yet</h2>
             <p>Create your first service listing to start getting bookings</p>
             <app-button routerLink="/services/create">Create Your First Service</app-button>
@@ -88,11 +90,11 @@ import { Service, ServiceCategory } from '../../../../core/models/service.model'
 
                     <div class="service-meta">
                       <div class="meta-item">
-                        <span class="meta-icon">📍</span>
+                        <span class="meta-icon" aria-hidden="true"><app-icon name="map-pin" [size]="14"></app-icon></span>
                         <span>{{ service.city }}</span>
                       </div>
                       <div class="meta-item">
-                        <span class="meta-icon">💰</span>
+                        <span class="meta-icon" aria-hidden="true"><app-icon name="wallet" [size]="14"></app-icon></span>
                         <span>₹{{ service.basePrice | number }} {{ formatPriceUnit(service.priceUnit) }}</span>
                       </div>
                       <div class="meta-item">
@@ -100,7 +102,7 @@ import { Service, ServiceCategory } from '../../../../core/models/service.model'
                         <span>{{ service.ratingAverage | number:'1.1-1' }} ({{ service.totalRatings }} reviews)</span>
                       </div>
                       <div class="meta-item">
-                        <span class="meta-icon">📦</span>
+                        <span class="meta-icon" aria-hidden="true"><app-icon name="briefcase" [size]="14"></app-icon></span>
                         <span>{{ service.completedBookings }} bookings</span>
                       </div>
                     </div>
@@ -164,22 +166,23 @@ import { Service, ServiceCategory } from '../../../../core/models/service.model'
     </main>
 
     <!-- Delete Confirmation Modal -->
-    @if (showDeleteModal()) {
-      <div class="modal-backdrop" (click)="showDeleteModal.set(false)">
-        <div class="modal-content" (click)="$event.stopPropagation()">
-          <h3>Delete Service</h3>
-          <p>Are you sure you want to delete "{{ serviceToDelete()?.serviceName }}"? This action cannot be undone.</p>
-          <div class="modal-actions">
-            <app-button variant="secondary" (onClick)="showDeleteModal.set(false)">Cancel</app-button>
-            <app-button variant="danger" [loading]="isDeleting()" (onClick)="deleteService()">Delete</app-button>
-          </div>
-        </div>
+    <app-modal [isOpen]="showDeleteModal()" title="Delete service" size="sm" [showFooter]="true" (onClose)="showDeleteModal.set(false)">
+      <p class="modal-text">Remove "{{ serviceToDelete()?.serviceName }}" from Festivo? It will be hidden from search and can't be booked. Your existing bookings aren't affected.</p>
+      <div modal-footer>
+        <app-button variant="secondary" (onClick)="showDeleteModal.set(false)">Keep service</app-button>
+        <app-button variant="danger" [loading]="isDeleting()" (onClick)="deleteService()">Delete service</app-button>
       </div>
-    }
+    </app-modal>
   `,
   styles: [`
     @use '../../../../../styles/variables' as *;
     @use '../../../../../styles/mixins' as *;
+
+    .modal-text {
+      margin: 0;
+      font-size: $font-size-sm;
+      color: $text-secondary;
+    }
 
     .my-services-page {
       min-height: calc(100vh - $navbar-height);
@@ -431,6 +434,10 @@ import { Service, ServiceCategory } from '../../../../core/models/service.model'
       display: inline-block;
       width: 44px;
       height: 24px;
+
+      input:focus-visible + .toggle-slider {
+        box-shadow: $focus-ring;
+      }
 
       input {
         opacity: 0;

@@ -1,3 +1,4 @@
+import { IconComponent } from '../../shared/components/icon/icon.component';
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
@@ -6,11 +7,11 @@ import { ButtonComponent } from '../../shared/components/button/button.component
 @Component({
   selector: 'app-not-found',
   standalone: true,
-  imports: [CommonModule, RouterModule, ButtonComponent],
+  imports: [IconComponent, CommonModule, RouterModule, ButtonComponent],
   template: `
     <div class="not-found">
       <div class="not-found__content">
-        <span class="not-found__icon">🎭</span>
+        <span class="not-found__icon" aria-hidden="true"><app-icon name="search" [size]="32"></app-icon></span>
         <h1 class="not-found__title">404</h1>
         <h2 class="not-found__subtitle">Page not found</h2>
         <p class="not-found__desc">

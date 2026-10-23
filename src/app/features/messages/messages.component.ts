@@ -1,3 +1,4 @@
+import { IconComponent } from '../../shared/components/icon/icon.component';
 import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute } from '@angular/router';
@@ -17,7 +18,7 @@ const CONVERSATION_POLL_EVERY = 4; // conversation list refresh, in message poll
 @Component({
   selector: 'app-messages',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, ButtonComponent],
+  imports: [IconComponent, CommonModule, RouterModule, FormsModule, ButtonComponent],
   template: `
 
     <main class="messages-page">
@@ -51,7 +52,7 @@ const CONVERSATION_POLL_EVERY = 4; // conversation list refresh, in message poll
               </div>
             } @else if (filteredConversations().length === 0) {
               <div class="empty-conversations">
-                <span class="empty-icon">💬</span>
+                <span class="empty-icon" aria-hidden="true"><app-icon name="message" [size]="28"></app-icon></span>
                 <p>No conversations yet</p>
                 <span class="empty-hint">Start messaging vendors or organizers</span>
               </div>
@@ -147,7 +148,7 @@ const CONVERSATION_POLL_EVERY = 4; // conversation list refresh, in message poll
             </div>
           } @else {
             <div class="no-chat-selected">
-              <span class="empty-icon">💬</span>
+              <span class="empty-icon" aria-hidden="true"><app-icon name="message" [size]="28"></app-icon></span>
               <h3>Select a conversation</h3>
               <p>Choose a conversation from the list to start messaging</p>
             </div>

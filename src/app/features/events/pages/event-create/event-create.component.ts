@@ -1,5 +1,6 @@
 import { ImageUploadComponent } from '../../../../shared/components/image-upload/image-upload.component';
 import { Component, inject, OnInit, signal } from '@angular/core';
+import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
@@ -13,7 +14,7 @@ import { CustomValidators } from '../../../../shared/validators/custom-validator
 @Component({
   selector: 'app-event-create',
   standalone: true,
-  imports: [CommonModule, RouterModule, ReactiveFormsModule, ButtonComponent, InputComponent, ImageUploadComponent],
+  imports: [IconComponent, CommonModule, RouterModule, ReactiveFormsModule, ButtonComponent, InputComponent, ImageUploadComponent],
   template: `
 
     <main class="create-event">
@@ -51,7 +52,7 @@ import { CustomValidators } from '../../../../shared/validators/custom-validator
                       [class.type-option--selected]="form.get('eventType')?.value === type.value"
                     >
                       <input type="radio" formControlName="eventType" [value]="type.value">
-                      <span class="type-icon">{{ type.icon }}</span>
+                      <span class="type-icon" aria-hidden="true"><app-icon [name]="type.icon" [size]="20"></app-icon></span>
                       <span class="type-label">{{ type.label }}</span>
                     </label>
                   }
@@ -243,7 +244,7 @@ import { CustomValidators } from '../../../../shared/validators/custom-validator
                     [class.vibe-option--selected]="form.get('vibeScore')?.value === vibe.value"
                   >
                     <input type="radio" formControlName="vibeScore" [value]="vibe.value">
-                    <span class="vibe-icon">{{ vibe.icon }}</span>
+                    <span class="vibe-icon" aria-hidden="true"><app-icon [name]="vibe.icon" [size]="20"></app-icon></span>
                     <span class="vibe-label">{{ vibe.label }}</span>
                   </label>
                 }
@@ -431,11 +432,15 @@ import { CustomValidators } from '../../../../shared/validators/custom-validator
       transition: all $transition-fast;
       text-align: center;
 
-      input { display: none; }
+      input { @include visually-hidden; }
 
       &:hover {
         border-color: $primary-300;
         background: $primary-50;
+      }
+
+      &:has(input:focus-visible) {
+        box-shadow: $focus-ring;
       }
 
       &--selected {
@@ -519,20 +524,20 @@ export class EventCreateComponent implements OnInit {
   eventId = '';
 
   eventTypes = [
-    { value: 'birthday' as EventType, label: 'Birthday', icon: '🎂' },
-    { value: 'house_party' as EventType, label: 'House Party', icon: '🏠' },
-    { value: 'meetup' as EventType, label: 'Meetup', icon: '🤝' },
-    { value: 'wedding' as EventType, label: 'Wedding', icon: '💒' },
-    { value: 'corporate' as EventType, label: 'Corporate', icon: '💼' },
-    { value: 'farewell' as EventType, label: 'Farewell', icon: '👋' },
-    { value: 'other' as EventType, label: 'Other', icon: '🎉' }
+    { value: 'birthday' as EventType, label: 'Birthday', icon: 'cake' },
+    { value: 'house_party' as EventType, label: 'House Party', icon: 'home' },
+    { value: 'meetup' as EventType, label: 'Meetup', icon: 'users' },
+    { value: 'wedding' as EventType, label: 'Wedding', icon: 'heart' },
+    { value: 'corporate' as EventType, label: 'Corporate', icon: 'briefcase' },
+    { value: 'farewell' as EventType, label: 'Farewell', icon: 'gift' },
+    { value: 'other' as EventType, label: 'Other', icon: 'party' }
   ];
 
   vibeOptions = [
-    { value: 'chill' as VibeScore, label: 'Chill', icon: '😌' },
-    { value: 'party' as VibeScore, label: 'Party', icon: '🎉' },
-    { value: 'networking' as VibeScore, label: 'Networking', icon: '🤝' },
-    { value: 'formal' as VibeScore, label: 'Formal', icon: '👔' }
+    { value: 'chill' as VibeScore, label: 'Chill', icon: 'coffee' },
+    { value: 'party' as VibeScore, label: 'Party', icon: 'party' },
+    { value: 'networking' as VibeScore, label: 'Networking', icon: 'users' },
+    { value: 'formal' as VibeScore, label: 'Formal', icon: 'briefcase' }
   ];
 
   form: FormGroup = this.fb.group({

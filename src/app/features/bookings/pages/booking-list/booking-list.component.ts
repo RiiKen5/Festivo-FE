@@ -4,6 +4,9 @@ import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ButtonComponent } from '../../../../shared/components/button/button.component';
 import { ErrorStateComponent } from '../../../../shared/components/error-state/error-state.component';
+import { IconComponent } from '../../../../shared/components/icon/icon.component';
+import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
+import { ModalComponent } from '../../../../shared/components/modal/modal.component';
 import { BookingService } from '../../../../core/services/booking.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ToastService } from '../../../../core/services/toast.service';
@@ -15,15 +18,17 @@ import { User } from '../../../../core/models/user.model';
 @Component({
   selector: 'app-booking-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, ButtonComponent, ErrorStateComponent],
+  imports: [CommonModule, RouterModule, FormsModule, ButtonComponent, ErrorStateComponent, IconComponent, EmptyStateComponent, ModalComponent],
   template: `
 
     <main class="bookings-page">
       <div class="container">
-        <div class="page-header">
-          <h1>My Bookings</h1>
-          <p>Manage your service bookings</p>
-        </div>
+        <header class="page-header">
+          <div>
+            <h1>Bookings</h1>
+            <p class="page-header__subtitle">Vendors you've booked, and requests from people booking you</p>
+          </div>
+        </header>
 
         <!-- Tabs -->
         <div class="booking-tabs">
@@ -32,7 +37,7 @@ import { User } from '../../../../core/models/user.model';
             [class.active]="activeTab() === 'organizer'"
             (click)="setTab('organizer')"
           >
-            As Organizer
+            Vendors I booked
             @if (organizerCount() > 0) {
               <span class="tab-badge">{{ organizerCount() }}</span>
             }
@@ -42,7 +47,7 @@ import { User } from '../../../../core/models/user.model';
             [class.active]="activeTab() === 'vendor'"
             (click)="setTab('vendor')"
           >
-            As Vendor
+            Requests for me
             @if (vendorCount() > 0) {
               <span class="tab-badge">{{ vendorCount() }}</span>
             }
@@ -98,12 +103,19 @@ import { User } from '../../../../core/models/user.model';
             }
           </div>
         } @else if (filteredBookings().length === 0) {
-          <div class="empty-state">
-            <span class="empty-icon">📋</span>
-            <h2>No bookings found</h2>
-            <p>{{ statusFilter() ? 'No bookings with this status' : 'You don\'t have any bookings yet' }}</p>
-            @if (activeTab() === 'organizer') {
-              <app-button routerLink="/services">Browse Services</app-button>
+          <div class="panel">
+            @if (statusFilter()) {
+              <app-empty-state icon="search" [title]="'No ' + formatStatus($any(statusFilter())).toLowerCase() + ' bookings'" description="Try another status, or view all bookings.">
+                <app-button variant="secondary" size="sm" (onClick)="setStatusFilter('')">Show all</app-button>
+              </app-empty-state>
+            } @else if (activeTab() === 'organizer') {
+              <app-empty-state icon="calendar" title="No vendors booked yet" description="Find a baker, decorator or photographer for your event and send a booking request.">
+                <app-button size="sm" routerLink="/services">Find vendors</app-button>
+              </app-empty-state>
+            } @else {
+              <app-empty-state icon="inbox" title="No booking requests yet" description="When an organizer books one of your services, the request appears here for you to quote and confirm.">
+                <app-button variant="secondary" size="sm" routerLink="/dashboard/my-services">Manage my services</app-button>
+              </app-empty-state>
             }
           </div>
         } @else {
@@ -112,7 +124,7 @@ import { User } from '../../../../core/models/user.model';
               <div class="booking-card" [routerLink]="['/bookings', booking._id]">
                 <div class="booking-header">
                   <div class="service-info">
-                    <h3>{{ getServiceName(booking.service) }}</h3>
+                    <h3><a class="booking-link" [routerLink]="['/bookings', booking._id]" (click)="$event.stopPropagation()">{{ getServiceName(booking.service) }}</a></h3>
                     <span class="event-name">for {{ getEventTitle(booking.event) }}</span>
                   </div>
                   <span class="status-badge" [class]="'status--' + booking.status">
@@ -122,19 +134,19 @@ import { User } from '../../../../core/models/user.model';
 
                 <div class="booking-details">
                   <div class="detail-item">
-                    <span class="detail-icon">📅</span>
+                    <app-icon name="calendar" [size]="16"></app-icon>
                     <span>{{ booking.eventDate | date:'mediumDate' }}</span>
                   </div>
                   <div class="detail-item">
-                    <span class="detail-icon">💰</span>
+                    <app-icon name="wallet" [size]="16"></app-icon>
                     <span>₹{{ booking.priceAgreed | number }}</span>
                   </div>
                   <div class="detail-item">
-                    <span class="detail-icon">{{ activeTab() === 'organizer' ? '🏪' : '👤' }}</span>
+                    <app-icon [name]="activeTab() === 'organizer' ? 'store' : 'user'" [size]="16"></app-icon>
                     <span>{{ activeTab() === 'organizer' ? getVendorName(booking.vendor) : getOrganizerName(booking.organizer) }}</span>
                   </div>
                   <div class="detail-item">
-                    <span class="detail-icon">💳</span>
+                    <app-icon name="credit-card" [size]="16"></app-icon>
                     <span class="payment-status" [class]="'payment--' + booking.paymentStatus">
                       {{ formatPaymentStatus(booking.paymentStatus) }}
                     </span>
@@ -145,11 +157,7 @@ import { User } from '../../../../core/models/user.model';
                   <span class="booking-date">Booked {{ booking.createdAt | date:'mediumDate' }}</span>
                   <div class="booking-actions">
                     @if (activeTab() === 'vendor' && booking.status === 'pending') {
-                      <app-button
-                        size="sm"
-                        (onClick)="confirmBooking($event, booking)"
-                        [loading]="actionLoading() === booking._id"
-                      >Confirm</app-button>
+                      <app-button size="sm" [routerLink]="['/bookings', booking._id]">Review &amp; quote</app-button>
                     }
                     @if (booking.status === 'pending' || booking.status === 'confirmed') {
                       <app-button
@@ -176,35 +184,43 @@ import { User } from '../../../../core/models/user.model';
     </main>
 
     <!-- Cancel Modal -->
-    @if (cancelModal()) {
-      <div class="modal-backdrop" (click)="cancelModal.set(false)">
-        <div class="modal-content" (click)="$event.stopPropagation()">
-          <h3>Cancel Booking</h3>
-          <p>Are you sure you want to cancel this booking?</p>
-          <div class="form-group">
-            <label>Reason (optional)</label>
-            <textarea
-              class="form-textarea"
-              [(ngModel)]="cancelReason"
-              placeholder="Enter cancellation reason..."
-              rows="3"
-            ></textarea>
-          </div>
-          <div class="modal-actions">
-            <app-button variant="secondary" (onClick)="cancelModal.set(false)">Close</app-button>
-            <app-button
-              variant="danger"
-              [loading]="actionLoading() === selectedBooking()?._id"
-              (onClick)="cancelBooking()"
-            >Cancel Booking</app-button>
-          </div>
-        </div>
+    <app-modal [isOpen]="cancelModal()" title="Cancel booking" size="sm" [showFooter]="true" (onClose)="cancelModal.set(false)">
+      <p class="modal-text">The other party is notified. Online payments are refunded according to the <a routerLink="/refund-policy">cancellation policy</a>.</p>
+      <label class="form-label" for="cancel-reason">Reason (optional)</label>
+      <textarea id="cancel-reason" class="form-textarea" [(ngModel)]="cancelReason" placeholder="Let them know why" rows="3"></textarea>
+      <div modal-footer>
+        <app-button variant="secondary" (onClick)="cancelModal.set(false)">Keep booking</app-button>
+        <app-button variant="danger" [loading]="actionLoading() === selectedBooking()?._id" (onClick)="cancelBooking()">Cancel booking</app-button>
       </div>
-    }
+    </app-modal>
   `,
   styles: [`
     @use '../../../../../styles/variables' as *;
     @use '../../../../../styles/mixins' as *;
+
+    .panel {
+      background: $bg-primary;
+      border: 1px solid $border-light;
+      border-radius: $radius-lg;
+    }
+
+    .booking-link {
+      color: inherit;
+
+      &:hover {
+        color: inherit;
+        text-decoration: underline;
+      }
+    }
+
+    .modal-text {
+      font-size: $font-size-sm;
+      color: $text-secondary;
+    }
+
+    .detail-item app-icon {
+      color: $text-muted;
+    }
 
     .bookings-page {
       min-height: calc(100vh - $navbar-height);
@@ -212,19 +228,6 @@ import { User } from '../../../../core/models/user.model';
       padding: $spacing-8 0;
     }
 
-    .page-header {
-      margin-bottom: $spacing-6;
-
-      h1 {
-        font-size: $font-size-3xl;
-        font-weight: $font-weight-bold;
-        margin-bottom: $spacing-1;
-      }
-
-      p {
-        color: $text-secondary;
-      }
-    }
 
     .booking-tabs {
       display: flex;
@@ -534,6 +537,10 @@ export class BookingListComponent implements OnInit {
       next: (response) => {
         this.bookings.set(response.data);
         this.calculateCounts();
+        // Vendors with only incoming requests start on that tab
+        if (this.organizerCount() === 0 && this.vendorCount() > 0) {
+          this.activeTab.set('vendor');
+        }
         this.isLoading.set(false);
         this.isRetrying.set(false);
       },

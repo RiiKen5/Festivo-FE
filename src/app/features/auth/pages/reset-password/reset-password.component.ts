@@ -1,5 +1,6 @@
 import { LogoComponent } from '../../../../shared/components/logo/logo.component';
 import { Component, inject, signal, OnInit } from '@angular/core';
+import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
@@ -11,7 +12,7 @@ import { InputComponent } from '../../../../shared/components/input/input.compon
 @Component({
   selector: 'app-reset-password',
   standalone: true,
-  imports: [LogoComponent, CommonModule, RouterModule, ReactiveFormsModule, ButtonComponent, InputComponent],
+  imports: [IconComponent, LogoComponent, CommonModule, RouterModule, ReactiveFormsModule, ButtonComponent, InputComponent],
   template: `
     <div class="auth-page">
       <div class="auth-container">
@@ -67,7 +68,7 @@ import { InputComponent } from '../../../../shared/components/input/input.compon
             </form>
           } @else {
             <div class="auth-success">
-              <div class="auth-success-icon">✅</div>
+              <div class="auth-success-icon" aria-hidden="true"><app-icon name="check-circle" [size]="32"></app-icon></div>
               <h1 class="auth-title">Password reset successful</h1>
               <p class="auth-subtitle">
                 Your password has been successfully reset.<br>

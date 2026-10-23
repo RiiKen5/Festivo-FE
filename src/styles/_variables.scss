@@ -97,7 +97,7 @@ $surface-tint: $primary-50;
 $text-primary: $neutral-900;
 $text-secondary: $neutral-600;
 $text-tertiary: $neutral-500;
-$text-muted: $neutral-400;
+$text-muted: $neutral-500; // used for real text, so it must pass AA (4.8:1)
 $text-inverse: #ffffff;
 $text-link: $primary-600;
 $text-link-hover: $primary-800;

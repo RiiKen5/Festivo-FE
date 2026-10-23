@@ -1,4 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
+import { IconComponent, EVENT_TYPE_ICONS } from '../../../../shared/components/icon/icon.component';
+import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
+import { formatShortDate, formatTime, plural } from '../../../../shared/components/listing-cards/listing-format';
 import { Observable, firstValueFrom } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
@@ -21,7 +24,7 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
 @Component({
   selector: 'app-event-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, ButtonComponent, ModalComponent],
+  imports: [CommonModule, RouterModule, FormsModule, ButtonComponent, ModalComponent, IconComponent, EmptyStateComponent],
   template: `
 
     @if (isLoading()) {
@@ -34,49 +37,36 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
         </div>
       </div>
     } @else if (event()) {
-      <main class="event-detail">
-        <!-- Hero Image -->
-        <div class="event-hero" [style.background-image]="'url(' + (event()?.coverPhoto || 'assets/images/event-placeholder.svg') + ')'">
-          <div class="event-hero__overlay"></div>
-          <div class="event-hero__content container">
+      <main class="event-detail" [class.has-mobile-cta]="showMobileCta()">
+        <!-- Cover + header -->
+        <div class="container event-top">
+          <div class="event-cover">
+            <img [src]="event()?.coverPhoto || 'assets/images/event-placeholder.svg'" [alt]="event()?.coverPhoto ? event()?.title : ''">
+          </div>
+          <header class="event-head">
             <div class="event-badges">
-              <span class="badge badge--primary">{{ eventTypeLabel() }}</span>
+              <span class="pill pill--brand">
+                <app-icon [name]="eventTypeIcon()" [size]="14"></app-icon>
+                {{ eventTypeLabel() }}
+              </span>
               @if (!event()?.isPublic) {
-                <span class="badge badge--warning">Private</span>
+                <span class="pill"><app-icon name="shield" [size]="14"></app-icon>Private · invite only</span>
               }
-              @if (event()?.isPaid) {
-                <span class="badge badge--success">₹{{ event()?.entryFee }}</span>
-              } @else {
-                <span class="badge badge--success">Free</span>
+              @if (event()?.status === 'cancelled') {
+                <span class="pill pill--danger">Cancelled</span>
               }
             </div>
             <h1 class="event-title">{{ event()?.title }}</h1>
-            <div class="event-meta">
-              <div class="meta-item">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                  <line x1="16" y1="2" x2="16" y2="6"/>
-                  <line x1="8" y1="2" x2="8" y2="6"/>
-                  <line x1="3" y1="10" x2="21" y2="10"/>
-                </svg>
-                {{ formatDate(event()?.date) }}
-              </div>
-              <div class="meta-item">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="12" cy="12" r="10"/>
-                  <polyline points="12 6 12 12 16 14"/>
-                </svg>
-                {{ event()?.time }}
-              </div>
-              <div class="meta-item">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/>
-                  <circle cx="12" cy="10" r="3"/>
-                </svg>
-                {{ event()?.locationName || event()?.city }}
-              </div>
-            </div>
-          </div>
+            <ul class="event-meta">
+              <li><app-icon name="calendar" [size]="18"></app-icon>{{ formatDate(event()?.date) }}</li>
+              <li><app-icon name="clock" [size]="18"></app-icon>{{ displayTime() }}</li>
+              <li><app-icon name="map-pin" [size]="18"></app-icon>{{ event()?.locationName || event()?.city }}</li>
+              <li>
+                <app-icon name="ticket" [size]="18"></app-icon>
+                @if (isTicketed()) { ₹{{ event()?.entryFee | number }} per person } @else { Free entry }
+              </li>
+            </ul>
+          </header>
         </div>
 
         <!-- Main Content -->
@@ -110,8 +100,9 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
                       <p>{{ event()?.city }}</p>
                     </div>
                     <a
-                      [href]="'https://maps.google.com/?q=' + (event()?.location?.coordinates?.[1] || '') + ',' + (event()?.location?.coordinates?.[0] || '')"
+                      [href]="mapsUrl()"
                       target="_blank"
+                      rel="noopener"
                       class="location-link"
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -137,10 +128,13 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
                     </div>
                     <div class="organizer-info">
                       <h3>{{ getOrganizer()?.name }}</h3>
-                      <p>{{ getOrganizer()?.eventsOrganized }} events organized</p>
-                      <div class="organizer-rating">
-                        ⭐ {{ getOrganizer()?.ratingAverage | number:'1.1-1' }}
-                      </div>
+                      <p>{{ organizerStat() }}</p>
+                      @if (getOrganizer()?.totalRatings) {
+                        <div class="organizer-rating">
+                          <app-icon name="star" [size]="14"></app-icon>
+                          {{ getOrganizer()?.ratingAverage | number:'1.1-1' }}
+                        </div>
+                      }
                     </div>
                     @if (auth.isAuthenticated() && getOrganizer()?._id !== auth.currentUser()?._id) {
                       <app-button variant="secondary" size="sm" (onClick)="messageOrganizer()">Message</app-button>
@@ -300,7 +294,7 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
                               </span>
                             </div>
                             @if (rsvp.checkedIn) {
-                              <span class="guest-checked">✓ Checked in {{ rsvp.checkedInAt | date:'shortTime' }}</span>
+                              <span class="guest-checked"><app-icon name="check" [size]="14"></app-icon> Checked in {{ rsvp.checkedInAt | date:'shortTime' }}</span>
                             } @else if (rsvp.status === 'going' && isEventOpen()) {
                               <app-button size="sm" variant="secondary" (onClick)="checkInGuest(rsvp)">Check in</app-button>
                             }
@@ -329,7 +323,7 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
               </div>
 
               <!-- Sidebar -->
-              <aside class="event-sidebar">
+              <aside class="event-sidebar" id="event-actions">
                 <div class="sidebar-card">
                   <div class="sidebar-stats">
                     <div class="stat">
@@ -383,7 +377,7 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
                         <!-- User has already RSVP'd -->
                         <div class="rsvp-status-card">
                           <div class="rsvp-status-header">
-                            <span class="rsvp-check">✓</span>
+                            <span class="rsvp-check"><app-icon name="check" [size]="14"></app-icon></span>
                             <span>{{ isTicketed() ? 'You have a ticket!' : userRsvp()?.status === 'going' ? "You're Going!" : userRsvp()?.status === 'maybe' ? "You're Maybe Going" : "You're not going" }}</span>
                           </div>
                           @if (userRsvp()?.status === 'going' && userRsvp()?.checkInCode) {
@@ -459,17 +453,17 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
                   <div class="sidebar-share">
                     <span class="share-label">Share event</span>
                     <div class="share-buttons">
-                      <button class="share-btn" (click)="shareOnTwitter()">
+                      <button type="button" class="share-btn" aria-label="Share on X" (click)="shareOnTwitter()">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                           <path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z"/>
                         </svg>
                       </button>
-                      <button class="share-btn" (click)="shareOnWhatsApp()">
+                      <button type="button" class="share-btn" aria-label="Share on WhatsApp" (click)="shareOnWhatsApp()">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                           <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
                         </svg>
                       </button>
-                      <button class="share-btn" (click)="copyLink()">
+                      <button type="button" class="share-btn" aria-label="Copy link" (click)="copyLink()">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                           <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
                           <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
@@ -483,6 +477,29 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
           </div>
         </div>
       </main>
+
+      @if (showMobileCta()) {
+        <div class="mobile-cta">
+          <div class="mobile-cta__price">
+            @if (userRsvp()?.status === 'going' || userRsvp()?.status === 'maybe') {
+              <strong>{{ userRsvp()?.status === 'going' ? "You're going" : 'Maybe' }}</strong>
+              {{ formatShortDay() }}
+            } @else {
+              <strong>{{ isTicketed() ? '₹' + (event()?.entryFee | number) : 'Free' }}</strong>
+              {{ formatShortDay() }}
+            }
+          </div>
+          @if (!auth.isAuthenticated()) {
+            <app-button [routerLink]="['/auth/login']" [queryParams]="{ returnUrl: returnUrl() }">Log in to join</app-button>
+          } @else if (userRsvp()?.status === 'pending_payment') {
+            <app-button [loading]="isSubmittingRsvp()" (onClick)="completeTicketPayment()">Pay to confirm</app-button>
+          } @else if (userRsvp()) {
+            <app-button variant="secondary" (onClick)="scrollToActions()">{{ isTicketed() ? 'View ticket' : 'View RSVP' }}</app-button>
+          } @else {
+            <app-button (onClick)="rsvpModal = true">{{ isTicketed() ? 'Buy ticket' : 'RSVP' }}</app-button>
+          }
+        </div>
+      }
 
       <!-- Cancel Event Modal -->
       <app-modal
@@ -525,7 +542,7 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
                 [class.active]="selectedRsvpStatus === 'going'"
                 (click)="selectedRsvpStatus = 'going'"
               >
-                <span class="option-icon">✓</span>
+                <span class="option-icon"><app-icon name="check" [size]="16"></app-icon></span>
                 <span class="option-label">Going</span>
               </button>
               <button
@@ -543,7 +560,7 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
                 [class.active]="selectedRsvpStatus === 'not_going'"
                 (click)="selectedRsvpStatus = 'not_going'"
               >
-                <span class="option-icon">✕</span>
+                <span class="option-icon"><app-icon name="x" [size]="16"></app-icon></span>
                 <span class="option-label">Can't go</span>
               </button>
             </div>
@@ -658,11 +675,12 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
         </div>
       </app-modal>
     } @else {
-      <div class="error-state">
-        <span class="error-icon">😕</span>
-        <h2>Event not found</h2>
-        <p>This event may have been removed or doesn't exist.</p>
-        <app-button routerLink="/events">Browse Events</app-button>
+      <div class="container">
+        <div class="not-found-panel">
+          <app-empty-state icon="calendar" title="This event isn't available" description="It may have been removed, or it's a private event. If someone invited you, open the exact invite link they shared.">
+            <app-button routerLink="/events">Browse public events</app-button>
+          </app-empty-state>
+        </div>
       </div>
     }
   `,
@@ -695,62 +713,133 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
       }
     }
 
-    .event-hero {
-      position: relative;
-      height: 400px;
-      background-size: cover;
-      background-position: center;
-      display: flex;
-      align-items: flex-end;
+    .event-top {
+      padding-top: $spacing-6;
+    }
+
+    .event-cover {
+      overflow: hidden;
+      border-radius: $radius-xl;
+      border: 1px solid $border-light;
+      background: $neutral-100;
+      aspect-ratio: 16 / 9;
 
       @include md {
-        height: 500px;
+        aspect-ratio: 21 / 8;
+      }
+
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
       }
     }
 
-    .event-hero__overlay {
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0) 100%);
-    }
-
-    .event-hero__content {
-      position: relative;
-      color: $text-inverse;
-      padding-bottom: $spacing-8;
+    .event-head {
+      padding: $spacing-6 0 $spacing-2;
     }
 
     .event-badges {
       display: flex;
+      flex-wrap: wrap;
       gap: $spacing-2;
-      margin-bottom: $spacing-4;
+      margin-bottom: $spacing-3;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: $radius-full;
+      background: $neutral-100;
+      color: $text-secondary;
+      font-size: $font-size-xs;
+      font-weight: $font-weight-medium;
+
+      &--brand {
+        background: $primary-50;
+        color: $primary-800;
+      }
+
+      &--danger {
+        background: $error-light;
+        color: $error-dark;
+      }
     }
 
     .event-title {
-      font-size: $font-size-3xl;
+      font-size: 1.75rem;
       font-weight: $font-weight-bold;
-      margin-bottom: $spacing-4;
-      // Sits on the cover photo
-      color: $text-inverse;
-      text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+      letter-spacing: -0.02em;
+      line-height: 1.2;
 
       @include md {
-        font-size: $font-size-4xl;
+        font-size: 2.25rem;
       }
     }
 
     .event-meta {
       display: flex;
       flex-wrap: wrap;
-      gap: $spacing-6;
+      gap: $spacing-2 $spacing-6;
+      margin-top: $spacing-4;
+
+      li {
+        display: inline-flex;
+        align-items: center;
+        gap: $spacing-2;
+        font-size: $font-size-sm;
+        color: $text-secondary;
+      }
+
+      app-icon {
+        color: $primary-600;
+      }
     }
 
-    .meta-item {
+    .not-found-panel {
+      @include card;
+      margin-top: $spacing-10;
+    }
+
+    // Primary action pinned to the bottom on phones
+    .mobile-cta {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: $z-sticky;
       display: flex;
       align-items: center;
-      gap: $spacing-2;
-      font-size: $font-size-base;
-      opacity: 0.9;
+      justify-content: space-between;
+      gap: $spacing-4;
+      padding: $spacing-3 $spacing-4 calc(#{$spacing-3} + env(safe-area-inset-bottom));
+      border-top: 1px solid $border-light;
+      background: $bg-primary;
+      box-shadow: 0 -4px 16px rgba(24, 24, 27, 0.06);
+
+      @include lg {
+        display: none;
+      }
+    }
+
+    .mobile-cta__price {
+      display: flex;
+      flex-direction: column;
+      font-size: $font-size-xs;
+      color: $text-tertiary;
+
+      strong {
+        font-size: $font-size-base;
+        color: $text-primary;
+      }
+    }
+
+    .has-mobile-cta {
+      @include max-md {
+        padding-bottom: 88px;
+      }
     }
 
     .event-content {
@@ -1754,6 +1843,38 @@ export class EventDetailComponent implements OnInit {
         this.loadManageData(this.event()!._id);
       }
     });
+  }
+
+  eventTypeIcon(): string {
+    return EVENT_TYPE_ICONS[this.event()?.eventType || ''] || 'party';
+  }
+
+  displayTime(): string {
+    return formatTime(this.event()?.time);
+  }
+
+  formatShortDay(): string {
+    return formatShortDate(this.event()?.date) + ' · ' + this.displayTime();
+  }
+
+  mapsUrl(): string {
+    const e = this.event();
+    const query = [e?.locationName, e?.address, e?.city].filter(Boolean).join(', ');
+    return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(query);
+  }
+
+  organizerStat(): string {
+    const count = this.getOrganizer()?.eventsOrganized || 0;
+    return count ? plural(count, 'event') + ' organized' : 'Organizer on Festivo';
+  }
+
+  // Phones get the main action pinned to the bottom of the screen
+  showMobileCta(): boolean {
+    return !!this.event() && !this.isOrganizer() && this.isEventOpen();
+  }
+
+  scrollToActions(): void {
+    document.getElementById('event-actions')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   eventTypeLabel(): string {

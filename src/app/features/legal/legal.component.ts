@@ -179,7 +179,7 @@ type Page = 'terms' | 'privacy' | 'refunds' | 'contact';
       h2 { font-size: $font-size-lg; margin: $spacing-6 0 $spacing-2; }
       ul { padding-left: $spacing-6; }
       li { margin-bottom: $spacing-1; }
-      a { color: $primary-600; }
+      a { color: $primary-700; text-decoration: underline; text-underline-offset: 2px; }
     }
 
     .legal-nav {

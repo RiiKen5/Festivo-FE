@@ -1,3 +1,4 @@
+import { IconComponent } from '../../shared/components/icon/icon.component';
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
@@ -10,7 +11,7 @@ import { ToastService } from '../../core/services/toast.service';
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, RouterModule, ReactiveFormsModule, ButtonComponent, InputComponent],
+  imports: [IconComponent, CommonModule, RouterModule, ReactiveFormsModule, ButtonComponent, InputComponent],
   template: `
 
     <main class="profile-page">
@@ -141,8 +142,8 @@ import { ToastService } from '../../core/services/toast.service';
                         ></app-input>
                       </div>
                       <div class="form-group">
-                        <label class="form-label">User Type</label>
-                        <select class="form-select" formControlName="userType">
+                        <label class="form-label" for="profile-user-type">I use Festivo to</label>
+                        <select id="profile-user-type" class="form-select" formControlName="userType">
                           <option value="organizer">Event Organizer</option>
                           <option value="helper">Service Provider</option>
                           <option value="attendee">Attendee</option>
@@ -219,7 +220,7 @@ import { ToastService } from '../../core/services/toast.service';
                         <p>{{ auth.currentUser()?.email }}</p>
                       </div>
                       @if (auth.currentUser()?.emailVerified) {
-                        <span class="verified-text">✓ Verified</span>
+                        <span class="verified-text"><app-icon name="check" [size]="14"></app-icon> Verified</span>
                       } @else {
                         <app-button size="sm" variant="secondary" (onClick)="resendVerification()" [loading]="isResendingVerification()">
                           Verify
@@ -542,6 +543,10 @@ import { ToastService } from '../../core/services/toast.service';
       display: inline-block;
       width: 48px;
       height: 24px;
+
+      input:focus-visible + .toggle-slider {
+        box-shadow: $focus-ring;
+      }
 
       input {
         opacity: 0;

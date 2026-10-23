@@ -20,6 +20,12 @@ export class ToastService {
   }
 
   show(toast: Omit<Toast, 'id'>): void {
+    // The error interceptor and the page often report the same failure, and
+    // parallel requests can fail together: show each message once
+    const duplicate = this.toastsSignal().some(t =>
+      t.type === toast.type && (t.message || t.title) === (toast.message || toast.title));
+    if (duplicate) return;
+
     const id = this.generateId();
     const newToast: Toast = { ...toast, id };
 

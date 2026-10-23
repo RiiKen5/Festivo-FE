@@ -1,3 +1,4 @@
+import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute } from '@angular/router';
@@ -14,7 +15,7 @@ import { Booking } from '../../../../core/models/booking.model';
 @Component({
   selector: 'app-dashboard-home',
   standalone: true,
-  imports: [CommonModule, RouterModule, ButtonComponent, CardComponent],
+  imports: [IconComponent, CommonModule, RouterModule, ButtonComponent, CardComponent],
   template: `
 
     <main class="dashboard">
@@ -144,7 +145,7 @@ import { Booking } from '../../../../core/models/booking.model';
                     <div class="loading-placeholder">Loading events...</div>
                   } @else if (upcomingEvents().length === 0) {
                     <div class="empty-card">
-                      <span class="empty-icon">📅</span>
+                      <span class="empty-icon" aria-hidden="true"><app-icon name="calendar" [size]="28"></app-icon></span>
                       <h3>No upcoming events</h3>
                       <p>Create your first event to get started</p>
                       <app-button routerLink="/events/create" size="sm">Create Event</app-button>
@@ -206,7 +207,7 @@ import { Booking } from '../../../../core/models/booking.model';
                     <div class="loading-placeholder">Loading bookings...</div>
                   } @else if (recentBookings().length === 0) {
                     <div class="empty-card">
-                      <span class="empty-icon">📋</span>
+                      <span class="empty-icon" aria-hidden="true"><app-icon name="clipboard" [size]="28"></app-icon></span>
                       <h3>No bookings yet</h3>
                       <p>Book services for your events</p>
                       <app-button routerLink="/services" size="sm" variant="secondary">Browse Services</app-button>
@@ -236,23 +237,23 @@ import { Booking } from '../../../../core/models/booking.model';
                   </div>
                   <div class="actions-grid">
                     <a routerLink="/events/create" class="action-card">
-                      <span class="action-icon">🎉</span>
+                      <span class="action-icon" aria-hidden="true"><app-icon name="party" [size]="22"></app-icon></span>
                       <span class="action-label">Create Event</span>
                     </a>
                     <a routerLink="/services" class="action-card">
-                      <span class="action-icon">🔍</span>
+                      <span class="action-icon" aria-hidden="true"><app-icon name="search" [size]="22"></app-icon></span>
                       <span class="action-label">Find Services</span>
                     </a>
                     <a routerLink="/messages" class="action-card">
-                      <span class="action-icon">💬</span>
+                      <span class="action-icon" aria-hidden="true"><app-icon name="message" [size]="22"></app-icon></span>
                       <span class="action-label">Messages</span>
                     </a>
                     <a routerLink="/dashboard/earnings" class="action-card">
-                      <span class="action-icon">💰</span>
+                      <span class="action-icon" aria-hidden="true"><app-icon name="wallet" [size]="22"></app-icon></span>
                       <span class="action-label">Earnings &amp; Payouts</span>
                     </a>
                     <a routerLink="/profile" class="action-card">
-                      <span class="action-icon">👤</span>
+                      <span class="action-icon" aria-hidden="true"><app-icon name="user" [size]="22"></app-icon></span>
                       <span class="action-label">Edit Profile</span>
                     </a>
                   </div>
@@ -270,7 +271,7 @@ import { Booking } from '../../../../core/models/booking.model';
                   <div class="loading-placeholder">Loading events...</div>
                 } @else if (myEvents().length === 0) {
                   <div class="empty-card">
-                    <span class="empty-icon">📅</span>
+                    <span class="empty-icon" aria-hidden="true"><app-icon name="calendar" [size]="28"></app-icon></span>
                     <h3>No events created yet</h3>
                     <p>Start planning your first event</p>
                     <app-button routerLink="/events/create">Create Event</app-button>
@@ -288,8 +289,8 @@ import { Booking } from '../../../../core/models/booking.model';
                           hoverable
                           [hasFooter]="true"
                         >
-                          <p class="card-location">📍 {{ event.locationName || event.city }}</p>
-                          <p class="card-attendees">👥 {{ event.currentAttendees }} / {{ event.maxAttendees || '∞' }}</p>
+                          <p class="card-location"><app-icon name="map-pin" [size]="14"></app-icon> {{ event.locationName || event.city }}</p>
+                          <p class="card-attendees"><app-icon name="users" [size]="14"></app-icon> {{ event.currentAttendees }} / {{ event.maxAttendees || '∞' }}</p>
                           <p class="card-status">
                             <span class="status-badge" [class]="'status--' + event.status">{{ event.status }}</span>
                           </p>
@@ -339,7 +340,7 @@ import { Booking } from '../../../../core/models/booking.model';
                   <div class="loading-placeholder">Loading bookings...</div>
                 } @else if (recentBookings().length === 0) {
                   <div class="empty-card">
-                    <span class="empty-icon">📋</span>
+                    <span class="empty-icon" aria-hidden="true"><app-icon name="clipboard" [size]="28"></app-icon></span>
                     <h3>No bookings yet</h3>
                     <p>Book services for your upcoming events</p>
                     <app-button routerLink="/services" variant="secondary">Browse Services</app-button>
@@ -432,27 +433,11 @@ import { Booking } from '../../../../core/models/booking.model';
       @include flex-center;
       width: 48px;
       height: 48px;
-      border-radius: $radius-lg;
-
-      &--primary {
-        background: $primary-100;
-        color: $primary-600;
-      }
-
-      &--success {
-        background: $success-light;
-        color: $success-dark;
-      }
-
-      &--warning {
-        background: $warning-light;
-        color: $warning-dark;
-      }
-
-      &--info {
-        background: $info-light;
-        color: $info-dark;
-      }
+      flex-shrink: 0;
+      border-radius: $radius-md;
+      // One quiet style; the number is what matters
+      background: $primary-50;
+      color: $primary-700;
     }
 
     .stat-content {
@@ -556,9 +541,15 @@ import { Booking } from '../../../../core/models/booking.model';
       padding: $spacing-8;
 
       .empty-icon {
-        font-size: 3rem;
-        display: block;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 48px;
+        height: 48px;
         margin-bottom: $spacing-4;
+        border-radius: $radius-full;
+        background: $primary-50;
+        color: $primary-600;
       }
 
       h3 {
@@ -752,13 +743,13 @@ import { Booking } from '../../../../core/models/booking.model';
 
       &:hover {
         background: $primary-50;
-        transform: translateY(-2px);
       }
     }
 
     .action-icon {
-      font-size: 1.5rem;
+      display: inline-flex;
       margin-bottom: $spacing-2;
+      color: $primary-600;
     }
 
     .action-label {

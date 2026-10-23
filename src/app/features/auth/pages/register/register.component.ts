@@ -1,6 +1,7 @@
 import { LogoComponent } from '../../../../shared/components/logo/logo.component';
 import { AuthAsideComponent } from '../../../../shared/components/auth-aside/auth-aside.component';
 import { Component, inject, signal, OnInit, NgZone, PLATFORM_ID, Inject } from '@angular/core';
+import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { isPlatformBrowser, CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
@@ -15,7 +16,7 @@ declare const google: any;
 @Component({
   selector: 'app-register',
   standalone: true,
-  imports: [AuthAsideComponent, LogoComponent, CommonModule, RouterModule, ReactiveFormsModule, ButtonComponent, InputComponent],
+  imports: [IconComponent, AuthAsideComponent, LogoComponent, CommonModule, RouterModule, ReactiveFormsModule, ButtonComponent, InputComponent],
   template: `
     <div class="auth-page">
       <div class="auth-container">
@@ -138,7 +139,7 @@ declare const google: any;
                       formControlName="userType"
                       [value]="type.value"
                     >
-                    <span class="user-type-icon">{{ type.icon }}</span>
+                    <span class="user-type-icon" aria-hidden="true"><app-icon [name]="type.icon" [size]="22"></app-icon></span>
                     <span class="user-type-label">{{ type.label }}</span>
                     <span class="user-type-desc">{{ type.description }}</span>
                   </label>
@@ -294,7 +295,11 @@ declare const google: any;
       text-align: center;
 
       input {
-        display: none;
+        @include visually-hidden;
+      }
+
+      &:has(input:focus-visible) {
+        box-shadow: $focus-ring;
       }
 
       &:hover {
@@ -592,10 +597,10 @@ export class RegisterComponent implements OnInit {
   }
 
   userTypes = [
-    { value: 'organizer', label: 'Organize Events', description: 'Plan & host events', icon: '🎯' },
-    { value: 'helper', label: 'Offer Services', description: 'Provide services', icon: '🛠️' },
-    { value: 'attendee', label: 'Attend Events', description: 'Discover & join', icon: '🎉' },
-    { value: 'all', label: 'Do Everything', description: 'All of the above', icon: '⭐' }
+    { value: 'organizer', label: 'Organize Events', description: 'Plan & host events', icon: 'calendar' },
+    { value: 'helper', label: 'Offer Services', description: 'Provide services', icon: 'store' },
+    { value: 'attendee', label: 'Attend Events', description: 'Discover & join', icon: 'party' },
+    { value: 'all', label: 'Do Everything', description: 'All of the above', icon: 'sparkles' }
   ];
 
   form: FormGroup = this.fb.group({

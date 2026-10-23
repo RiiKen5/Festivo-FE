@@ -1,3 +1,6 @@
+import { IconComponent } from '../../../../shared/components/icon/icon.component';
+import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
+import { plural, priceUnitLabel } from '../../../../shared/components/listing-cards/listing-format';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -20,7 +23,7 @@ import { BookingCreateData } from '../../../../core/models/booking.model';
 @Component({
   selector: 'app-service-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, ButtonComponent, ModalComponent],
+  imports: [CommonModule, FormsModule, RouterModule, ButtonComponent, ModalComponent, IconComponent, EmptyStateComponent],
   template: `
 
     @if (isLoading()) {
@@ -32,7 +35,7 @@ import { BookingCreateData } from '../../../../core/models/booking.model';
         </div>
       </div>
     } @else if (service()) {
-      <main class="service-detail">
+      <main class="service-detail has-mobile-cta">
         <div class="container">
           <!-- Gallery -->
           <div class="service-gallery">
@@ -40,10 +43,8 @@ import { BookingCreateData } from '../../../../core/models/booking.model';
               <img [src]="selectedImage() || service()?.coverImage || 'assets/images/service-placeholder.svg'" [alt]="service()?.serviceName">
               @if (service()?.isVerified) {
                 <div class="verified-badge">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                  </svg>
-                  Verified Vendor
+                  <app-icon name="shield-check" [size]="16"></app-icon>
+                  Verified by Festivo
                 </div>
               }
             </div>
@@ -76,45 +77,44 @@ import { BookingCreateData } from '../../../../core/models/booking.model';
                 <span class="service-category">{{ getCategoryLabel(service()?.category) }}</span>
                 <h1 class="service-title">{{ service()?.serviceName }}</h1>
                 <div class="service-meta">
-                  <div class="service-rating">
-                    <span class="rating-stars">⭐</span>
-                    <span class="rating-value">{{ service()?.ratingAverage | number:'1.1-1' }}</span>
-                    <span class="rating-count">({{ service()?.totalRatings }} reviews)</span>
-                  </div>
-                  <span class="meta-divider">•</span>
-                  <span class="service-bookings">{{ service()?.completedBookings }} bookings completed</span>
-                  <span class="meta-divider">•</span>
-                  <span class="service-location">📍 {{ service()?.city }}</span>
+                  @if (service()?.totalRatings) {
+                    <div class="service-rating">
+                      <app-icon name="star" [size]="16" class="rating-star"></app-icon>
+                      <span class="rating-value">{{ service()?.ratingAverage | number:'1.1-1' }}</span>
+                      <span class="rating-count">({{ count(service()?.totalRatings, 'review') }})</span>
+                    </div>
+                  } @else {
+                    <span class="service-new">New on Festivo</span>
+                  }
+                  @if (service()?.completedBookings) {
+                    <span class="meta-divider" aria-hidden="true">·</span>
+                    <span class="service-bookings">{{ count(service()?.completedBookings, 'booking') }} completed</span>
+                  }
+                  <span class="meta-divider" aria-hidden="true">·</span>
+                  <span class="service-location"><app-icon name="map-pin" [size]="16"></app-icon>{{ service()?.city }}</span>
                 </div>
               </header>
 
               <section class="content-section">
                 <h2>About this service</h2>
                 <p class="service-description">{{ service()?.description }}</p>
-              </section>
-
-              <section class="content-section">
-                <h2>Service Areas</h2>
-                <div class="service-areas">
-                  @for (area of service()?.serviceAreas; track area) {
-                    <span class="area-tag">{{ area }}</span>
-                  }
-                  @if (!service()?.serviceAreas?.length) {
-                    <span class="area-tag">{{ service()?.city }}</span>
-                  }
-                </div>
-              </section>
-
-              @if (service()?.tags?.length) {
-                <section class="content-section">
-                  <h2>Tags</h2>
-                  <div class="service-tags">
-                    @for (tag of service()?.tags; track tag) {
-                      <span class="tag">{{ tag }}</span>
-                    }
+                <dl class="service-facts">
+                  <div>
+                    <dt>Serves</dt>
+                    <dd>{{ (service()?.serviceAreas?.length ? service()?.serviceAreas : [service()?.city])?.join(', ') }}</dd>
                   </div>
-                </section>
-              }
+                  @if (service()?.tags?.length) {
+                    <div>
+                      <dt>Good for</dt>
+                      <dd class="service-tags">
+                        @for (tag of service()?.tags; track tag) {
+                          <span class="tag">{{ tag }}</span>
+                        }
+                      </dd>
+                    </div>
+                  }
+                </dl>
+              </section>
 
               <!-- Provider Info -->
               <section class="content-section">
@@ -133,9 +133,11 @@ import { BookingCreateData } from '../../../../core/models/booking.model';
                       <p class="business-name">{{ service()?.businessName }}</p>
                     }
                     <div class="provider-stats">
-                      <span>⭐ {{ getProvider()?.ratingAverage | number:'1.1-1' }} rating</span>
-                      <span>•</span>
-                      <span>{{ service()?.totalBookings }} total bookings</span>
+                      @if (getProvider()?.totalRatings) {
+                        <span><app-icon name="star" [size]="14" class="rating-star"></app-icon> {{ getProvider()?.ratingAverage | number:'1.1-1' }} vendor rating</span>
+                        <span aria-hidden="true">·</span>
+                      }
+                      <span>{{ count(service()?.totalBookings, 'booking') }} on Festivo</span>
                     </div>
                   </div>
                   @if (auth.isAuthenticated() && getProvider()?._id !== auth.currentUser()?._id) {
@@ -165,7 +167,7 @@ import { BookingCreateData } from '../../../../core/models/booking.model';
                           </svg>
                         }
                       </div>
-                      <span class="rating-label">Based on {{ service()?.totalRatings }} reviews</span>
+                      <span class="rating-label">Based on {{ count(service()?.totalRatings, 'review') }}</span>
                     </div>
 
                     @if (reviews().length > 0) {
@@ -368,7 +370,7 @@ import { BookingCreateData } from '../../../../core/models/booking.model';
                 } @else if (auth.isAuthenticated()) {
                   @if (service()?.availability === 'available') {
                     <app-button fullWidth (onClick)="openBookingModal()">
-                      Book Now
+                      Request booking
                     </app-button>
                     <app-button variant="secondary" fullWidth (onClick)="availabilityModal = true">
                       Check Availability
@@ -392,8 +394,8 @@ import { BookingCreateData } from '../../../../core/models/booking.model';
                     }
                   </app-button>
                 } @else {
-                  <app-button routerLink="/auth/login" fullWidth>
-                    Login to Book
+                  <app-button [routerLink]="['/auth/login']" [queryParams]="{ returnUrl: '/services/' + service()?.slug }" fullWidth>
+                    Log in to book
                   </app-button>
                 }
 
@@ -412,17 +414,17 @@ import { BookingCreateData } from '../../../../core/models/booking.model';
                 <div class="share-section">
                   <span class="share-label">Share this service</span>
                   <div class="share-buttons">
-                    <button class="share-btn" (click)="shareOnWhatsApp()">
+                    <button type="button" class="share-btn" aria-label="Share on WhatsApp" (click)="shareOnWhatsApp()">
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
                       </svg>
                     </button>
-                    <button class="share-btn" (click)="shareOnTwitter()">
+                    <button type="button" class="share-btn" aria-label="Share on X" (click)="shareOnTwitter()">
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
                       </svg>
                     </button>
-                    <button class="share-btn" (click)="copyLink()">
+                    <button type="button" class="share-btn" aria-label="Copy link" (click)="copyLink()">
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
                         <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
@@ -435,6 +437,20 @@ import { BookingCreateData } from '../../../../core/models/booking.model';
           </div>
         </div>
       </main>
+
+      @if (!isOwnService() && service()?.availability === 'available') {
+        <div class="mobile-cta">
+          <div class="mobile-cta__price">
+            <strong>₹{{ service()?.basePrice | number }}</strong>
+            {{ priceUnitText() }}
+          </div>
+          @if (auth.isAuthenticated()) {
+            <app-button (onClick)="openBookingModal()">Request booking</app-button>
+          } @else {
+            <app-button [routerLink]="['/auth/login']" [queryParams]="{ returnUrl: '/services/' + service()?.slug }">Log in to book</app-button>
+          }
+        </div>
+      }
 
       <!-- Booking Modal -->
       <app-modal
@@ -642,11 +658,12 @@ import { BookingCreateData } from '../../../../core/models/booking.model';
         </div>
       </app-modal>
     } @else {
-      <div class="error-state">
-        <span class="error-icon">😕</span>
-        <h2>Service not found</h2>
-        <p>This service may have been removed or doesn't exist.</p>
-        <app-button routerLink="/services">Browse Services</app-button>
+      <div class="container">
+        <div class="not-found-panel">
+          <app-empty-state icon="store" title="This vendor isn't available" description="The listing may have been paused or removed by the vendor.">
+            <app-button routerLink="/services">Browse vendors</app-button>
+          </app-empty-state>
+        </div>
       </div>
     }
   `,
@@ -709,11 +726,93 @@ import { BookingCreateData } from '../../../../core/models/booking.model';
       display: flex;
       align-items: center;
       gap: $spacing-2;
-      padding: $spacing-2 $spacing-4;
-      background: $success;
-      color: white;
+      padding: 6px $spacing-3;
+      background: rgba(255, 255, 255, 0.95);
+      color: $primary-800;
       border-radius: $radius-full;
-      font-weight: $font-weight-medium;
+      font-size: $font-size-sm;
+      font-weight: $font-weight-semibold;
+      box-shadow: $shadow-sm;
+    }
+
+    .service-new {
+      color: $text-tertiary;
+    }
+
+    .rating-star {
+      color: #d97706;
+    }
+
+    .service-location {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .service-facts {
+      display: grid;
+      gap: $spacing-3;
+      margin: $spacing-5 0 0;
+      padding-top: $spacing-4;
+      border-top: 1px solid $border-light;
+
+      div {
+        display: grid;
+        grid-template-columns: 110px 1fr;
+        gap: $spacing-3;
+        font-size: $font-size-sm;
+      }
+
+      dt {
+        color: $text-tertiary;
+      }
+
+      dd {
+        margin: 0;
+      }
+    }
+
+    .not-found-panel {
+      @include card;
+      margin-top: $spacing-10;
+    }
+
+    .mobile-cta {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: $z-sticky;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: $spacing-4;
+      padding: $spacing-3 $spacing-4 calc(#{$spacing-3} + env(safe-area-inset-bottom));
+      border-top: 1px solid $border-light;
+      background: $bg-primary;
+      box-shadow: 0 -4px 16px rgba(24, 24, 27, 0.06);
+
+      @include lg {
+        display: none;
+      }
+    }
+
+    .mobile-cta__price {
+      display: flex;
+      flex-direction: column;
+      font-size: $font-size-xs;
+      color: $text-tertiary;
+
+      strong {
+        font-size: $font-size-base;
+        color: $text-primary;
+      }
+    }
+
+    .has-mobile-cta {
+      @include max-md {
+        padding-bottom: 88px;
+      }
     }
 
     .gallery-thumbnails {
@@ -734,7 +833,7 @@ import { BookingCreateData } from '../../../../core/models/booking.model';
       flex-shrink: 0;
 
       &.active {
-        border-color: $accent-600;
+        border-color: $primary-600;
       }
 
       img {
@@ -825,8 +924,8 @@ import { BookingCreateData } from '../../../../core/models/booking.model';
 
     .area-tag {
       padding: $spacing-2 $spacing-4;
-      background: $accent-50;
-      color: $accent-700;
+      background: $primary-50;
+      color: $primary-800;
       border-radius: $radius-full;
       font-size: $font-size-sm;
     }
@@ -1274,7 +1373,7 @@ import { BookingCreateData } from '../../../../core/models/booking.model';
     .price-value {
       font-size: $font-size-3xl;
       font-weight: $font-weight-bold;
-      color: $accent-600;
+      color: $text-primary;
     }
 
     .price-unit {
@@ -1368,8 +1467,8 @@ import { BookingCreateData } from '../../../../core/models/booking.model';
       transition: all $transition-fast;
 
       &:hover {
-        border-color: $accent-300;
-        color: $accent-600;
+        border-color: $primary-300;
+        color: $primary-600;
       }
     }
 
@@ -1696,8 +1795,20 @@ export class ServiceDetailComponent implements OnInit {
     }
   }
 
-  loadService(slug: string): void {
-    this.serviceService.getServiceBySlug(slug).subscribe({
+  count(n: number | undefined, word: string): string {
+    return plural(n || 0, word);
+  }
+
+  priceUnitText(): string {
+    return priceUnitLabel(this.service()?.priceUnit);
+  }
+
+  loadService(slugOrId: string): void {
+    // Notification links use the service id
+    const request = /^[a-f0-9]{24}$/i.test(slugOrId)
+      ? this.serviceService.getServiceById(slugOrId)
+      : this.serviceService.getServiceBySlug(slugOrId);
+    request.subscribe({
       next: (response) => {
         this.service.set(response.data);
         this.isLoading.set(false);

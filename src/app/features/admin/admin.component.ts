@@ -53,7 +53,7 @@ type Tab = 'overview' | 'payouts' | 'verification' | 'reviews';
           @case ('payouts') {
             <p class="muted">Send each payout by UPI or bank transfer, then record the UTR/reference here. The payee is notified.</p>
             @if (payouts().length === 0) {
-              <p class="empty">No payouts due. 🎉</p>
+              <p class="empty">Nothing to pay out right now.</p>
             }
             @for (p of payouts(); track p._id) {
               <div class="row-card">
@@ -95,7 +95,7 @@ type Tab = 'overview' | 'payouts' | 'verification' | 'reviews';
                   <a [routerLink]="['/services', s.slug]" target="_blank"><strong>{{ s.serviceName }}</strong></a>
                   <div class="muted">
                     {{ s.category }} · {{ s.city }} · ₹{{ s.basePrice | number }} · by {{ s.provider?.name }}
-                    ({{ s.provider?.email }}{{ s.provider?.phone ? ', ' + s.provider.phone : '' }}{{ s.provider?.phoneVerified ? ' ✓' : '' }})
+                    ({{ s.provider?.email }}{{ s.provider?.phone ? ', ' + s.provider.phone : '' }}{{ s.provider?.phoneVerified ? ' (phone verified)' : '' }})
                   </div>
                   @if (s.businessName || s.gstNumber) {
                     <div class="muted">{{ s.businessName }} {{ s.gstNumber ? '· GST ' + s.gstNumber : '' }}</div>
@@ -115,7 +115,7 @@ type Tab = 'overview' | 'payouts' | 'verification' | 'reviews';
             @for (r of reviews(); track r._id) {
               <div class="row-card">
                 <div class="row-main">
-                  <strong>{{ r.rating }}★</strong> for {{ r.service?.serviceName }} by {{ r.reviewer?.name }}
+                  <strong>{{ r.rating }}/5</strong> for {{ r.service?.serviceName }} by {{ r.reviewer?.name }}
                   <p>{{ r.reviewText }}</p>
                   <div class="muted">
                     @if (r.flagReason) { Flagged: {{ r.flagReason }} }

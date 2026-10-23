@@ -1,5 +1,6 @@
 import { ImageUploadComponent } from '../../../../shared/components/image-upload/image-upload.component';
 import { Component, inject, signal, OnInit } from '@angular/core';
+import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormArray } from '@angular/forms';
@@ -13,7 +14,7 @@ import { CustomValidators } from '../../../../shared/validators/custom-validator
 @Component({
   selector: 'app-service-create',
   standalone: true,
-  imports: [
+  imports: [IconComponent, 
     CommonModule,
     RouterModule,
     ReactiveFormsModule,
@@ -51,11 +52,11 @@ import { CustomValidators } from '../../../../shared/validators/custom-validator
 
             <div class="form-row">
               <div class="form-group">
-                <label class="form-label">Category <span class="required">*</span></label>
-                <select class="form-select" formControlName="category">
+                <label class="form-label" for="svc-category">Category <span class="required">*</span></label>
+                <select id="svc-category" class="form-select" formControlName="category">
                   <option value="">Select a category</option>
                   @for (cat of categories; track cat.value) {
-                    <option [value]="cat.value">{{ cat.icon }} {{ cat.label }}</option>
+                    <option [value]="cat.value">{{ cat.label }}</option>
                   }
                 </select>
                 @if (getError('category')) {
@@ -104,8 +105,8 @@ import { CustomValidators } from '../../../../shared/validators/custom-validator
               </div>
 
               <div class="form-group">
-                <label class="form-label">Price Unit <span class="required">*</span></label>
-                <select class="form-select" formControlName="priceUnit">
+                <label class="form-label" for="svc-price-unit">Price Unit <span class="required">*</span></label>
+                <select id="svc-price-unit" class="form-select" formControlName="priceUnit">
                   <option value="">Select unit</option>
                   @for (unit of priceUnits; track unit.value) {
                     <option [value]="unit.value">{{ unit.label }}</option>
@@ -118,7 +119,7 @@ import { CustomValidators } from '../../../../shared/validators/custom-validator
             </div>
 
             <div class="pricing-info">
-              <span class="info-icon">💡</span>
+              <span class="info-icon" aria-hidden="true"><app-icon name="info" [size]="18"></app-icon></span>
               <p>Set a competitive base price. You can negotiate final prices with clients based on their requirements.</p>
             </div>
           </section>
@@ -543,14 +544,14 @@ export class ServiceCreateComponent implements OnInit {
   portfolioImages = signal<string[]>([]);
 
   categories = [
-    { value: 'food' as ServiceCategory, label: 'Food & Catering', icon: '🍽️' },
-    { value: 'decor' as ServiceCategory, label: 'Decoration', icon: '🎨' },
-    { value: 'photography' as ServiceCategory, label: 'Photography', icon: '📸' },
-    { value: 'music' as ServiceCategory, label: 'Music & DJ', icon: '🎵' },
-    { value: 'entertainment' as ServiceCategory, label: 'Entertainment', icon: '🎭' },
-    { value: 'venue' as ServiceCategory, label: 'Venues', icon: '🏛️' },
-    { value: 'cleanup' as ServiceCategory, label: 'Cleanup', icon: '🧹' },
-    { value: 'other' as ServiceCategory, label: 'Other', icon: '✨' }
+    { value: 'food' as ServiceCategory, label: 'Food & Catering', icon: 'utensils' },
+    { value: 'decor' as ServiceCategory, label: 'Decoration', icon: 'flower' },
+    { value: 'photography' as ServiceCategory, label: 'Photography', icon: 'camera' },
+    { value: 'music' as ServiceCategory, label: 'Music & DJ', icon: 'music' },
+    { value: 'entertainment' as ServiceCategory, label: 'Entertainment', icon: 'party' },
+    { value: 'venue' as ServiceCategory, label: 'Venues', icon: 'map-pin' },
+    { value: 'cleanup' as ServiceCategory, label: 'Cleanup', icon: 'sparkles' },
+    { value: 'other' as ServiceCategory, label: 'Other', icon: 'store' }
   ];
 
   priceUnits = [

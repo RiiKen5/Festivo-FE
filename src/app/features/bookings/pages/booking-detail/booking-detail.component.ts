@@ -1,3 +1,6 @@
+import { IconComponent } from '../../../../shared/components/icon/icon.component';
+import { categoryLabel } from '../../../../shared/components/listing-cards/listing-format';
+import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { CommonModule } from '@angular/common';
@@ -19,7 +22,7 @@ import { User } from '../../../../core/models/user.model';
 @Component({
   selector: 'app-booking-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, ButtonComponent, ModalComponent],
+  imports: [CommonModule, RouterModule, FormsModule, ButtonComponent, ModalComponent, IconComponent, EmptyStateComponent],
   template: `
 
     @if (isLoading()) {
@@ -133,9 +136,11 @@ import { User } from '../../../../core/models/user.model';
                     <h3>{{ getServiceName(booking()?.service) }}</h3>
                     <p class="service-category">{{ getServiceCategory() }}</p>
                     <div class="service-meta">
-                      <span>⭐ {{ getServiceRating() | number:'1.1-1' }}</span>
+                      @if (getServiceRating() > 0) {
+                        <span><app-icon name="star" [size]="14"></app-icon> {{ getServiceRating() | number:'1.1-1' }}</span>
+                      }
                       <span>•</span>
-                      <span>{{ getServiceBookings() }} bookings</span>
+                      <span>{{ getServiceBookings() }} completed {{ getServiceBookings() === 1 ? 'booking' : 'bookings' }}</span>
                     </div>
                   </div>
                   <app-button
@@ -188,7 +193,19 @@ import { User } from '../../../../core/models/user.model';
 
               <!-- Actions -->
               <div class="actions-card">
-                <h3>Actions</h3>
+                <h3>Next steps</h3>
+
+                <!-- Status notes, so this card is never empty -->
+                @if (booking()?.status === 'cancelled' || booking()?.status === 'refunded') {
+                  <p class="action-hint">This booking was cancelled{{ booking()?.refundedAmount ? ' and ₹' + (booking()?.refundedAmount | number) + ' was refunded' : '' }}.</p>
+                } @else if (isVendor() && booking()?.status === 'completed') {
+                  <p class="action-hint">Completed. Online payments for this booking are paid out to your account.</p>
+                  <app-button variant="secondary" fullWidth routerLink="/dashboard/earnings">View earnings</app-button>
+                } @else if (isVendor() && getBalance() <= 0 && booking()?.status === 'confirmed') {
+                  <p class="action-hint">Paid in full. Festivo releases the money to you after the organizer marks the booking complete.</p>
+                } @else if (isVendor() && booking()?.status === 'confirmed') {
+                  <p class="action-hint">Confirmed. The organizer can now pay online.</p>
+                }
 
                 @if (isVendor()) {
                   <!-- Vendor Actions -->
@@ -262,8 +279,8 @@ import { User } from '../../../../core/models/user.model';
                 <div class="event-info">
                   <p class="event-title">{{ getEventTitle(booking()?.event) }}</p>
                   <div class="event-meta">
-                    <span>📅 {{ getEventDate() | date:'mediumDate' }}</span>
-                    <span>📍 {{ getEventLocation() }}</span>
+                    <span><app-icon name="calendar" [size]="14"></app-icon> {{ getEventDate() | date:'mediumDate' }}</span>
+                    <span><app-icon name="map-pin" [size]="14"></app-icon> {{ getEventLocation() }}</span>
                   </div>
                 </div>
                 <app-button
@@ -494,11 +511,18 @@ import { User } from '../../../../core/models/user.model';
         </div>
       </app-modal>
     } @else {
-      <div class="error-state">
-        <span class="error-icon">😕</span>
-        <h2>Booking not found</h2>
-        <p>This booking may have been removed or doesn't exist.</p>
-        <app-button routerLink="/bookings">Back to Bookings</app-button>
+      <div class="container">
+        <div class="not-found-panel">
+          @if (loadFailedTemporarily()) {
+            <app-empty-state icon="alert-triangle" title="We couldn't load this booking" description="Check your connection and try again. Nothing about your booking has changed.">
+              <app-button (onClick)="retryLoad()">Try again</app-button>
+            </app-empty-state>
+          } @else {
+            <app-empty-state icon="calendar" title="We couldn't open this booking" description="It may belong to a different account. Bookings are only visible to the organizer and the vendor.">
+              <app-button routerLink="/bookings">Go to my bookings</app-button>
+            </app-empty-state>
+          }
+        </div>
       </div>
     }
   `,
@@ -559,6 +583,29 @@ import { User } from '../../../../core/models/user.model';
       @include lg {
         grid-template-columns: 1fr 350px;
       }
+
+      // Phones: summary, then what to do next, then the details
+      @include max-md {
+        display: flex;
+        flex-direction: column;
+        gap: $spacing-4;
+
+        .booking-main,
+        .booking-sidebar {
+          display: contents;
+        }
+
+        .booking-header { order: 1; }
+        .actions-card { order: 2; }
+        .detail-card { order: 3; }
+        .contact-card { order: 4; }
+        .event-card { order: 5; }
+      }
+    }
+
+    .not-found-panel {
+      @include card;
+      margin-top: $spacing-10;
     }
 
     .booking-header {
@@ -680,8 +727,18 @@ import { User } from '../../../../core/models/user.model';
 
     .service-card {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       gap: $spacing-4;
+
+      .service-info {
+        flex: 1 1 160px;
+        min-width: 0;
+      }
+
+      h3 {
+        font-size: $font-size-base;
+      }
     }
 
     .service-image {
@@ -950,6 +1007,7 @@ export class BookingDetailComponent implements OnInit {
 
   booking = signal<Booking | null>(null);
   isLoading = signal(true);
+  loadFailedTemporarily = signal(false);
   actionLoading = signal(false);
   showCancelModal = signal(false);
   showPaymentModal = signal(false);
@@ -1037,10 +1095,20 @@ export class BookingDetailComponent implements OnInit {
         this.paymentAmount = this.getBalance();
         this.isLoading.set(false);
       },
-      error: () => {
+      error: (err) => {
+        // Only "not found / not yours" should read as a missing booking
+        this.loadFailedTemporarily.set(![403, 404].includes(err?.status));
         this.isLoading.set(false);
       }
     });
+  }
+
+  retryLoad(): void {
+    const id = this.route.snapshot.paramMap.get('id');
+    if (!id) return;
+    this.isLoading.set(true);
+    this.loadFailedTemporarily.set(false);
+    this.loadBooking(id);
   }
 
   isVendor(): boolean {
@@ -1068,7 +1136,7 @@ export class BookingDetailComponent implements OnInit {
 
   getServiceCategory(): string {
     const service = this.booking()?.service as Service;
-    return service?.category || '';
+    return service?.category ? categoryLabel(service.category) : '';
   }
 
   getServiceRating(): number {

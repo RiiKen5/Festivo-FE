@@ -1,3 +1,4 @@
+import { IconComponent } from '../icon/icon.component';
 import { Component, Input, Output, EventEmitter, forwardRef, booleanAttribute } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR, FormsModule } from '@angular/forms';
@@ -8,7 +9,7 @@ export type InputSize = 'sm' | 'md' | 'lg';
 @Component({
   selector: 'app-input',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [IconComponent, CommonModule, FormsModule],
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
@@ -44,8 +45,8 @@ export type InputSize = 'sm' | 'md' | 'lg';
           class="input-field"
         />
         @if (type === 'password') {
-          <button type="button" class="input-toggle" (click)="togglePassword()">
-            {{ showPassword ? '👁️' : '👁️‍🗨️' }}
+          <button type="button" class="input-toggle" (click)="togglePassword()" [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'" [attr.aria-pressed]="showPassword">
+            <app-icon [name]="showPassword ? 'eye-off' : 'eye'" [size]="18"></app-icon>
           </button>
         }
         @if (suffixIcon && type !== 'password') {
