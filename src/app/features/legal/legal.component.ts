@@ -4,12 +4,14 @@ import { ActivatedRoute, RouterModule } from '@angular/router';
 
 // Business details shown on the legal and contact pages.
 // TODO(owner): replace every bracketed value before going live.
+// As on the Udyam Registration Certificate
 const BUSINESS = {
-  legalName: '[Registered business name]',
-  address: '[Registered address, Pune, Maharashtra, India]',
-  supportEmail: '[support@yourdomain.in]',
-  supportPhone: '[+91 XXXXX XXXXX]',
-  grievanceOfficer: '[Grievance officer name]',
+  legalName: 'Paathly',
+  registration: 'Udyam Registration No. UDYAM-KR-02-0136814',
+  address: 'No. 3, Sai Brindavan, Poojar Estate 1st Cross Road, Block 3, Bengaluru, Karnataka 560098, India',
+  supportEmail: 'admin@paathly.in',
+  supportPhone: '+91 63620 75832',
+  grievanceOfficer: 'Grievance Officer',
   lastUpdated: '23 October 2026'
 };
 
@@ -35,7 +37,7 @@ type Page = 'terms' | 'privacy' | 'refunds' | 'contact';
             <h1>Terms of Service</h1>
             <p class="updated">Last updated {{ b.lastUpdated }}</p>
 
-            <p>Festivo is operated by {{ b.legalName }} ("Festivo", "we"). By creating an account or using Festivo you agree to these terms.</p>
+            <p>Festivo is operated by {{ b.legalName }} ({{ b.registration }}), {{ b.address }} ("Festivo", "we"). By creating an account or using Festivo you agree to these terms.</p>
 
             <h2>1. What Festivo does</h2>
             <p>Festivo is a marketplace where organizers plan events, book independent service providers ("vendors") such as bakers, decorators and photographers, and sell or share event tickets. Vendors are independent businesses, not Festivo employees. Each vendor is responsible for the services they provide.</p>
@@ -70,7 +72,7 @@ type Page = 'terms' | 'privacy' | 'refunds' | 'contact';
             <p>Festivo provides the marketplace "as is". To the extent the law allows, our liability for any claim is limited to the fees we earned on the booking or ticket concerned. Nothing in these terms limits rights you have under the Consumer Protection Act, 2019.</p>
 
             <h2>10. Disputes and governing law</h2>
-            <p>Contact us first at {{ b.supportEmail }} and we will try to resolve the issue. These terms are governed by the laws of India, and courts in Pune, Maharashtra have jurisdiction.</p>
+            <p>Contact us first at {{ b.supportEmail }} and we will try to resolve the issue. These terms are governed by the laws of India, and courts in Bengaluru, Karnataka have jurisdiction.</p>
 
             <h2>11. Changes</h2>
             <p>We may update these terms. We will notify you of significant changes; continuing to use Festivo means you accept them.</p>
@@ -148,7 +150,7 @@ type Page = 'terms' | 'privacy' | 'refunds' | 'contact';
             <dl class="contact">
               <dt>Email</dt><dd><a [href]="'mailto:' + b.supportEmail">{{ b.supportEmail }}</a></dd>
               <dt>Phone</dt><dd>{{ b.supportPhone }} (Mon–Sat, 10am–7pm IST)</dd>
-              <dt>Business</dt><dd>{{ b.legalName }}</dd>
+              <dt>Business</dt><dd>{{ b.legalName }} · {{ b.registration }}</dd>
               <dt>Address</dt><dd>{{ b.address }}</dd>
             </dl>
             <p>For a booking or payment issue, include the booking link so we can help faster.</p>
