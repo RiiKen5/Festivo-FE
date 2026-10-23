@@ -1,5 +1,5 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
+import { Observable, firstValueFrom } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -8,6 +8,7 @@ import { ButtonComponent } from '../../../../shared/components/button/button.com
 import { ModalComponent } from '../../../../shared/components/modal/modal.component';
 import { EventService } from '../../../../core/services/event.service';
 import { RsvpService } from '../../../../core/services/rsvp.service';
+import { BookingService } from '../../../../core/services/booking.service';
 import { TaskService } from '../../../../core/services/task.service';
 import { FavoriteService } from '../../../../core/services/favorite.service';
 import { AuthService } from '../../../../core/services/auth.service';
@@ -41,7 +42,7 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
           <div class="event-hero__overlay"></div>
           <div class="event-hero__content container">
             <div class="event-badges">
-              <span class="badge badge--primary">{{ event()?.eventType }}</span>
+              <span class="badge badge--primary">{{ eventTypeLabel() }}</span>
               @if (!event()?.isPublic) {
                 <span class="badge badge--warning">Private</span>
               }
@@ -242,6 +243,90 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
                       </div>
                     }
                   </section>
+
+                  <!-- Manage Event (Organizer Only) -->
+                  <section class="event-section manage-section" id="manage-event">
+                    <div class="section-header">
+                      <h2 class="section-title">Manage Event</h2>
+                      <span class="manage-status" [class]="'manage-status--' + event()?.status">{{ statusLabel() }}</span>
+                    </div>
+
+                    <p class="manage-hint">
+                      @if (!event()?.isPublished) {
+                        This event is not published yet.
+                        {{ event()?.isPublic ? 'Publish it to list it on Explore Events.' : 'It is private: only people with your invite link can see it.' }}
+                      } @else if (event()?.isPublic) {
+                        Published and listed on Explore Events.
+                      } @else {
+                        Published privately: only people with your invite link can see it.
+                      }
+                    </p>
+
+                    <div class="manage-actions">
+                      @if (isEventOpen()) {
+                        @if (!event()?.isPublished) {
+                          <app-button size="sm" [loading]="isManaging()" (onClick)="publishEvent()">Publish</app-button>
+                        } @else {
+                          <app-button size="sm" variant="secondary" [loading]="isManaging()" (onClick)="unpublishEvent()">Unpublish</app-button>
+                        }
+                        @if (hasEventStarted()) {
+                          <app-button size="sm" variant="secondary" [loading]="isManaging()" (onClick)="completeEvent()">Mark as completed</app-button>
+                        }
+                        <app-button size="sm" variant="ghost" (onClick)="showCancelEventModal = true">Cancel event</app-button>
+                      }
+                    </div>
+
+                    <h3 class="manage-subtitle">
+                      Guests · {{ goingGuests().length }} confirmed ({{ headcount() }} people) · {{ checkedInCount() }} checked in
+                    </h3>
+
+                    @if (goingGuests().length > 0 && isEventOpen()) {
+                      <div class="checkin-by-code">
+                        <input class="form-input" placeholder="Check-in code" [(ngModel)]="checkInCode" (keyup.enter)="checkInWithCode()">
+                        <app-button size="sm" [disabled]="!checkInCode.trim()" (onClick)="checkInWithCode()">Check in</app-button>
+                      </div>
+                    }
+
+                    @if (guests().length === 0) {
+                      <p class="manage-empty">No RSVPs yet. Share your invite link to get people coming.</p>
+                    } @else {
+                      <ul class="guest-list">
+                        @for (rsvp of guests(); track rsvp._id) {
+                          <li class="guest">
+                            <div class="guest-info">
+                              <span class="guest-name">{{ attendeeName(rsvp) }}</span>
+                              <span class="guest-meta">
+                                {{ rsvpStatusLabel(rsvp.status) }}
+                                @if (rsvp.guestsCount) { · +{{ rsvp.guestsCount }} guest(s) }
+                                @if (rsvp.paymentStatus === 'paid') { · paid ₹{{ rsvp.amountPaid }} }
+                              </span>
+                            </div>
+                            @if (rsvp.checkedIn) {
+                              <span class="guest-checked">✓ Checked in {{ rsvp.checkedInAt | date:'shortTime' }}</span>
+                            } @else if (rsvp.status === 'going' && isEventOpen()) {
+                              <app-button size="sm" variant="secondary" (onClick)="checkInGuest(rsvp)">Check in</app-button>
+                            }
+                          </li>
+                        }
+                      </ul>
+                    }
+
+                    <h3 class="manage-subtitle">Vendors booked</h3>
+                    @if (eventBookings().length === 0) {
+                      <p class="manage-empty">No vendors booked yet. <a routerLink="/services">Find services</a> for this event.</p>
+                    } @else {
+                      <ul class="guest-list">
+                        @for (booking of eventBookings(); track booking._id) {
+                          <li class="guest">
+                            <div class="guest-info">
+                              <a class="guest-name" [routerLink]="['/bookings', booking._id]">{{ booking.service?.serviceName }}</a>
+                              <span class="guest-meta">{{ booking.vendor?.name }} · ₹{{ booking.priceAgreed | number }} · {{ booking.status }} · {{ booking.paymentStatus }}</span>
+                            </div>
+                          </li>
+                        }
+                      </ul>
+                    }
+                  </section>
                 }
               </div>
 
@@ -276,7 +361,7 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
                         <app-button [routerLink]="['/events', event()?.slug, 'edit']" fullWidth>
                           Edit Event
                         </app-button>
-                        <app-button variant="secondary" fullWidth (onClick)="showManageOptions = true">
+                        <app-button variant="secondary" fullWidth (onClick)="scrollToManage()">
                           Manage Event
                         </app-button>
                       } @else if (isLoadingRsvp()) {
@@ -400,6 +485,24 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
           </div>
         </div>
       </main>
+
+      <!-- Cancel Event Modal -->
+      <app-modal
+        [isOpen]="showCancelEventModal"
+        title="Cancel Event"
+        (onClose)="showCancelEventModal = false"
+        [showFooter]="true"
+      >
+        <p>Everyone who RSVP'd will be notified. Paid tickets are refunded in full, and vendor bookings are cancelled under the booking refund policy.</p>
+        <div class="form-group">
+          <label class="form-label">Reason (shared with guests and vendors)</label>
+          <textarea class="form-textarea" rows="3" [(ngModel)]="cancelReason" placeholder="e.g. Venue unavailable"></textarea>
+        </div>
+        <div modal-footer>
+          <app-button variant="ghost" (onClick)="showCancelEventModal = false">Keep event</app-button>
+          <app-button variant="danger" [loading]="isManaging()" (onClick)="cancelEvent()">Cancel event</app-button>
+        </div>
+      </app-modal>
 
       <!-- RSVP Modal -->
       <app-modal
@@ -629,6 +732,9 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
       font-size: $font-size-3xl;
       font-weight: $font-weight-bold;
       margin-bottom: $spacing-4;
+      // Sits on the cover photo
+      color: $text-inverse;
+      text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
 
       @include md {
         font-size: $font-size-4xl;
@@ -861,6 +967,82 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
         border-color: $primary-300;
         color: $primary-600;
       }
+    }
+
+    .manage-hint,
+    .manage-empty {
+      color: $text-secondary;
+      font-size: $font-size-sm;
+    }
+
+    .manage-status {
+      font-size: $font-size-xs;
+      padding: 2px $spacing-2;
+      border-radius: $radius-full;
+      background: $neutral-100;
+      text-transform: capitalize;
+
+      &--active { background: $success-light; color: $success-dark; }
+      &--cancelled { background: $error-light; color: $error-dark; }
+    }
+
+    .manage-actions {
+      display: flex;
+      gap: $spacing-2;
+      flex-wrap: wrap;
+      margin: $spacing-3 0 $spacing-6;
+    }
+
+    .manage-subtitle {
+      font-size: $font-size-base;
+      margin: $spacing-6 0 $spacing-3;
+    }
+
+    .checkin-by-code app-button {
+      white-space: nowrap;
+    }
+
+    .checkin-by-code {
+      display: flex;
+      gap: $spacing-2;
+      max-width: 360px;
+      margin-bottom: $spacing-3;
+    }
+
+    .guest-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .guest {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: $spacing-3;
+      padding: $spacing-3 0;
+      border-bottom: 1px solid $border-light;
+    }
+
+    .guest-info {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .guest-name {
+      font-weight: $font-weight-medium;
+    }
+
+    .guest-meta {
+      font-size: $font-size-sm;
+      color: $text-secondary;
+    }
+
+    .guest-checked {
+      font-size: $font-size-sm;
+      color: $success-dark;
+      white-space: nowrap;
     }
 
     .invite-box {
@@ -1335,6 +1517,7 @@ export class EventDetailComponent implements OnInit {
   private router = inject(Router);
   private eventService = inject(EventService);
   private rsvpService = inject(RsvpService);
+  private bookingService = inject(BookingService);
   private taskService = inject(TaskService);
   private favoriteService = inject(FavoriteService);
   private toast = inject(ToastService);
@@ -1373,7 +1556,14 @@ export class EventDetailComponent implements OnInit {
   };
 
   rsvpModal = false;
-  showManageOptions = false;
+
+  // Organizer management
+  guests = signal<Rsvp[]>([]);
+  eventBookings = signal<any[]>([]);
+  isManaging = signal(false);
+  showCancelEventModal = false;
+  cancelReason = '';
+  checkInCode = '';
   selectedRsvpStatus: RsvpStatus | null = null;
   guestsCount = 0;
 
@@ -1408,6 +1598,7 @@ export class EventDetailComponent implements OnInit {
           const organizerId = typeof organizer === 'object' ? (organizer as User)._id : organizer;
           if (organizerId === this.auth.currentUser()?._id) {
             this.loadTasks(response.data._id);
+            this.loadManageData(response.data._id);
           }
         }
       },
@@ -1458,6 +1649,118 @@ export class EventDetailComponent implements OnInit {
       month: 'long',
       day: 'numeric'
     });
+  }
+
+  // ---- Organizer management ----
+
+  loadManageData(eventId: string): void {
+    this.rsvpService.getEventRsvps(eventId).subscribe({
+      next: (response) => this.guests.set(response.data.filter(r => r.status !== 'cancelled'))
+    });
+    this.bookingService.getEventBookings(eventId).subscribe({
+      next: (response) => this.eventBookings.set(response.data)
+    });
+  }
+
+  scrollToManage(): void {
+    document.getElementById('manage-event')?.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  goingGuests(): Rsvp[] {
+    return this.guests().filter(r => r.status === 'going');
+  }
+
+  headcount(): number {
+    return this.goingGuests().reduce((sum, r) => sum + 1 + (r.guestsCount || 0), 0);
+  }
+
+  checkedInCount(): number {
+    return this.guests().filter(r => r.checkedIn).length;
+  }
+
+  isEventOpen(): boolean {
+    return !['cancelled', 'completed'].includes(this.event()?.status || '');
+  }
+
+  hasEventStarted(): boolean {
+    const date = this.event()?.date;
+    return !!date && new Date(date).setHours(0, 0, 0, 0) <= Date.now();
+  }
+
+  statusLabel(): string {
+    const labels: Record<string, string> = {
+      draft: 'Draft', planning: 'Planning', active: 'Published', completed: 'Completed', cancelled: 'Cancelled'
+    };
+    return labels[this.event()?.status || ''] || '';
+  }
+
+  rsvpStatusLabel(status: RsvpStatus): string {
+    const labels: Record<RsvpStatus, string> = {
+      going: 'Going', maybe: 'Maybe', not_going: "Can't go", cancelled: 'Cancelled', pending_payment: 'Awaiting payment'
+    };
+    return labels[status];
+  }
+
+  attendeeName(rsvp: Rsvp): string {
+    return typeof rsvp.attendee === 'object' ? rsvp.attendee.name : 'Guest';
+  }
+
+  private runEventAction(request: Observable<any>, success: string): void {
+    const event = this.event();
+    if (!event) return;
+    this.isManaging.set(true);
+    request.subscribe({
+      next: (response) => {
+        this.isManaging.set(false);
+        this.toast.success(success, response?.message);
+        this.loadEvent(event._id);
+      },
+      error: () => this.isManaging.set(false)
+    });
+  }
+
+  publishEvent(): void {
+    this.runEventAction(this.eventService.publishEvent(this.event()!._id), 'Event published');
+  }
+
+  unpublishEvent(): void {
+    this.runEventAction(this.eventService.unpublishEvent(this.event()!._id), 'Event unpublished');
+  }
+
+  completeEvent(): void {
+    if (!confirm('Mark this event as completed? Ticket revenue will become due for payout.')) return;
+    this.runEventAction(this.eventService.completeEvent(this.event()!._id), 'Event completed');
+  }
+
+  cancelEvent(): void {
+    this.showCancelEventModal = false;
+    this.runEventAction(this.eventService.cancelEvent(this.event()!._id, this.cancelReason || undefined), 'Event cancelled');
+  }
+
+  checkInGuest(rsvp: Rsvp): void {
+    this.rsvpService.checkIn(rsvp._id).subscribe({
+      next: () => {
+        this.toast.success('Checked in', `${this.attendeeName(rsvp)} is checked in.`);
+        this.loadManageData(this.event()!._id);
+      }
+    });
+  }
+
+  checkInWithCode(): void {
+    const code = this.checkInCode.trim();
+    if (!code) return;
+    this.rsvpService.checkInByCode(this.event()!._id, code).subscribe({
+      next: (response: any) => {
+        this.checkInCode = '';
+        this.toast.success('Checked in', `${response.data?.attendee?.name || 'Guest'} is checked in.`);
+        this.loadManageData(this.event()!._id);
+      }
+    });
+  }
+
+  eventTypeLabel(): string {
+    const type = this.event()?.eventType || '';
+    return type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   }
 
   isTicketed(): boolean {

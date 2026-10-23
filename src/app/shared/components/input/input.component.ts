@@ -2,7 +2,7 @@ import { Component, Input, Output, EventEmitter, forwardRef, booleanAttribute } 
 import { CommonModule } from '@angular/common';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR, FormsModule } from '@angular/forms';
 
-export type InputType = 'text' | 'email' | 'password' | 'number' | 'tel' | 'url' | 'search';
+export type InputType = 'text' | 'email' | 'password' | 'number' | 'tel' | 'url' | 'search' | 'date' | 'time';
 export type InputSize = 'sm' | 'md' | 'lg';
 
 @Component({

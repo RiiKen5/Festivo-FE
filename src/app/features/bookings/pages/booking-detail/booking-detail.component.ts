@@ -180,7 +180,7 @@ import { User } from '../../../../core/models/user.model';
                     <p>{{ getContactEmail() }}</p>
                   </div>
                 </div>
-                <app-button variant="secondary" fullWidth routerLink="/messages">
+                <app-button variant="secondary" fullWidth (onClick)="messageContact()">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
                   </svg>
@@ -1110,6 +1110,15 @@ export class BookingDetailComponent implements OnInit {
   }
 
   // Contact helpers
+  // Open the conversation with the other party (vendor or organizer)
+  messageContact(): void {
+    const user = this.isVendor()
+      ? this.booking()?.organizer as User
+      : this.booking()?.vendor as User;
+    const userId = typeof user === 'object' ? user?._id : user;
+    this.router.navigate(userId ? ['/messages', userId] : ['/messages']);
+  }
+
   getContactName(): string {
     const user = this.isVendor()
       ? this.booking()?.organizer as User

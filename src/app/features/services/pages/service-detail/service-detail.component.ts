@@ -1767,14 +1767,14 @@ export class ServiceDetailComponent implements OnInit {
 
   loadUserEvents(): void {
     this.isLoadingEvents.set(true);
-    this.eventService.getMyEvents({ status: 'planning' }).subscribe({
+    this.eventService.getMyEvents({ limit: 100 }).subscribe({
       next: (response) => {
-        // Filter to only show upcoming events (date >= today)
+        // Vendors can be booked for any upcoming event that isn't cancelled or over
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const upcomingEvents = response.data.filter(event => {
           const eventDate = new Date(event.date);
-          return eventDate >= today;
+          return eventDate >= today && !['cancelled', 'completed'].includes(event.status);
         });
         this.userEvents.set(upcomingEvents);
         this.isLoadingEvents.set(false);

@@ -1,3 +1,4 @@
+import { ImageUploadComponent } from '../../../../shared/components/image-upload/image-upload.component';
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
@@ -20,7 +21,7 @@ import { CustomValidators } from '../../../../shared/validators/custom-validator
     NavbarComponent,
     ButtonComponent,
     InputComponent
-  ],
+  , ImageUploadComponent],
   template: `
     <app-navbar></app-navbar>
 
@@ -209,23 +210,29 @@ import { CustomValidators } from '../../../../shared/validators/custom-validator
           <!-- Portfolio Section -->
           <section class="form-section">
             <h2>Portfolio Images</h2>
-            <p class="section-desc">Add images to showcase your work (URLs for now)</p>
+            <p class="section-desc">Great photos of your past work are the #1 reason people book. Upload a cover photo and a few portfolio shots.</p>
 
             <div class="form-group">
-              <app-input
-                label="Cover Image URL"
-                formControlName="coverImage"
-                placeholder="https://example.com/image.jpg"
-              ></app-input>
+              <label class="form-label">Cover Photo</label>
+              @if (serviceForm.get('coverImage')?.value) {
+                <div class="portfolio-preview">
+                  <div class="portfolio-item portfolio-item--cover">
+                    <img [src]="serviceForm.get('coverImage')?.value" alt="Cover" (error)="onImageError($event)">
+                    <button type="button" class="remove-img" (click)="serviceForm.patchValue({ coverImage: '' })">×</button>
+                  </div>
+                </div>
+              }
+              <app-image-upload label="Upload cover photo" (uploaded)="serviceForm.patchValue({ coverImage: $event })"></app-image-upload>
             </div>
 
             <div class="form-group">
               <label class="form-label">Portfolio Images</label>
               <div class="portfolio-input">
+                <app-image-upload label="Upload photos" [multiple]="true" (uploaded)="addUploadedImage($event)"></app-image-upload>
                 <input
                   type="text"
                   class="form-input"
-                  placeholder="Paste image URL and press Enter"
+                  placeholder="…or paste an image URL and press Enter"
                   (keydown.enter)="addPortfolioImage($event)"
                   #portfolioInput
                 >
@@ -258,6 +265,18 @@ import { CustomValidators } from '../../../../shared/validators/custom-validator
   styles: [`
     @use '../../../../../styles/variables' as *;
     @use '../../../../../styles/mixins' as *;
+
+    .portfolio-input {
+      display: flex;
+      gap: $spacing-3;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: $spacing-3;
+
+      .form-input {
+        flex: 1 1 240px;
+      }
+    }
 
     .service-create-page {
       min-height: calc(100vh - $navbar-height);
@@ -653,6 +672,10 @@ export class ServiceCreateComponent implements OnInit {
       this.portfolioImages.update(images => [...images, value]);
       input.value = '';
     }
+  }
+
+  addUploadedImage(url: string): void {
+    this.portfolioImages.update(images => [...images, url]);
   }
 
   removePortfolioImage(index: number): void {

@@ -217,21 +217,6 @@ import { ToastService } from '../../core/services/toast.service';
                   <div class="security-options">
                     <div class="option-card">
                       <div class="option-info">
-                        <h4>Two-Factor Authentication</h4>
-                        <p>Add an extra layer of security to your account</p>
-                      </div>
-                      <label class="toggle" [class.toggle--loading]="isTogglingTwoFactor()">
-                        <input
-                          type="checkbox"
-                          [checked]="auth.currentUser()?.twoFactorEnabled"
-                          [disabled]="isTogglingTwoFactor()"
-                          (change)="toggle2FA($event)">
-                        <span class="toggle-slider"></span>
-                      </label>
-                    </div>
-
-                    <div class="option-card">
-                      <div class="option-info">
                         <h4>Email Verified</h4>
                         <p>{{ auth.currentUser()?.email }}</p>
                       </div>

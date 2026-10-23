@@ -365,3 +365,16 @@ table {
 @include md {
   .hide-desktop { display: none !important; }
 }
+
+// Form controls used directly in page templates
+.form-input,
+.form-select,
+.form-textarea {
+  @include input-base;
+  @include input-md;
+  width: 100%;
+}
+
+.form-textarea {
+  resize: vertical;
+}

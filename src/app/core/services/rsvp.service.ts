@@ -39,7 +39,7 @@ export class RsvpService {
    * GET /api/v1/rsvps/event/:eventId
    */
   getEventRsvps(eventId: string): Observable<RsvpsResponse> {
-    return this.api.get<RsvpsResponse>(`${this.endpoint}/event/${eventId}`);
+    return this.api.get<RsvpsResponse>(`${this.endpoint}/event/${eventId}`, { limit: 500 });
   }
 
   /**
@@ -47,7 +47,7 @@ export class RsvpService {
    * GET /api/v1/rsvps/my-rsvps
    */
   getMyRsvps(): Observable<RsvpsResponse> {
-    return this.api.get<RsvpsResponse>(`${this.endpoint}/my-rsvps`);
+    return this.api.get<RsvpsResponse>(`${this.endpoint}/my-rsvps`, { limit: 100 });
   }
 
   /**
@@ -72,5 +72,13 @@ export class RsvpService {
    */
   checkIn(rsvpId: string): Observable<RsvpResponse> {
     return this.api.post<RsvpResponse>(`${this.endpoint}/${rsvpId}/check-in`, {});
+  }
+
+  /**
+   * Check in a guest by the code shown on their ticket
+   * POST /api/v1/rsvps/check-in-code
+   */
+  checkInByCode(eventId: string, code: string): Observable<RsvpResponse> {
+    return this.api.post<RsvpResponse>(`${this.endpoint}/check-in-code`, { eventId, code });
   }
 }

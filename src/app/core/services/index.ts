@@ -13,3 +13,4 @@ export * from './rsvp.service';
 export * from './task.service';
 export * from './payment.service';
 export * from './admin.service';
+export * from './upload.service';

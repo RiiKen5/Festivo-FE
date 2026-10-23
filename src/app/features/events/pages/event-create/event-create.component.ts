@@ -1,3 +1,4 @@
+import { ImageUploadComponent } from '../../../../shared/components/image-upload/image-upload.component';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
@@ -13,7 +14,7 @@ import { CustomValidators } from '../../../../shared/validators/custom-validator
 @Component({
   selector: 'app-event-create',
   standalone: true,
-  imports: [CommonModule, RouterModule, ReactiveFormsModule, NavbarComponent, ButtonComponent, InputComponent],
+  imports: [CommonModule, RouterModule, ReactiveFormsModule, NavbarComponent, ButtonComponent, InputComponent, ImageUploadComponent],
   template: `
     <app-navbar></app-navbar>
 
@@ -84,7 +85,7 @@ import { CustomValidators } from '../../../../shared/validators/custom-validator
             <div class="form-grid">
               <div class="form-group">
                 <app-input
-                  type="text"
+                  type="date"
                   label="Date"
                   placeholder="YYYY-MM-DD"
                   formControlName="date"
@@ -95,7 +96,7 @@ import { CustomValidators } from '../../../../shared/validators/custom-validator
 
               <div class="form-group">
                 <app-input
-                  type="text"
+                  type="time"
                   label="Time"
                   placeholder="HH:MM"
                   formControlName="time"
@@ -106,7 +107,7 @@ import { CustomValidators } from '../../../../shared/validators/custom-validator
 
               <div class="form-group">
                 <app-input
-                  type="text"
+                  type="date"
                   label="End Date (Optional)"
                   placeholder="YYYY-MM-DD"
                   formControlName="endDate"
@@ -210,6 +211,22 @@ import { CustomValidators } from '../../../../shared/validators/custom-validator
                 ></app-input>
               </div>
             }
+          </section>
+
+          <!-- Cover Photo -->
+          <section class="form-section">
+            <h2 class="section-title">Cover Photo</h2>
+            <p class="cover-hint">Events with a photo get far more RSVPs.</p>
+            @if (form.get('coverPhoto')?.value) {
+              <div class="cover-preview">
+                <img [src]="form.get('coverPhoto')?.value" alt="Event cover">
+                <button type="button" class="cover-remove" (click)="form.patchValue({ coverPhoto: '' })">Remove</button>
+              </div>
+            }
+            <app-image-upload
+              [label]="form.get('coverPhoto')?.value ? 'Replace photo' : 'Upload cover photo'"
+              (uploaded)="form.patchValue({ coverPhoto: $event })"
+            ></app-image-upload>
           </section>
 
           <!-- Step 5: Settings -->
@@ -321,6 +338,36 @@ import { CustomValidators } from '../../../../shared/validators/custom-validator
       margin-bottom: $spacing-6;
       padding-bottom: $spacing-4;
       border-bottom: 1px solid $border-light;
+    }
+
+    .cover-hint {
+      color: $text-secondary;
+      font-size: $font-size-sm;
+      margin-bottom: $spacing-3;
+    }
+
+    .cover-preview {
+      position: relative;
+      margin-bottom: $spacing-3;
+
+      img {
+        width: 100%;
+        max-height: 260px;
+        object-fit: cover;
+        border-radius: $radius-lg;
+      }
+    }
+
+    .cover-remove {
+      position: absolute;
+      top: $spacing-2;
+      right: $spacing-2;
+      border: none;
+      border-radius: $radius-full;
+      padding: $spacing-1 $spacing-3;
+      background: rgba(0, 0, 0, 0.6);
+      color: $text-inverse;
+      cursor: pointer;
     }
 
     .step-number {
@@ -507,7 +554,8 @@ export class EventCreateComponent implements OnInit {
     entryFee: [0, [CustomValidators.positiveNumber()]],
     vibeScore: ['party'],
     isPublic: [true],
-    tags: ['', [Validators.maxLength(200)]]
+    tags: ['', [Validators.maxLength(200)]],
+    coverPhoto: ['']
   }, {
     validators: [
       CustomValidators.dateRange('date', 'endDate'),
@@ -545,6 +593,7 @@ export class EventCreateComponent implements OnInit {
           entryFee: event.entryFee || 0,
           vibeScore: event.vibeScore,
           isPublic: event.isPublic,
+          coverPhoto: event.coverPhoto || '',
           tags: event.tags?.join(', ') || ''
         });
       }
@@ -630,6 +679,7 @@ export class EventCreateComponent implements OnInit {
       entryFee: values.isPaid ? Number(values.entryFee) : 0,
       vibeScore: values.vibeScore,
       isPublic: values.isPublic,
+      coverPhoto: values.coverPhoto || undefined,
       tags: values.tags ? values.tags.split(',').map((t: string) => t.trim()).filter((t: string) => t) : []
     };
   }

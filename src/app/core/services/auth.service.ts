@@ -373,6 +373,6 @@ export class AuthService implements OnDestroy {
    * Resend verification email
    */
   resendVerificationEmail(): Observable<any> {
-    return this.api.post('/auth/resend-verification', {});
+    return this.api.post('/auth/resend-email-verification', {});
   }
 }

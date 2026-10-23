@@ -8,6 +8,7 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { EventService } from '../../../../core/services/event.service';
 import { BookingService } from '../../../../core/services/booking.service';
 import { ToastService } from '../../../../core/services/toast.service';
+import { RsvpService } from '../../../../core/services/rsvp.service';
 import { Event } from '../../../../core/models/event.model';
 import { Booking } from '../../../../core/models/booking.model';
 
@@ -97,6 +98,21 @@ import { Booking } from '../../../../core/models/booking.model';
         </div>
 
         <!-- Navigation Tabs -->
+        @if (vendorRequests().length || awaitingPayment().length) {
+          <div class="attention">
+            @for (booking of vendorRequests(); track booking._id) {
+              <a class="attention-item" [routerLink]="['/bookings', booking._id]">
+                <strong>New booking request:</strong> {{ getServiceName(booking.service) }} for {{ getEventTitle(booking) }} on {{ formatDate(booking.eventDate) }} — confirm and send your quote →
+              </a>
+            }
+            @for (booking of awaitingPayment(); track booking._id) {
+              <a class="attention-item" [routerLink]="['/bookings', booking._id]">
+                <strong>Ready to pay:</strong> {{ getServiceName(booking.service) }} confirmed at ₹{{ booking.priceAgreed | number }} — pay securely to lock it in →
+              </a>
+            }
+          </div>
+        }
+
         <div class="dashboard-tabs">
           <button
             class="tab-btn"
@@ -156,6 +172,32 @@ import { Booking } from '../../../../core/models/booking.model';
                   }
                 </section>
 
+                <!-- Tickets & RSVPs -->
+                @if (myRsvps().length) {
+                  <section class="dashboard-section">
+                    <div class="section-header">
+                      <h2>My Tickets &amp; RSVPs</h2>
+                    </div>
+                    <div class="bookings-list">
+                      @for (rsvp of myRsvps().slice(0, 5); track rsvp._id) {
+                        <a class="booking-item" [routerLink]="['/events', rsvp.event?.slug]">
+                          <div class="booking-info">
+                            <h4>{{ rsvp.event?.title }}</h4>
+                            <p>{{ formatDate(rsvp.event?.date) }} · {{ rsvp.event?.time }} · {{ rsvp.event?.city }}</p>
+                          </div>
+                          @if (rsvp.status === 'pending_payment') {
+                            <div class="booking-status status--pending">Pay to confirm</div>
+                          } @else if (rsvp.status === 'going' && rsvp.checkInCode) {
+                            <div class="ticket-code">{{ rsvp.checkInCode }}</div>
+                          } @else {
+                            <div class="booking-status">{{ rsvp.status === 'maybe' ? 'Maybe' : rsvp.status === 'not_going' ? "Can't go" : rsvp.status }}</div>
+                          }
+                        </a>
+                      }
+                    </div>
+                  </section>
+                }
+
                 <!-- Recent Bookings -->
                 <section class="dashboard-section">
                   <div class="section-header">
@@ -174,16 +216,16 @@ import { Booking } from '../../../../core/models/booking.model';
                   } @else {
                     <div class="bookings-list">
                       @for (booking of recentBookings().slice(0, 4); track booking._id) {
-                        <div class="booking-item">
+                        <a class="booking-item" [routerLink]="['/bookings', booking._id]">
                           <div class="booking-info">
                             <h4>{{ getServiceName(booking.service) }}</h4>
-                            <p>{{ formatDate(booking.eventDate) }}</p>
+                            <p>{{ isIncoming(booking) ? 'Request from ' + getOrganizerName(booking) : 'For ' + getEventTitle(booking) }} · {{ formatDate(booking.eventDate) }}</p>
                           </div>
                           <div class="booking-status" [class]="'status--' + booking.status">
                             {{ booking.status }}
                           </div>
                           <div class="booking-price">₹{{ booking.priceAgreed | number }}</div>
-                        </div>
+                        </a>
                       }
                     </div>
                   }
@@ -191,7 +233,9 @@ import { Booking } from '../../../../core/models/booking.model';
 
                 <!-- Quick Actions -->
                 <section class="dashboard-section">
-                  <h2>Quick Actions</h2>
+                  <div class="section-header">
+                    <h2>Quick Actions</h2>
+                  </div>
                   <div class="actions-grid">
                     <a routerLink="/events/create" class="action-card">
                       <span class="action-icon">🎉</span>
@@ -641,6 +685,36 @@ import { Booking } from '../../../../core/models/booking.model';
       padding: $spacing-3;
       border-radius: $radius-default;
       background: $neutral-50;
+      color: inherit;
+      text-decoration: none;
+
+      &:hover {
+        background: $neutral-100;
+      }
+    }
+
+    .ticket-code {
+      font-family: $font-family-mono;
+      font-weight: $font-weight-semibold;
+      letter-spacing: $letter-spacing-wide;
+      color: $primary-700;
+    }
+
+    .attention {
+      display: flex;
+      flex-direction: column;
+      gap: $spacing-2;
+      margin-bottom: $spacing-6;
+    }
+
+    .attention-item {
+      display: block;
+      padding: $spacing-3 $spacing-4;
+      border-radius: $radius-md;
+      background: $warning-light;
+      color: $warning-dark;
+      text-decoration: none;
+      font-size: $font-size-sm;
     }
 
     .booking-info {
@@ -846,12 +920,14 @@ export class DashboardHomeComponent implements OnInit {
   private eventService = inject(EventService);
   private bookingService = inject(BookingService);
   private toast = inject(ToastService);
+  private rsvpService = inject(RsvpService);
   auth = inject(AuthService);
 
   activeTab = signal<'overview' | 'events' | 'bookings'>('overview');
   myEvents = signal<Event[]>([]);
   upcomingEvents = signal<Event[]>([]);
   recentBookings = signal<Booking[]>([]);
+  myRsvps = signal<any[]>([]);
   isLoadingEvents = signal(true);
   isLoadingBookings = signal(true);
   publishingEventId = signal<string | null>(null);
@@ -864,6 +940,39 @@ export class DashboardHomeComponent implements OnInit {
 
     this.loadMyEvents();
     this.loadBookings();
+    this.rsvpService.getMyRsvps().subscribe({
+      next: (response) => this.myRsvps.set(response.data)
+    });
+  }
+
+  private userId(): string | undefined {
+    return this.auth.currentUser()?._id;
+  }
+
+  private idOf(ref: any): string | undefined {
+    return typeof ref === 'object' ? ref?._id : ref;
+  }
+
+  // Booking requests this user received as a vendor
+  isIncoming(booking: Booking): boolean {
+    return this.idOf(booking.vendor) === this.userId();
+  }
+
+  vendorRequests(): Booking[] {
+    return this.recentBookings().filter(b => this.isIncoming(b) && b.status === 'pending');
+  }
+
+  awaitingPayment(): Booking[] {
+    return this.recentBookings().filter(b =>
+      !this.isIncoming(b) && b.status === 'confirmed' && b.paymentStatus !== 'paid');
+  }
+
+  getEventTitle(booking: Booking): string {
+    return typeof booking.event === 'object' ? booking.event.title : 'your event';
+  }
+
+  getOrganizerName(booking: Booking): string {
+    return typeof booking.organizer === 'object' ? booking.organizer.name : 'an organizer';
   }
 
   setTab(tab: 'overview' | 'events' | 'bookings'): void {

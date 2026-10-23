@@ -603,7 +603,7 @@ export class MessagesComponent implements OnInit, OnDestroy {
    * Start a new conversation with a user who we haven't messaged before
    */
   startNewConversation(userId: string): void {
-    this.userService.getUserById(userId).subscribe({
+    this.userService.getUserProfile(userId).subscribe({
       next: (response) => {
         const user = response.data;
         // Create a placeholder conversation

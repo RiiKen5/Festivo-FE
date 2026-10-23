@@ -6,7 +6,7 @@ export type RsvpStatus = 'going' | 'maybe' | 'not_going' | 'cancelled' | 'pendin
 export interface Rsvp {
   _id: string;
   event: Event | string;
-  user: User | string;
+  attendee: User | string;
   status: RsvpStatus;
   guestsCount: number;
   checkInCode?: string;
@@ -14,6 +14,7 @@ export interface Rsvp {
   amountPaid?: number;
   checkedIn: boolean;
   checkedInAt?: Date;
+  attended?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
