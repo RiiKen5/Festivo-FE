@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /bookings
+Disallow: /messages
+Disallow: /notifications
+Disallow: /profile
+Disallow: /admin
+Disallow: /auth/
