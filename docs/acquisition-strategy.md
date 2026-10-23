@@ -93,9 +93,9 @@ Scores 1–5 (5 = best; for cost and effort, 5 = cheapest/easiest). Total = fit 
 | Recommendation | Type |
 |---|---|
 | Vendor landing page, vendor signup → create listing, share links with attribution, guest → host prompt, first-touch attribution, analytics events, admin growth dashboard | BUILD (done in this pass) |
-| Analytics provider key (PostHog) | CONFIGURE |
+| Google Analytics measurement ID | CONFIGURE |
 | Vendor outreach, society partnerships, onboarding calls | MANUAL |
 | Instagram content, vendor stories, outreach scripts | CONTENT |
-| Google Search Console, Google Business Profile, PostHog account | EXTERNAL |
+| Google Search Console, Google Business Profile, Google Analytics property | EXTERNAL |
 | Server rendering + local SEO pages, lower fee for vendor-brought customers, WhatsApp notifications | BUILD (later, P1–P2) |
 | Paid ads, PR, Product Hunt, app stores, referral rewards | NOT NOW |

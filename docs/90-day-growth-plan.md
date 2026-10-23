@@ -13,7 +13,7 @@ These are in the production checklist and must be done before outreach: Razorpay
 | Area | Action | Type |
 |---|---|---|
 | Positioning | Use value props A (organizers) and B (vendors) from `positioning-strategy.md` everywhere: landing pages, DMs, bios | CONTENT |
-| Analytics | Create PostHog project, set `posthogKey`, build the 4 funnels in `analytics-event-taxonomy.md`; check Admin → Growth weekly | CONFIGURE / EXTERNAL |
+| Analytics | Create a GA4 property, set `gaMeasurementId`, mark key events and build the 4 funnel explorations in `analytics-event-taxonomy.md`; check Admin → Growth weekly | CONFIGURE / EXTERNAL |
 | Landing page | `/for-vendors` is live; tag every outreach link (`utm_source=instagram&utm_medium=dm&utm_campaign=…`) | BUILD (done) / MANUAL |
 | Supply | Shortlist 150 Pune vendors (cakes, balloon/floral decor, photography) in 4–6 neighbourhoods; run E1 and E2; target **30 live listings with photos** | MANUAL |
 | Activation | New vendors land on "create listing"; coach every vendor to share their link (E4) | BUILD (done) / MANUAL |

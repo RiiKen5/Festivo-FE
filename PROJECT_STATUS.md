@@ -13,19 +13,19 @@ Festivo is an event marketplace: organizers book local vendors and sell tickets 
 | Target audience | Supply first: home/micro vendors in Pune (cakes, balloon/floral decor, photography). Demand: small-celebration organizers (parents of young kids especially), then community hosts |
 | Primary channels | Direct vendor outreach; vendor-shared booking links; event invite/ticket loop |
 | SEO status | Foundation only: robots.txt + Open Graph done. Client-rendered SPA, no sitemap or per-page meta. Server rendering + category × area pages deferred until supply exists |
-| Analytics status | First-touch attribution stored on every signup (`User.acquisition`); Admin → Growth tab (signups/activation by source, funnel, north star). PostHog wired but **off** until `posthogKey` is set |
+| Analytics status | First-touch attribution stored on every signup (`User.acquisition`); Admin → Growth tab (signups/activation by source, funnel, north star). Google Analytics 4 wired but **off** until `gaMeasurementId` is set in `environment.prod.ts` |
 | Growth loops | Vendor-led demand (tagged share links), guest → host (invite UTMs + "Planning your own event?" prompt), reviews → trust |
 | Experiments | 10 in `docs/growth-experiments.md`; E1, E2, E4 ready to start; E5 running |
 
 **Implemented marketing features:** `/for-vendors` landing page (footer link "Sell on Festivo"); register `?as=vendor` preselects "Offer Services"; new vendors land on create listing after signup/verification; My Services share tip + per-listing **Share** (`utm_source=vendor_share`); tagged event/invite/listing share links; guest → host prompt on event pages; `AnalyticsService` with 13 events; admin `GET /admin/growth` + Growth tab; privacy policy mentions attribution/analytics. Tests: backend 52 pass (new `growth.test.js`), e2e `journey-growth.js` 11 checks pass, existing journeys pass, axe 0 violations incl. `/for-vendors` and My Services.
 
-**External actions required:** launch blockers from the production check (Razorpay live + webhook, legal business details, SMTP, real admin + remove demo data, Google OAuth origin, paid hosting + backups); PostHog project + key; Google Search Console; Google Business Profile; vendor outreach list and scripts.
+**External actions required:** launch blockers from the production check (Razorpay live + webhook, legal business details, SMTP, real admin + remove demo data, Google OAuth origin, paid hosting + backups); Google Analytics property + measurement ID; Google Search Console; Google Business Profile; vendor outreach list and scripts.
 
 **Biggest opportunities:** vendors' own customers via their Festivo link; society/community events as recurring hosts; local high-intent search once supply is dense.
 
 **Biggest risks:** empty marketplace at launch (supply must come first); vendors refusing 15% on customers they bring themselves (test E3); low organizer frequency (retention lives on the vendor side).
 
-**Next actions:** clear launch blockers → set PostHog key → onboard 30 Pune vendors with tagged links (E1/E2) → coach link sharing (E4) → weekly Growth-tab review → decide on E3 and SSR at day 30.
+**Next actions:** clear launch blockers → set the GA measurement ID → onboard 30 Pune vendors with tagged links (E1/E2) → coach link sharing (E4) → weekly Growth-tab review → decide on E3 and SSR at day 30.
 
 ## UI/UX transformation
 

@@ -6,28 +6,32 @@
 |---|---|---|
 | First-touch attribution | `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term`, `ref`, external referrer, landing page, first-seen time. Captured on the first visit and kept in `localStorage` (`festivo_first_touch`); later visits never overwrite it | `core/services/attribution.service.ts` |
 | Signup attribution | The first touch is sent with email and Google signups and stored on `User.acquisition` (cleaned server-side; never returned by the API) | `backend/src/utils/acquisition.js`, `authController` |
-| Product events | `AnalyticsService.track()` sends to PostHog **only if** `posthogKey` is set in `environment.prod.ts`; otherwise it does nothing | `core/services/analytics.service.ts` |
+| Product events | `AnalyticsService.track()` sends to **Google Analytics 4** (gtag.js) **only if** `gaMeasurementId` is set in `environment.prod.ts`; otherwise it does nothing. Production builds use `environment.prod.ts`; local runs never send analytics | `core/services/analytics.service.ts` |
 | Server metrics | Admin → **Growth** tab (`GET /api/v1/admin/growth?days=30`): signups by source, activation by source, funnel counts, north star | `adminController.getGrowth` |
 
-The admin Growth tab works **without** any analytics provider: it is computed from the database. PostHog adds funnels, retention curves and page-level behaviour.
+The admin Growth tab works **without** Google Analytics: it is computed from the database, so it is the source of truth for signups and bookings. GA adds traffic sources for visitors who never sign up, funnels (Explore → Funnel exploration), retention and page-level behaviour.
 
-### Turning on PostHog (CONFIGURE)
-1. Create a PostHog project (EU or US cloud).
-2. Put the project key in `frontend/src/environments/environment.prod.ts` → `posthogKey` (and `posthogHost` for EU: `https://eu.i.posthog.com`).
-3. Deploy. The SDK loads lazily, only when a key is set.
-4. Update the privacy policy to mention product analytics before enabling.
+### Turning on Google Analytics (CONFIGURE)
+1. In Google Analytics, create a GA4 property and a **Web** data stream for `https://festivo.paathly.in`. Copy the measurement ID (`G-XXXXXXXXXX`).
+2. Put it in `frontend/src/environments/environment.prod.ts` → `gaMeasurementId`, commit and deploy.
+3. In the data stream's *Enhanced measurement* settings, turn **off** "Page changes based on browser history events". The app sends its own `page_view` on each route change, so leaving it on would double-count.
+4. Admin → Custom definitions: register the event parameters you want in reports (`source`, `campaign`, `method`, `user_type`, `category`, `channel`, `placement`, `own`) and the user properties `user_type`, `city`, `first_source`, `first_campaign`.
+5. Admin → Events: mark `signup_completed`, `service_created`, `booking_requested`, `payment_completed` and `ticket_purchased` as **key events**.
+6. Optional: set data retention to 14 months and link Google Search Console.
+7. The privacy policy already names Google Analytics.
 
 ## Naming rules
 
 - `object_action`, past tense, snake_case: `booking_requested`.
 - Properties: IDs, categories, amounts, channels. **No names, emails, phone numbers or message text.**
-- Users are identified by database ID only; person properties are `userType`, `city`, `firstSource`, `firstCampaign`.
+- Users are identified by database ID only (GA `user_id`); user properties are `user_type`, `city`, `first_source`, `first_campaign`.
+- GA limits: event names ≤ 40 characters, parameter values ≤ 100 characters, ≤ 25 parameters per event.
 
 ## Events
 
 | Event | Fired when | Properties | Funnel role |
 |---|---|---|---|
-| `$pageview` | Every route change | `$current_url` (path, no query) | Traffic |
+| `page_view` | Every route change | `page_path`, `page_location`, `page_title` | Traffic |
 | `signup_completed` | Email registration submitted or new Google account | `method`, `userType`, `source`, `campaign` | Acquisition |
 | `vendor_cta_clicked` | "List your service" on `/for-vendors` | `placement` (hero/footer) | Supply acquisition |
 | `service_created` | Vendor publishes a listing | `serviceId`, `category` | **Vendor activation step 1** |
@@ -56,7 +60,7 @@ The admin Growth tab works **without** any analytics provider: it is computed fr
 
 Untagged visits fall back to the referring site (`google`, `instagram`, `facebook`, `whatsapp`, other host) or `direct`.
 
-## Key funnels to build in PostHog
+## Key funnels to build in GA (Explore → Funnel exploration)
 
 1. **Vendor:** `/for-vendors` pageview → `vendor_cta_clicked` → `signup_completed` (userType helper) → `service_created` → `booking_confirmed` → payout.
 2. **Organizer:** pageview → `signup_completed` → `event_created` → `booking_requested` → `payment_completed`.

@@ -89,7 +89,7 @@ type Page = 'terms' | 'privacy' | 'refunds' | 'contact';
               <li><strong>Payments:</strong> payments are processed by Razorpay. We store payment references and amounts, never your card or UPI PIN.</li>
               <li><strong>Payout details:</strong> UPI ID or bank account, for vendors and organizers who receive money.</li>
               <li><strong>Technical data:</strong> IP address and basic logs, to keep the service secure.</li>
-              <li><strong>How you found us:</strong> the link or website that first brought you to Festivo (for example a campaign tag or a shared link) and the first page you visited, saved in your browser and with your account when you sign up. If product analytics is enabled, which pages and features you use, linked to your account ID only.</li>
+              <li><strong>How you found us:</strong> the link or website that first brought you to Festivo (for example a campaign tag or a shared link) and the first page you visited, saved in your browser and with your account when you sign up. We also use Google Analytics, which sets cookies, to see which pages and features are used; it receives your account ID but not your name, email or phone number. You can block it with your browser's cookie or tracker settings.</li>
             </ul>
 
             <h2>How we use it</h2>
@@ -98,7 +98,7 @@ type Page = 'terms' | 'privacy' | 'refunds' | 'contact';
             <h2>Who we share it with</h2>
             <ul>
               <li>Other users, as needed for a booking or event (for example, a vendor sees the organizer's name and contact details on a booking).</li>
-              <li>Service providers who help us run Festivo: Razorpay (payments), our hosting and database providers, and our email provider.</li>
+              <li>Service providers who help us run Festivo: Razorpay (payments), Google (analytics and sign-in), our hosting and database providers, and our email provider.</li>
               <li>Authorities, when required by law.</li>
             </ul>
 
