@@ -759,6 +759,11 @@ export class RegisterComponent implements OnInit {
           // Direct login (email verification disabled)
           this.toast.success('Account Created!', 'Welcome to Festivo. Let\'s get started!');
           this.router.navigateByUrl(this.auth.homeAfterSignup());
+        } else if (response.success && response.data?.emailSent === false) {
+          // Account exists but the email didn't go out; they can resend from the next screen
+          this.registeredEmail.set(response.data.email || email);
+          this.showVerificationMessage.set(true);
+          this.toast.error('Email not sent', 'Your account was created, but we could not send the verification email. Use "resend it" below in a few minutes or contact admin@paathly.in.');
         } else {
           // Fallback - show verification message
           this.registeredEmail.set(email);
