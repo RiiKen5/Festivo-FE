@@ -61,7 +61,11 @@
             "styles": [
               "src/styles.scss"
             ],
-            "scripts": []
+            "scripts": [],
+            "allowedCommonJsDependencies": [
+              "qrcode",
+              "dijkstrajs"
+            ]
           },
           "configurations": {
             "production": {

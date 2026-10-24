@@ -19,6 +19,7 @@ import { PaymentService, CheckoutDetails } from '../../../../core/services/payme
 import { AttributionService } from '../../../../core/services/attribution.service';
 import { AnalyticsService } from '../../../../core/services/analytics.service';
 import { EventPlannerComponent } from '../../components/event-planner.component';
+import { InvitationCardComponent } from '../../components/invitation-card.component';
 import { Event } from '../../../../core/models/event.model';
 import { User } from '../../../../core/models/user.model';
 import { Rsvp, RsvpStatus } from '../../../../core/models/rsvp.model';
@@ -27,7 +28,7 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
 @Component({
   selector: 'app-event-detail',
   standalone: true,
-  imports: [EventPlannerComponent, CommonModule, RouterModule, FormsModule, ButtonComponent, ModalComponent, IconComponent, EmptyStateComponent],
+  imports: [EventPlannerComponent, InvitationCardComponent, CommonModule, RouterModule, FormsModule, ButtonComponent, ModalComponent, IconComponent, EmptyStateComponent],
   template: `
 
     @if (isLoading()) {
@@ -80,7 +81,9 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
               <div class="event-main">
                 @if (isOrganizer() && event()?._id) {
                   <app-event-planner #planner [eventId]="event()!._id" [city]="event()!.city" [isNew]="justCreated"
-                                     (edit)="openEditTaskModal($any($event))"></app-event-planner>
+                                     (edit)="openEditTaskModal($any($event))" (invite)="openCard()"></app-event-planner>
+                  <app-invitation-card [isOpen]="showCard()" [event]="event()" [hostName]="getOrganizer()?.name || ''"
+                                       [link]="cardLink()" (closed)="showCard.set(false)"></app-invitation-card>
                 }
                 <section class="event-section">
                   <h2 class="section-title">About this event</h2>
@@ -363,6 +366,7 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
                         <app-button size="sm" variant="secondary" (onClick)="shareInviteOnWhatsApp()">WhatsApp</app-button>
                         <app-button size="sm" variant="ghost" (onClick)="regenerateInvite()">Reset</app-button>
                       </div>
+                      <app-button size="sm" fullWidth (onClick)="openCard()">Make an invitation card</app-button>
                     </div>
                   }
 
@@ -1904,6 +1908,19 @@ export class EventDetailComponent implements OnInit {
 
   private shareUrl(medium: string): string {
     return this.attribution.tagged(`/events/${this.event()?.slug}`, 'event_share', medium);
+  }
+
+  showCard = signal(false);
+
+  openCard(): void {
+    this.showCard.set(true);
+  }
+
+  // QR on the card: the private invite link, or the public page
+  cardLink(): string {
+    const e = this.event();
+    if (!e) return '';
+    return e.inviteCode && !e.isPublic ? this.inviteUrl('card') : this.shareUrl('card');
   }
 
   onHostCta(): void {

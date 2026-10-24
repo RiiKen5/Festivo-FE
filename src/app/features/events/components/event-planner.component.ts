@@ -78,6 +78,8 @@ const BOOKING_WORDS: Record<string, string> = {
                     <app-icon name="store" [size]="14"></app-icon>
                     {{ vendorName(b) }} · {{ bookingWords(b) }}
                   </a>
+                } @else if (t.category === 'guest_management' && t.taskName.startsWith('Send invitations') && !isDone(t)) {
+                  <button type="button" class="more more--btn" (click)="invite.emit()">Make an invitation card to send</button>
                 } @else if (t.serviceCategory && !isDone(t)) {
                   @if (suggestionsFor(t).length) {
                     <div class="picks" role="list" [attr.aria-label]="'Suggested ' + words(t.serviceCategory)">
@@ -154,6 +156,7 @@ const BOOKING_WORDS: Record<string, string> = {
     .pick__meta { color: $text-secondary; font-size: $font-size-xs; }
     .pick__go { margin-top: 2px; font-weight: $font-weight-semibold; }
     .more { display: inline-block; margin-top: $spacing-2; font-size: $font-size-xs; font-weight: $font-weight-medium; }
+    .more--btn { padding: 0; border: 0; background: none; color: $primary-700; cursor: pointer; text-decoration: underline; }
 
     .add { display: flex; gap: $spacing-2; margin-top: $spacing-3; padding-top: $spacing-3; border-top: 1px solid $border-light;
       input { flex: 1; min-width: 0; @include input-base; @include input-sm; }
@@ -167,6 +170,7 @@ export class EventPlannerComponent implements OnChanges {
   /** Just created: explain the checklist once. */
   @Input() isNew = false;
   @Output() edit = new EventEmitter<PlanTask>();
+  @Output() invite = new EventEmitter<void>();
 
   private eventService = inject(EventService);
   private taskService = inject(TaskService);
