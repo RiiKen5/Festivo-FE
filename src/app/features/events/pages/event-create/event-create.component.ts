@@ -179,7 +179,7 @@ import { CustomValidators } from '../../../../shared/validators/custom-validator
               <div class="form-group">
                 <app-input
                   type="number"
-                  label="Max Capacity (Optional)"
+                  label="Guest limit (optional)"
                   placeholder="Leave empty for unlimited"
                   formControlName="maxAttendees"
                 ></app-input>
@@ -238,7 +238,7 @@ import { CustomValidators } from '../../../../shared/validators/custom-validator
             </h2>
 
             <div class="form-group">
-              <label class="form-label">Event Vibe</label>
+              <label class="form-label">What's the mood?</label>
               <div class="vibe-grid">
                 @for (vibe of vibeOptions; track vibe.value) {
                   <label

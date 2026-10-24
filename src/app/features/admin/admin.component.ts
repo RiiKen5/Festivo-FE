@@ -1,3 +1,4 @@
+import { categoryLabel } from '../../shared/components/listing-cards/listing-format';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
@@ -142,7 +143,7 @@ type Tab = 'overview' | 'growth' | 'payouts' | 'verification' | 'reviews';
                 <div class="row-main">
                   <a [routerLink]="['/services', s.slug]" target="_blank"><strong>{{ s.serviceName }}</strong></a>
                   <div class="muted">
-                    {{ s.category }} · {{ s.city }} · ₹{{ s.basePrice | number }} · by {{ s.provider?.name }}
+                    {{ category(s.category) }} · {{ s.city }} · ₹{{ s.basePrice | number }} · by {{ s.provider?.name }}
                     ({{ s.provider?.email }}{{ s.provider?.phone ? ', ' + s.provider.phone : '' }}{{ s.provider?.phoneVerified ? ' (phone verified)' : '' }})
                   </div>
                   @if (s.businessName || s.gstNumber) {
@@ -316,6 +317,7 @@ export class AdminComponent implements OnInit {
   references: Record<string, string> = {};
   growth = signal<GrowthMetrics | null>(null);
   growthDays = signal(30);
+  category = categoryLabel;
 
   ngOnInit(): void {
     this.loadStats();

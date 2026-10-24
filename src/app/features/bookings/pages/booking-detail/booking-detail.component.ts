@@ -1,5 +1,5 @@
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
-import { categoryLabel } from '../../../../shared/components/listing-cards/listing-format';
+import { categoryLabel, bookingStage, paymentStatusLabel } from '../../../../shared/components/listing-cards/listing-format';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
@@ -48,13 +48,35 @@ import { User } from '../../../../core/models/user.model';
               <!-- Header -->
               <div class="booking-header">
                 <div class="header-info">
-                  <span class="status-badge" [class]="'status--' + booking()?.status">
-                    {{ formatStatus(booking()?.status) }}
-                  </span>
+                  <span [class]="'stage stage--' + stage().tone">{{ stage().label }}</span>
                   <h1>{{ getServiceName(booking()?.service) }}</h1>
                   <p class="event-name">for {{ getEventTitle(booking()?.event) }}</p>
                 </div>
               </div>
+
+              <!-- What happens next, at the top so it's never missed (on phones the side panel is far below) -->
+              @if (nextStep(); as step) {
+                <div class="next-step" [class]="'next-step next-step--' + step.tone" role="status">
+                  <div>
+                    <p class="next-step__title">{{ step.title }}</p>
+                    <p class="next-step__text">{{ step.text }}</p>
+                  </div>
+                  @if (step.action === 'pay' && paymentsEnabled()) {
+                    <div class="next-step__actions">
+                      <app-button [loading]="isPaying()" (onClick)="payOnline(getBalance())">Pay ₹{{ getBalance() | number }}</app-button>
+                      @if (booking()?.pricePaid === 0 && getBalance() >= 1000) {
+                        <app-button variant="secondary" [loading]="isPaying()" (onClick)="payOnline(getAdvanceAmount())">Pay 30% advance (₹{{ getAdvanceAmount() | number }})</app-button>
+                      }
+                    </div>
+                  } @else if (step.action === 'quote') {
+                    <app-button (onClick)="openConfirmModal()">Accept &amp; send price</app-button>
+                  } @else if (step.action === 'complete') {
+                    <app-button variant="secondary" [loading]="actionLoading()" (onClick)="completeBooking()">Mark as done</app-button>
+                  } @else if (step.action === 'review') {
+                    <app-button variant="secondary" (onClick)="showReviewModal.set(true)">Leave a review</app-button>
+                  }
+                </div>
+              }
 
               <!-- Details Card -->
               <div class="detail-card">
@@ -70,11 +92,11 @@ import { User } from '../../../../core/models/user.model';
                     <span class="value">{{ booking()?.createdAt | date:'mediumDate' }}</span>
                   </div>
                   <div class="detail-item">
-                    <span class="label">Agreed Price</span>
+                    <span class="label">Price</span>
                     <span class="value price">₹{{ booking()?.priceAgreed | number }}</span>
                   </div>
                   <div class="detail-item">
-                    <span class="label">Amount Paid</span>
+                    <span class="label">Paid so far</span>
                     <span class="value">₹{{ booking()?.pricePaid | number }}</span>
                   </div>
                   <div class="detail-item">
@@ -90,7 +112,7 @@ import { User } from '../../../../core/models/user.model';
                     </div>
                   }
                   <div class="detail-item">
-                    <span class="label">Balance Due</span>
+                    <span class="label">Still to pay</span>
                     <span class="value" [class.text-error]="getBalance() > 0">
                       ₹{{ getBalance() | number }}
                     </span>
@@ -193,7 +215,7 @@ import { User } from '../../../../core/models/user.model';
 
               <!-- Actions -->
               <div class="actions-card">
-                <h3>Next steps</h3>
+                <h3>More options</h3>
 
                 <!-- Status notes, so this card is never empty -->
                 @if (booking()?.status === 'cancelled' || booking()?.status === 'refunded') {
@@ -208,40 +230,18 @@ import { User } from '../../../../core/models/user.model';
                 }
 
                 @if (isVendor()) {
-                  <!-- Vendor Actions -->
-                  @if (booking()?.status === 'pending') {
-                    <app-button fullWidth [loading]="actionLoading()" (onClick)="openConfirmModal()">
-                      Confirm &amp; Send Quote
-                    </app-button>
-                  }
+                  <!-- Vendor Actions (accepting is in the banner at the top) -->
                   @if (getBalance() > 0 && (booking()?.status === 'confirmed' || booking()?.status === 'in_progress')) {
                     <app-button variant="secondary" fullWidth (onClick)="showPaymentModal.set(true)">
-                      Record Cash/UPI Payment
+                      Record a payment you received
                     </app-button>
                   }
                 } @else {
                   <!-- Organizer Actions -->
-                  @if (booking()?.status === 'pending') {
-                    <p class="action-hint">Waiting for the vendor to confirm and send their final price.</p>
-                  }
-                  @if (getBalance() > 0 && (booking()?.status === 'confirmed' || booking()?.status === 'in_progress')) {
-                    @if (paymentsEnabled()) {
-                      <app-button fullWidth [loading]="isPaying()" (onClick)="payOnline(getBalance())">
-                        Pay ₹{{ getBalance() | number }} securely
-                      </app-button>
-                      @if (booking()?.pricePaid === 0 && getBalance() >= 1000) {
-                        <app-button variant="secondary" fullWidth [loading]="isPaying()" (onClick)="payOnline(getAdvanceAmount())">
-                          Pay 30% advance (₹{{ getAdvanceAmount() | number }})
-                        </app-button>
-                      }
-                      <p class="action-hint">Festivo holds your payment and releases it to the vendor only after you mark the booking complete.</p>
-                    } @else {
-                      <p class="action-hint">Online payments are not available yet. Please settle with the vendor directly.</p>
-                    }
-                  }
-                  @if (booking()?.status === 'confirmed' || booking()?.status === 'in_progress') {
+                  <!-- Paying is in the banner at the top -->
+                  @if ((booking()?.status === 'confirmed' || booking()?.status === 'in_progress') && nextStep()?.action !== 'complete') {
                     <app-button variant="secondary" fullWidth [loading]="actionLoading()" (onClick)="completeBooking()">
-                      Service Delivered — Mark Complete
+                      Mark as done
                     </app-button>
                   }
                 }
@@ -251,7 +251,7 @@ import { User } from '../../../../core/models/user.model';
                     variant="ghost"
                     fullWidth
                     (onClick)="showCancelModal.set(true)"
-                  >Cancel Booking</app-button>
+                  >{{ isVendor() && booking()?.status === 'pending' ? 'Decline request' : 'Cancel booking' }}</app-button>
                 }
 
                 @if (booking()?.status === 'completed' && !booking()?.rating && !isVendor()) {
@@ -331,7 +331,7 @@ import { User } from '../../../../core/models/user.model';
       <!-- Payment Modal -->
       <app-modal
         [isOpen]="showPaymentModal()"
-        title="Record Offline Payment"
+        title="Record a payment you received"
         (onClose)="showPaymentModal.set(false)"
         [showFooter]="true"
       >
@@ -379,7 +379,7 @@ import { User } from '../../../../core/models/user.model';
       <!-- Confirm / Quote Modal -->
       <app-modal
         [isOpen]="showConfirmModal()"
-        title="Confirm Booking"
+        title="Accept and send your price"
         (onClose)="showConfirmModal.set(false)"
         [showFooter]="true"
       >
@@ -392,7 +392,7 @@ import { User } from '../../../../core/models/user.model';
         </div>
         <div modal-footer>
           <app-button variant="ghost" (onClick)="showConfirmModal.set(false)">Cancel</app-button>
-          <app-button [loading]="actionLoading()" (onClick)="confirmBooking()">Confirm Booking</app-button>
+          <app-button [loading]="actionLoading()" (onClick)="confirmBooking()">Accept booking</app-button>
         </div>
       </app-modal>
 
@@ -612,6 +612,18 @@ import { User } from '../../../../core/models/user.model';
       @include card;
       margin-bottom: $spacing-6;
     }
+
+    .next-step {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: $spacing-3 $spacing-4;
+      margin-bottom: $spacing-4; padding: $spacing-4 $spacing-5; border-radius: $radius-lg; border: 1px solid $border-light;
+      background: $bg-primary;
+      &--act { border-color: $primary-200; background: $primary-50; }
+      &--wait { border-color: #fde68a; background: $warning-light; }
+      &--ok { border-color: #bbf7d0; background: $success-light; }
+    }
+    .next-step__title { margin: 0; font-weight: $font-weight-semibold; }
+    .next-step__text { margin: 2px 0 0; font-size: $font-size-sm; color: $text-secondary; max-width: 46ch; }
+    .next-step__actions { display: flex; flex-wrap: wrap; gap: $spacing-2; }
 
     .status-badge {
       display: inline-block;
@@ -1206,28 +1218,50 @@ export class BookingDetailComponent implements OnInit {
     return user?.profilePhoto || null;
   }
 
-  formatStatus(status: BookingStatus | undefined): string {
-    if (!status) return '';
-    const statuses: Record<BookingStatus, string> = {
-      pending: 'Pending',
-      confirmed: 'Confirmed',
-      in_progress: 'In Progress',
-      completed: 'Completed',
-      cancelled: 'Cancelled',
-      refunded: 'Refunded'
-    };
-    return statuses[status] || status;
+  formatPaymentStatus(status: string | undefined): string {
+    return paymentStatusLabel(status);
   }
 
-  formatPaymentStatus(status: string | undefined): string {
-    if (!status) return '';
-    const statuses: Record<string, string> = {
-      unpaid: 'Unpaid',
-      partial: 'Partially Paid',
-      paid: 'Paid',
-      refunded: 'Refunded'
-    };
-    return statuses[status] || status;
+  /** One clear sentence about what happens next, and the button for it. */
+  nextStep(): { title: string; text: string; tone: string; action?: 'pay' | 'quote' | 'complete' | 'review' } | null {
+    const b = this.booking();
+    if (!b) return null;
+    const other = this.getContactName();
+    const vendor = this.isVendor();
+    const due = this.getBalance();
+    const accepted = b.status === 'confirmed' || b.status === 'in_progress';
+    const eventPassed = new Date(b.eventDate).getTime() < Date.now();
+
+    if (b.status === 'pending') {
+      return vendor
+        ? { title: `${other} wants to book you`, text: 'Accept with your final price, or decline. They pay only after you accept.', tone: 'act', action: 'quote' }
+        : { title: `Waiting for ${other} to accept`, text: "They'll reply with their final price. You'll get a notification and a message in your chat.", tone: 'wait' };
+    }
+    if (accepted && due > 0) {
+      if (vendor) {
+        return { title: b.pricePaid ? 'Advance received' : 'Accepted · waiting for payment', text: b.pricePaid
+          ? `₹${b.pricePaid.toLocaleString('en-IN')} paid, ₹${due.toLocaleString('en-IN')} still due. Festivo pays you after the job.`
+          : `${other} can now pay online. You'll be notified when they do.`, tone: 'wait' };
+      }
+      if (!this.paymentsEnabled()) {
+        return { title: `${other} accepted at ₹${b.priceAgreed.toLocaleString('en-IN')}`, text: `Online payment isn't switched on yet. Pay ${other} directly and ask them to record it here.`, tone: 'act' };
+      }
+      return { title: b.pricePaid ? `₹${due.toLocaleString('en-IN')} still due` : `${other} accepted · pay to book the date`, text: 'Festivo holds your money and releases it to the vendor only after you mark the job as done.', tone: 'act', action: 'pay' };
+    }
+    if (accepted) {
+      return vendor
+        ? { title: 'Booked and paid', text: 'Festivo releases your money after the organizer marks the job as done (or 3 days after the event).', tone: 'ok' }
+        : { title: 'Booked and paid', text: eventPassed ? 'Once the job is done, mark it as done so the vendor gets paid.' : 'All set. After the event, mark the job as done.', tone: 'ok', action: eventPassed ? 'complete' : undefined };
+    }
+    if (b.status === 'completed' && !vendor && !b.rating) {
+      return { title: 'Completed', text: `How was ${other}? A short review helps other people choose.`, tone: 'ok', action: 'review' };
+    }
+    return null;
+  }
+
+  stage() {
+    const b = this.booking();
+    return b ? bookingStage(b, this.isVendor()) : { label: '', tone: 'off' as const };
   }
 
   confirmBooking(): void {
@@ -1240,7 +1274,7 @@ export class BookingDetailComponent implements OnInit {
         this.reload();
         this.actionLoading.set(false);
         this.showConfirmModal.set(false);
-        this.toast.success('Booking Confirmed', 'The organizer can now pay online.');
+        this.toast.success('Booking accepted', 'The organizer can now pay online.');
       },
       error: () => {
         this.actionLoading.set(false);

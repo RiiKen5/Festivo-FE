@@ -599,10 +599,10 @@ export class RegisterComponent implements OnInit {
   }
 
   userTypes = [
-    { value: 'organizer', label: 'Organize Events', description: 'Plan & host events', icon: 'calendar' },
-    { value: 'helper', label: 'Offer Services', description: 'Provide services', icon: 'store' },
-    { value: 'attendee', label: 'Attend Events', description: 'Discover & join', icon: 'party' },
-    { value: 'all', label: 'Do Everything', description: 'All of the above', icon: 'sparkles' }
+    { value: 'organizer', label: 'Plan an event', description: 'Book vendors, invite guests', icon: 'calendar' },
+    { value: 'helper', label: 'Offer my services', description: 'Cakes, decor, photos, music…', icon: 'store' },
+    { value: 'attendee', label: 'Go to events', description: 'RSVP and buy tickets', icon: 'party' },
+    { value: 'all', label: 'A bit of everything', description: 'You can do all of these', icon: 'sparkles' }
   ];
 
   form: FormGroup = this.fb.group({

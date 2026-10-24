@@ -445,3 +445,12 @@ table {
 .form-textarea {
   resize: vertical;
 }
+
+// Booking/event stage pills: what the viewer should feel about the state
+.stage {
+  @include badge;
+  &--act { background: $primary-100; color: $primary-800; }
+  &--wait { background: $warning-light; color: $warning-dark; }
+  &--ok { background: $success-light; color: $success-dark; }
+  &--off { background: $neutral-100; color: $text-secondary; }
+}

@@ -1,7 +1,7 @@
 import { Component, inject, OnInit, signal, ViewChild } from '@angular/core';
 import { IconComponent, EVENT_TYPE_ICONS } from '../../../../shared/components/icon/icon.component';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
-import { formatShortDate, formatTime, plural } from '../../../../shared/components/listing-cards/listing-format';
+import { formatShortDate, formatTime, plural, bookingStage } from '../../../../shared/components/listing-cards/listing-format';
 import { Observable, firstValueFrom } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
@@ -231,7 +231,7 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
                           <li class="guest">
                             <div class="guest-info">
                               <a class="guest-name" [routerLink]="['/bookings', booking._id]">{{ booking.service?.serviceName }}</a>
-                              <span class="guest-meta">{{ booking.vendor?.name }} · ₹{{ booking.priceAgreed | number }} · {{ booking.status }} · {{ booking.paymentStatus }}</span>
+                              <span class="guest-meta">{{ booking.vendor?.name }} · ₹{{ booking.priceAgreed | number }} · {{ vendorStage(booking) }}</span>
                             </div>
                           </li>
                         }
@@ -1911,6 +1911,10 @@ export class EventDetailComponent implements OnInit {
   }
 
   showCard = signal(false);
+
+  vendorStage(booking: any): string {
+    return bookingStage(booking, false).label;
+  }
 
   openCard(): void {
     this.showCard.set(true);

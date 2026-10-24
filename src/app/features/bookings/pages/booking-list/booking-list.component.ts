@@ -1,3 +1,4 @@
+import { bookingStage, bookingStatusLabel, paymentStatusLabel } from '../../../../shared/components/listing-cards/listing-format';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
@@ -127,9 +128,7 @@ import { User } from '../../../../core/models/user.model';
                     <h3><a class="booking-link" [routerLink]="['/bookings', booking._id]" (click)="$event.stopPropagation()">{{ getServiceName(booking.service) }}</a></h3>
                     <span class="event-name">for {{ getEventTitle(booking.event) }}</span>
                   </div>
-                  <span class="status-badge" [class]="'status--' + booking.status">
-                    {{ formatStatus(booking.status) }}
-                  </span>
+                  <span class="stage" [class]="'stage stage--' + stage(booking).tone">{{ stage(booking).label }}</span>
                 </div>
 
                 <div class="booking-details">
@@ -645,25 +644,15 @@ export class BookingListComponent implements OnInit {
   }
 
   formatStatus(status: BookingStatus): string {
-    const statuses: Record<BookingStatus, string> = {
-      pending: 'Pending',
-      confirmed: 'Confirmed',
-      in_progress: 'In Progress',
-      completed: 'Completed',
-      cancelled: 'Cancelled',
-      refunded: 'Refunded'
-    };
-    return statuses[status] || status;
+    return bookingStatusLabel(status);
+  }
+
+  stage(booking: Booking) {
+    return bookingStage(booking, this.activeTab() === 'vendor');
   }
 
   formatPaymentStatus(status: string): string {
-    const statuses: Record<string, string> = {
-      unpaid: 'Unpaid',
-      partial: 'Partial',
-      paid: 'Paid',
-      refunded: 'Refunded'
-    };
-    return statuses[status] || status;
+    return paymentStatusLabel(status);
   }
 
   confirmBooking(event: Event | MouseEvent, booking: Booking): void {
@@ -678,7 +667,7 @@ export class BookingListComponent implements OnInit {
           )
         );
         this.actionLoading.set(null);
-        this.toast.success('Booking Confirmed', 'The booking has been confirmed.');
+        this.toast.success('Booking accepted', 'The organizer can now pay.');
       },
       error: () => {
         this.actionLoading.set(null);

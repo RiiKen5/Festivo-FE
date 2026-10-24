@@ -35,3 +35,53 @@ export function formatShortDate(date?: Date | string): string {
 export function plural(count: number, one: string, many = one + 's'): string {
   return `${count} ${count === 1 ? one : many}`;
 }
+
+// ---- Status wording shown to people (never the raw database values) ----
+
+type Tone = 'wait' | 'act' | 'ok' | 'off';
+
+interface BookingLike {
+  status: string;
+  paymentStatus?: string;
+  priceAgreed?: number;
+  pricePaid?: number;
+}
+
+/**
+ * Where a booking stands, in plain words, from the viewer's side. "Accepted"
+ * is not "booked": until money is paid the organizer is told to pay.
+ */
+export const bookingStage = (b: BookingLike, viewerIsVendor: boolean): { label: string; tone: Tone } => {
+  const due = Math.max(0, (b.priceAgreed || 0) - (b.pricePaid || 0));
+  switch (b.status) {
+    case 'pending':
+      return viewerIsVendor ? { label: 'New request · reply needed', tone: 'act' } : { label: 'Requested · waiting for vendor', tone: 'wait' };
+    case 'confirmed':
+    case 'in_progress':
+      if (due > 0 && !(b.pricePaid || 0)) {
+        return viewerIsVendor ? { label: 'Accepted · waiting for payment', tone: 'wait' } : { label: 'Accepted · pay to book', tone: 'act' };
+      }
+      if (due > 0) return { label: 'Advance paid', tone: 'ok' };
+      return { label: 'Booked · paid', tone: 'ok' };
+    case 'completed':
+      return { label: 'Completed', tone: 'ok' };
+    case 'refunded':
+      return { label: 'Refunded', tone: 'off' };
+    default:
+      return { label: 'Cancelled', tone: 'off' };
+  }
+};
+
+/** Short names for booking filters. */
+export const bookingStatusLabel = (status?: string): string => ({
+  pending: 'Requested', confirmed: 'Accepted', in_progress: 'Accepted',
+  completed: 'Completed', cancelled: 'Cancelled', refunded: 'Refunded'
+} as Record<string, string>)[status || ''] || 'Booking';
+
+export const paymentStatusLabel = (status?: string): string => ({
+  unpaid: 'Not paid yet', partial: 'Advance paid', paid: 'Paid in full', refunded: 'Refunded'
+} as Record<string, string>)[status || ''] || '';
+
+export const eventStatusLabel = (status?: string): string => ({
+  draft: 'Draft', planning: 'Not published yet', active: 'Published', completed: 'Over', cancelled: 'Cancelled'
+} as Record<string, string>)[status || ''] || '';

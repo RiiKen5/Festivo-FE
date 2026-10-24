@@ -1,3 +1,4 @@
+import { bookingStage, eventStatusLabel, paymentStatusLabel } from '../../../../shared/components/listing-cards/listing-format';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -163,7 +164,7 @@ import { Booking } from '../../../../core/models/booking.model';
                             <p>{{ event.time }} • {{ event.locationName || event.city }}</p>
                           </div>
                           <div class="event-badge" [class]="'badge--' + event.status">
-                            {{ event.status }}
+                            {{ eventStatus(event.status) }}
                           </div>
                         </div>
                       }
@@ -220,9 +221,7 @@ import { Booking } from '../../../../core/models/booking.model';
                             <h4>{{ getServiceName(booking.service) }}</h4>
                             <p>{{ isIncoming(booking) ? 'Request from ' + getOrganizerName(booking) : 'For ' + getEventTitle(booking) }} · {{ formatDate(booking.eventDate) }}</p>
                           </div>
-                          <div class="booking-status" [class]="'status--' + booking.status">
-                            {{ booking.status }}
-                          </div>
+                          <span [class]="'stage stage--' + stage(booking).tone">{{ stage(booking).label }}</span>
                           <div class="booking-price">₹{{ booking.priceAgreed | number }}</div>
                         </a>
                       }
@@ -292,7 +291,7 @@ import { Booking } from '../../../../core/models/booking.model';
                           <p class="card-location"><app-icon name="map-pin" [size]="14"></app-icon> {{ event.locationName || event.city }}</p>
                           <p class="card-attendees"><app-icon name="users" [size]="14"></app-icon> {{ event.currentAttendees }} / {{ event.maxAttendees || '∞' }}</p>
                           <p class="card-status">
-                            <span class="status-badge" [class]="'status--' + event.status">{{ event.status }}</span>
+                            <span class="status-badge" [class]="'status--' + event.status">{{ eventStatus(event.status) }}</span>
                           </p>
                           <div card-footer class="card-footer">
                             <div class="footer-actions">
@@ -358,9 +357,9 @@ import { Booking } from '../../../../core/models/booking.model';
                       <div class="table-row">
                         <span class="cell-service">{{ getServiceName(booking.service) }}</span>
                         <span>{{ formatDate(booking.eventDate) }}</span>
-                        <span class="booking-status" [class]="'status--' + booking.status">{{ booking.status }}</span>
+                        <span><span [class]="'stage stage--' + stage(booking).tone">{{ stage(booking).label }}</span></span>
                         <span class="cell-amount">₹{{ booking.priceAgreed | number }}</span>
-                        <span class="payment-status" [class]="'payment--' + booking.paymentStatus">{{ booking.paymentStatus }}</span>
+                        <span class="payment-status" [class]="'payment--' + booking.paymentStatus">{{ paymentStatus(booking.paymentStatus) }}</span>
                       </div>
                     }
                   </div>
@@ -911,6 +910,18 @@ export class DashboardHomeComponent implements OnInit {
   private toast = inject(ToastService);
   private rsvpService = inject(RsvpService);
   auth = inject(AuthService);
+
+  stage(booking: Booking) {
+    return bookingStage(booking, this.isIncoming(booking));
+  }
+
+  eventStatus(status: string): string {
+    return eventStatusLabel(status);
+  }
+
+  paymentStatus(status: string): string {
+    return paymentStatusLabel(status);
+  }
 
   activeTab = signal<'overview' | 'events' | 'bookings'>('overview');
   myEvents = signal<Event[]>([]);

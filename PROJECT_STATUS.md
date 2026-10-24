@@ -4,6 +4,24 @@ _Last updated: 23 October 2026_
 
 Festivo is an event marketplace: organizers book local vendors and sell tickets or invite guests; payments are held by Festivo and released to vendors after completion. Two repos: `Festivo-FE` (this Angular 18 app) and `Festivo-BE` (Express + MongoDB API).
 
+## Tester feedback round (October 2026)
+
+| Feedback | What changed |
+|---|---|
+| Live messaging, auto notifications | One live connection (socket.io) for messages, read receipts, typing and online status; Messages and bell badges update on every page; popup for new messages. Chat messages no longer add bell notifications |
+| Seen / sent | ✓ sent, ✓✓ seen, updated live; failed sends can be retried |
+| Responsive chat | Phone: conversation list, then full-screen chat with back button; auto-scroll; day separators |
+| Close the deal from the chat | Booking panel in the chat (accept with price, decline, pay, details); "Request booking" from the chat; booking updates posted as cards in the conversation |
+| Mic in chat | Voice messages (record, cancel, send, play inline); audio served only to the two people |
+| City dropdowns | Searchable city picker in signup, profile, event, service and both filters |
+| Event creation should guide | New events get a checklist for their type; "Plan your event" at the top of the event page with progress, booked vendor or three suggested vendors in the city per item; Request opens the vendor form with the event chosen |
+| Invitation card | Shareable 1080×1350 card with QR code to RSVP, four colours, download or share |
+| Advance payment after acceptance | "Accepted · pay to book" instead of "Confirmed"; banner at the top of every booking with the one next action (pay, accept, mark as done, review). **Online payment also needs Razorpay keys on Render** (currently off, so organizers are told to pay the vendor directly) |
+| Notification badge | Fixed: it loaded once at login and never updated |
+| Labels / user friendliness | Plain status wording everywhere (no raw values like `in_progress`), clearer signup roles, booking form and buttons ("Send request", "Accept & send price", "Mark as done", "Still to pay") |
+
+Tests: backend 62 pass; e2e journeys (booking, events, account, secondary, growth, chat, planner, voice, card) pass; axe 0 violations; no overflow at phone width.
+
 ## Marketing & growth (MARKETING.md)
 
 | Item | Status |

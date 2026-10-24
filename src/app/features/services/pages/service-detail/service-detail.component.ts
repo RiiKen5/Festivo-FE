@@ -457,7 +457,7 @@ import { BookingCreateData } from '../../../../core/models/booking.model';
       <!-- Booking Modal -->
       <app-modal
         [isOpen]="bookingModal"
-        title="Book Service"
+        title="Request a booking"
         (onClose)="closeBookingModal()"
         [showFooter]="true"
       >
@@ -512,16 +512,16 @@ import { BookingCreateData } from '../../../../core/models/booking.model';
             </div>
 
             <div class="form-group">
-              <label for="booking-price">Agreed Price (₹) *</label>
+              <label for="booking-price">Your budget (₹) *</label>
               <input
                 type="number"
                 id="booking-price"
                 [(ngModel)]="bookingForm.priceAgreed"
                 class="form-input"
                 [min]="0"
-                placeholder="Enter agreed price"
+                placeholder="How much do you want to spend?"
               />
-              <span class="form-hint">Base price: ₹{{ service()?.basePrice | number }} {{ formatPriceUnit(service()?.priceUnit) }}</span>
+              <span class="form-hint">Starts at ₹{{ service()?.basePrice | number }} {{ formatPriceUnit(service()?.priceUnit) }}. The vendor replies with their final price, and you pay only after they accept.</span>
             </div>
 
             <div class="form-group">
@@ -564,7 +564,7 @@ import { BookingCreateData } from '../../../../core/models/booking.model';
             [loading]="isSubmittingBooking()"
             [disabled]="!canSubmitBooking()"
             (onClick)="confirmBooking()">
-            Confirm Booking
+            Send request
           </app-button>
         </div>
       </app-modal>
