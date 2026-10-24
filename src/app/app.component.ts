@@ -6,6 +6,10 @@ import { NavbarComponent } from './shared/components/navbar/navbar.component';
 import { SiteFooterComponent } from './shared/components/site-footer/site-footer.component';
 import { AttributionService } from './core/services/attribution.service';
 import { AnalyticsService } from './core/services/analytics.service';
+import { RealtimeService } from './core/services/realtime.service';
+import { AuthService } from './core/services/auth.service';
+import { ToastService } from './core/services/toast.service';
+import { User } from './core/models/user.model';
 
 // App shell: one header and footer for every screen except the full-screen
 // auth pages and the messages workspace (which needs the full height).
@@ -44,6 +48,19 @@ export class AppComponent {
     this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe(e => {
       this.url.set((e as NavigationEnd).urlAfterRedirects);
       this.analytics.page((e as NavigationEnd).urlAfterRedirects.split('?')[0]);
+    });
+
+    // Live updates on every page; a short popup unless the chat is already open
+    const realtime = inject(RealtimeService);
+    const auth = inject(AuthService);
+    const toast = inject(ToastService);
+    realtime.newMessage$.subscribe(message => {
+      const sender = message.sender as User;
+      if (sender?._id === auth.currentUser()?._id || this.url().startsWith('/messages')) return;
+      toast.info(`Message from ${sender?.name || 'someone'}`, message.messageText.slice(0, 80));
+    });
+    realtime.notification$.subscribe(n => {
+      if (n.type !== 'message') toast.info(n.title, n.message);
     });
   }
 

@@ -25,6 +25,11 @@ export class BookingService {
     return this.api.get<BookingsResponse>(this.endpoint, filters);
   }
 
+  // Bookings between the current user and someone else, on either side
+  getBookingsWith(userId: string): Observable<{ success: boolean; data: Booking[] }> {
+    return this.api.get(`${this.endpoint}/with/${userId}`);
+  }
+
   getBookingStats(): Observable<{ success: boolean; data: BookingStats }> {
     return this.api.get(`${this.endpoint}/stats`);
   }

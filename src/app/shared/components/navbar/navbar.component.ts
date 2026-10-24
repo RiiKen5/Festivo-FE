@@ -1,9 +1,10 @@
-import { Component, inject, signal, OnInit, OnDestroy, effect, HostListener } from '@angular/core';
+import { Component, inject, signal, OnInit, OnDestroy, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NavigationEnd, Router, RouterModule } from '@angular/router';
 import { filter } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
+import { MessageService } from '../../../core/services/message.service';
 import { Notification, NOTIFICATION_ICONS, notificationLink } from '../../../core/models/notification.model';
 import { ButtonComponent } from '../button/button.component';
 import { IconComponent } from '../icon/icon.component';
@@ -25,7 +26,13 @@ import { LogoComponent } from '../logo/logo.component';
           <a routerLink="/services" routerLinkActive="active" class="navbar__link">Vendors</a>
           @if (auth.isAuthenticated()) {
             <a routerLink="/dashboard" routerLinkActive="active" class="navbar__link">Dashboard</a>
-            <a routerLink="/messages" routerLinkActive="active" class="navbar__link">Messages</a>
+            <a routerLink="/messages" routerLinkActive="active" class="navbar__link"
+               [attr.aria-label]="'Messages' + (messageService.unreadCount() ? ', ' + messageService.unreadCount() + ' unread' : '')">
+              Messages
+              @if (messageService.unreadCount() > 0) {
+                <span class="navbar__count" aria-hidden="true">{{ messageService.unreadCount() > 99 ? '99+' : messageService.unreadCount() }}</span>
+              }
+            </a>
           }
         </nav>
 
@@ -158,6 +165,9 @@ import { LogoComponent } from '../logo/logo.component';
             (click)="toggleMobileMenu()"
           >
             <app-icon [name]="isMobileMenuOpen() ? 'x' : 'menu'" [size]="22"></app-icon>
+            @if (!isMobileMenuOpen() && messageService.unreadCount() > 0) {
+              <span class="navbar__dot" aria-hidden="true"></span>
+            }
           </button>
         </div>
       </div>
@@ -169,7 +179,11 @@ import { LogoComponent } from '../logo/logo.component';
           @if (auth.isAuthenticated()) {
             <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="navbar__mobile-link"><app-icon name="home"></app-icon>Dashboard</a>
             <a routerLink="/bookings" routerLinkActive="active" class="navbar__mobile-link"><app-icon name="calendar"></app-icon>Bookings</a>
-            <a routerLink="/messages" routerLinkActive="active" class="navbar__mobile-link"><app-icon name="message"></app-icon>Messages</a>
+            <a routerLink="/messages" routerLinkActive="active" class="navbar__mobile-link"><app-icon name="message"></app-icon>Messages
+              @if (messageService.unreadCount() > 0) {
+                <span class="navbar__count">{{ messageService.unreadCount() > 99 ? '99+' : messageService.unreadCount() }}<span class="visually-hidden"> unread</span></span>
+              }
+            </a>
             @if (canProvideServices()) {
               <a routerLink="/dashboard/my-services" routerLinkActive="active" class="navbar__mobile-link"><app-icon name="store"></app-icon>My services</a>
             }
@@ -276,6 +290,33 @@ import { LogoComponent } from '../logo/logo.component';
         background: $neutral-100;
         color: $text-primary;
       }
+    }
+
+    .navbar__count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 18px;
+      height: 18px;
+      margin-left: $spacing-1;
+      padding: 0 5px;
+      border-radius: $radius-full;
+      background: $primary-600;
+      color: $text-inverse;
+      font-size: 11px;
+      font-weight: $font-weight-semibold;
+      line-height: 1;
+    }
+
+    .navbar__dot {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 9px;
+      height: 9px;
+      border-radius: $radius-full;
+      border: 2px solid $bg-primary;
+      background: $primary-600;
     }
 
     .navbar__badge {
@@ -623,6 +664,7 @@ import { LogoComponent } from '../logo/logo.component';
 export class NavbarComponent implements OnInit, OnDestroy {
   auth = inject(AuthService);
   notificationService = inject(NotificationService);
+  messageService = inject(MessageService);
   private router = inject(Router);
 
   isUserMenuOpen = signal(false);
@@ -632,24 +674,8 @@ export class NavbarComponent implements OnInit, OnDestroy {
   notifications = signal<Notification[]>([]);
 
   private documentClickListener: ((event: Event) => void) | null = null;
-  private notificationCountLoaded = false;
 
   constructor() {
-    // Load the unread count once auth has settled, and again after each login
-    effect(() => {
-      const isAuthenticated = this.auth.isAuthenticated();
-      const isLoading = this.auth.isLoading();
-
-      if (!isLoading && isAuthenticated && !this.notificationCountLoaded) {
-        this.notificationCountLoaded = true;
-        this.notificationService.refreshUnreadCount();
-      }
-
-      if (!isAuthenticated) {
-        this.notificationCountLoaded = false;
-      }
-    });
-
     // Navigating anywhere closes open menus
     this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe(() => this.closeMenus());
   }

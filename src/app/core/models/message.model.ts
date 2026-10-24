@@ -5,10 +5,16 @@ export interface Message {
   sender: User | string;
   receiver: User | string;
   messageText: string;
+  // booking: a status card posted when a booking between the two changes
+  messageType?: 'text' | 'image' | 'file' | 'voice' | 'booking';
+  attachments?: string[];
+  relatedBooking?: string;
   isRead: boolean;
   readAt?: Date;
   createdAt: Date;
   updatedAt: Date;
+  // Client-side only, while a message is on its way
+  sendState?: 'sending' | 'failed';
 }
 
 export interface Conversation {
@@ -20,6 +26,7 @@ export interface Conversation {
 export interface MessageCreateData {
   receiverId: string;
   messageText: string;
+  relatedBookingId?: string;
 }
 
 export interface MessagesResponse {

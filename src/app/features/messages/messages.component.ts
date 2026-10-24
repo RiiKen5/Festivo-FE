@@ -1,770 +1,834 @@
 import { IconComponent } from '../../shared/components/icon/icon.component';
-import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, OnDestroy, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule, ActivatedRoute } from '@angular/router';
+import { RouterModule, ActivatedRoute, Router, NavigationEnd } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { Subscription, filter } from 'rxjs';
 import { ButtonComponent } from '../../shared/components/button/button.component';
+import { ModalComponent } from '../../shared/components/modal/modal.component';
 import { AuthService } from '../../core/services/auth.service';
 import { MessageService } from '../../core/services/message.service';
 import { UserService } from '../../core/services/user.service';
 import { ToastService } from '../../core/services/toast.service';
+import { RealtimeService } from '../../core/services/realtime.service';
+import { BookingService } from '../../core/services/booking.service';
+import { ServiceService } from '../../core/services/service.service';
+import { EventService } from '../../core/services/event.service';
 import { Conversation, Message } from '../../core/models/message.model';
+import { Booking } from '../../core/models/booking.model';
+import { Service } from '../../core/models/service.model';
+import { Event } from '../../core/models/event.model';
 import { User } from '../../core/models/user.model';
 
-// How often to check for new messages while the page is open
-const MESSAGE_POLL_MS = 8000;
-const CONVERSATION_POLL_EVERY = 4; // conversation list refresh, in message polls
+// Only used when the live connection is down
+const FALLBACK_POLL_MS = 20000;
+const TYPING_IDLE_MS = 2500;
+
+interface DayGroup { label: string; messages: Message[]; }
 
 @Component({
   selector: 'app-messages',
   standalone: true,
-  imports: [IconComponent, CommonModule, RouterModule, FormsModule, ButtonComponent],
+  imports: [IconComponent, CommonModule, RouterModule, FormsModule, ButtonComponent, ModalComponent],
   template: `
-
-    <main class="messages-page">
-      <div class="messages-container">
-        <!-- Sidebar -->
-        <aside class="conversations-sidebar" [class.show-sidebar]="!selectedConversation()">
-          <div class="sidebar-header">
-            <h2>Messages</h2>
+    <main class="chat-page">
+      <div class="chat-shell">
+        <!-- Conversation list -->
+        <aside class="inbox" [class.inbox--hidden]="selectedUserId()" aria-label="Conversations">
+          <div class="inbox__head">
+            <h1>Messages</h1>
           </div>
+          <label class="inbox__search">
+            <app-icon name="search" [size]="16"></app-icon>
+            <span class="visually-hidden">Search conversations</span>
+            <input type="search" placeholder="Search by name" [(ngModel)]="searchQuery">
+          </label>
 
-          <div class="search-box">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="8"/>
-              <path d="M21 21l-4.35-4.35"/>
-            </svg>
-            <input type="text" placeholder="Search conversations..." [(ngModel)]="searchQuery">
-          </div>
-
-          <div class="conversations-list">
+          <div class="inbox__list">
             @if (isLoadingConversations()) {
-              <div class="loading-state">
-                @for (i of [1,2,3]; track i) {
-                  <div class="skeleton-conv">
-                    <div class="skeleton skeleton--avatar"></div>
-                    <div class="skeleton-text">
-                      <div class="skeleton skeleton--title"></div>
-                      <div class="skeleton skeleton--subtitle"></div>
-                    </div>
-                  </div>
-                }
-              </div>
+              @for (i of [1,2,3]; track i) {
+                <div class="conv conv--skeleton"><div class="skeleton avatar"></div><div class="skeleton line"></div></div>
+              }
             } @else if (filteredConversations().length === 0) {
-              <div class="empty-conversations">
-                <span class="empty-icon" aria-hidden="true"><app-icon name="message" [size]="28"></app-icon></span>
-                <p>No conversations yet</p>
-                <span class="empty-hint">Start messaging vendors or organizers</span>
+              <div class="inbox__empty">
+                <app-icon name="message" [size]="28"></app-icon>
+                <p><strong>No conversations yet</strong></p>
+                <p>Open a vendor's page and tap <em>Message</em> to ask about prices or dates.</p>
+                <app-button routerLink="/services" size="sm" variant="secondary">Find vendors</app-button>
               </div>
             } @else {
               @for (conv of filteredConversations(); track conv.user._id) {
-                <button
-                  class="conversation-item"
-                  [class.active]="selectedUserId() === conv.user._id"
-                  (click)="selectConversation(conv)"
-                >
-                  <div class="conv-avatar">
-                    @if (conv.user.profilePhoto) {
-                      <img [src]="conv.user.profilePhoto" [alt]="conv.user.name">
-                    } @else {
-                      <span>{{ conv.user.name.charAt(0).toUpperCase() }}</span>
-                    }
-                    @if (conv.unreadCount > 0) {
-                      <span class="unread-badge">{{ conv.unreadCount }}</span>
-                    }
-                  </div>
-                  <div class="conv-content">
-                    <div class="conv-header">
-                      <span class="conv-name">{{ conv.user.name }}</span>
-                      <span class="conv-time">{{ formatTime(conv.lastMessage.createdAt) }}</span>
-                    </div>
-                    <p class="conv-preview">{{ conv.lastMessage.messageText }}</p>
-                  </div>
+                <button type="button" class="conv" [class.conv--active]="selectedUserId() === conv.user._id"
+                        [class.conv--unread]="conv.unreadCount > 0" (click)="openConversation(conv.user._id)">
+                  <span class="avatar">
+                    @if (conv.user.profilePhoto) { <img [src]="conv.user.profilePhoto" alt=""> } @else { {{ initial(conv.user.name) }} }
+                    @if (isOnline(conv.user._id)) { <span class="avatar__online" title="Online"></span> }
+                  </span>
+                  <span class="conv__body">
+                    <span class="conv__top">
+                      <span class="conv__name">{{ conv.user.name }}</span>
+                      <span class="conv__time">{{ listTime(conv.lastMessage.createdAt) }}</span>
+                    </span>
+                    <span class="conv__bottom">
+                      <span class="conv__preview">
+                        @if (typingFrom() === conv.user._id) { <em>typing…</em> } @else { {{ preview(conv.lastMessage) }} }
+                      </span>
+                      @if (conv.unreadCount > 0) {
+                        <span class="conv__count">{{ conv.unreadCount }}<span class="visually-hidden"> unread</span></span>
+                      }
+                    </span>
+                  </span>
                 </button>
               }
             }
           </div>
         </aside>
 
-        <!-- Chat Area -->
-        <div class="chat-area" [class.show-chat]="selectedConversation()">
-          @if (selectedConversation()) {
-            <div class="chat-header">
-              <button class="back-btn" (click)="clearSelection()">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M15 18l-6-6 6-6"/>
-                </svg>
+        <!-- Open conversation -->
+        <section class="thread" [class.thread--open]="selectedUserId()" aria-label="Conversation">
+          @if (otherUser(); as other) {
+            <header class="thread__head">
+              <button type="button" class="icon-btn thread__back" (click)="closeConversation()" aria-label="Back to conversations">
+                <app-icon name="arrow-left" [size]="20"></app-icon>
               </button>
-              <div class="chat-user">
-                <div class="user-avatar">
-                  @if (selectedConversation()?.user?.profilePhoto) {
-                    <img [src]="selectedConversation()?.user?.profilePhoto" [alt]="selectedConversation()?.user?.name">
-                  } @else {
-                    <span>{{ selectedConversation()?.user?.name?.charAt(0)?.toUpperCase() || '' }}</span>
-                  }
-                </div>
-                <div class="user-info">
-                  <h3>{{ selectedConversation()?.user?.name }}</h3>
-                  <span class="user-status">Active</span>
-                </div>
+              <span class="avatar avatar--sm">
+                @if (other.profilePhoto) { <img [src]="other.profilePhoto" alt=""> } @else { {{ initial(other.name) }} }
+              </span>
+              <div class="thread__who">
+                <h2>{{ other.name }}</h2>
+                <span class="thread__status" aria-live="polite">
+                  @if (typingFrom() === other._id) { typing… } @else if (isOnline(other._id)) { Online } @else { &nbsp; }
+                </span>
               </div>
-              <button class="more-btn" [routerLink]="['/users', selectedUserId(), 'profile']">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-                  <circle cx="8.5" cy="7" r="4"/>
-                </svg>
-              </button>
-            </div>
+              @if (canRequestBooking()) {
+                <app-button size="sm" (onClick)="openRequest()">Request booking</app-button>
+              }
+            </header>
 
-            <div class="chat-messages" #messagesContainer>
+            <!-- Current booking with this person, and what to do next -->
+            @if (activeBooking(); as b) {
+              <div class="deal" role="region" [attr.aria-label]="'Booking with ' + other.name">
+                <div class="deal__info">
+                  <span class="deal__title">{{ serviceName(b) }} · {{ b.eventDate | date:'EEE d MMM' }}</span>
+                  <span class="deal__state" [class]="'deal__state--' + dealTone(b)">{{ dealStatus(b) }}</span>
+                </div>
+                <div class="deal__actions">
+                  @if (iAmVendor(b) && b.status === 'pending') {
+                    <app-button size="sm" (onClick)="openQuote(b)">Accept &amp; send price</app-button>
+                    <app-button size="sm" variant="ghost" (onClick)="decline(b)">Decline</app-button>
+                  } @else if (!iAmVendor(b) && isAccepted(b) && balance(b) > 0) {
+                    <app-button size="sm" [routerLink]="['/bookings', b._id]">Pay ₹{{ balance(b) | number }}</app-button>
+                  }
+                  <a class="deal__link" [routerLink]="['/bookings', b._id]">Details</a>
+                </div>
+                @if (otherActiveCount() > 0) {
+                  <a class="deal__more" routerLink="/bookings">+{{ otherActiveCount() }} more booking{{ otherActiveCount() > 1 ? 's' : '' }} with {{ other.name }}</a>
+                }
+              </div>
+            }
+
+            <div class="thread__messages" #scroller (scroll)="onScroll()">
               @if (isLoadingMessages()) {
-                <div class="loading-messages">Loading messages...</div>
-              } @else {
-                @for (message of messages(); track message._id) {
-                  <div class="message" [class.message--sent]="isSentByMe(message)" [class.message--received]="!isSentByMe(message)">
-                    <div class="message-bubble">
-                      <p>{{ message.messageText }}</p>
-                      <span class="message-time">{{ formatMessageTime(message.createdAt) }}</span>
+                <p class="thread__note">Loading messages…</p>
+              } @else if (messages().length === 0) {
+                <div class="thread__intro">
+                  <p><strong>Say hello to {{ other.name }}</strong></p>
+                  <p>Ask about availability, prices or ideas.@if (canRequestBooking()) { When you're ready, tap <em>Request booking</em>. }</p>
+                </div>
+              }
+              @for (day of dayGroups(); track day.label) {
+                <div class="day"><span>{{ day.label }}</span></div>
+                @for (m of day.messages; track m._id) {
+                  @if (m.messageType === 'booking') {
+                    <div class="event-card">
+                      <app-icon name="calendar" [size]="16"></app-icon>
+                      <span><strong>{{ isMine(m) ? 'You' : other.name }}:</strong> {{ m.messageText }}</span>
+                      @if (m.relatedBooking) { <a [routerLink]="['/bookings', m.relatedBooking]">View</a> }
                     </div>
-                  </div>
+                  } @else {
+                    <div class="bubble" [class.bubble--mine]="isMine(m)" [class.bubble--failed]="m.sendState === 'failed'">
+                      <p>{{ m.messageText }}</p>
+                      <span class="bubble__meta">
+                        {{ m.createdAt | date:'h:mm a' }}
+                        @if (isMine(m)) {
+                          @if (m.sendState === 'sending') {
+                            <span class="tick" aria-label="Sending"><app-icon name="clock" [size]="12"></app-icon></span>
+                          } @else if (m.sendState === 'failed') {
+                            <button type="button" class="retry" (click)="retry(m)">Not sent · Retry</button>
+                          } @else if (m.isRead) {
+                            <span class="tick tick--read" aria-label="Seen">✓✓</span>
+                          } @else {
+                            <span class="tick" aria-label="Sent">✓</span>
+                          }
+                        }
+                      </span>
+                    </div>
+                  }
                 }
               }
             </div>
 
-            <div class="chat-input">
-              <input
-                type="text"
-                placeholder="Type a message..."
-                [(ngModel)]="newMessage"
-                (keyup.enter)="sendMessage()"
-                [disabled]="isSending()"
-              >
-              <app-button (onClick)="sendMessage()" [disabled]="!newMessage.trim()" [loading]="isSending()">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="22" y1="2" x2="11" y2="13"/>
-                  <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-                </svg>
-              </app-button>
-            </div>
+            @if (showJump()) {
+              <button type="button" class="jump" (click)="scrollToBottom(true)">New messages ↓</button>
+            }
+
+            <form class="composer" (submit)="$event.preventDefault(); send()">
+              <label class="visually-hidden" for="composer-input">Message {{ other.name }}</label>
+              <textarea id="composer-input" #composer rows="1" placeholder="Write a message…"
+                        [(ngModel)]="draft" name="draft" maxlength="5000"
+                        (input)="onDraftInput()" (keydown.enter)="onEnter($any($event))"></textarea>
+              <button type="submit" class="send" [disabled]="!draft.trim()" aria-label="Send message">
+                <app-icon name="send" [size]="18"></app-icon>
+              </button>
+            </form>
           } @else {
-            <div class="no-chat-selected">
-              <span class="empty-icon" aria-hidden="true"><app-icon name="message" [size]="28"></app-icon></span>
-              <h3>Select a conversation</h3>
-              <p>Choose a conversation from the list to start messaging</p>
+            <div class="thread__placeholder">
+              <app-icon name="message" [size]="32"></app-icon>
+              <h2>Your conversations</h2>
+              <p>Pick a conversation to read and reply. Booking requests, prices and payments show up here too.</p>
             </div>
           }
-        </div>
+        </section>
       </div>
+
+      <!-- Organizer: request a booking without leaving the chat -->
+      <app-modal [isOpen]="showRequest()" title="Request a booking" (onClose)="showRequest.set(false)" [showFooter]="true">
+        @if (myEvents().length === 0) {
+          <p>First create the event you're booking for, then come back to this chat.</p>
+          <app-button routerLink="/events/create" variant="secondary">Create an event</app-button>
+        } @else {
+          <div class="form">
+            <label>Which event?
+              <select class="form-input" [(ngModel)]="request.eventId" (ngModelChange)="onRequestEvent()">
+                @for (e of myEvents(); track e._id) { <option [value]="e._id">{{ e.title }} · {{ e.date | date:'d MMM' }}</option> }
+              </select>
+            </label>
+            <label>Which service?
+              <select class="form-input" [(ngModel)]="request.serviceId" (ngModelChange)="onRequestService()">
+                @for (s of theirServices(); track s._id) { <option [value]="s._id">{{ s.serviceName }} · from ₹{{ s.basePrice | number }}</option> }
+              </select>
+            </label>
+            <label>Date
+              <input type="date" class="form-input" [(ngModel)]="request.eventDate" [min]="today">
+            </label>
+            <label>Your budget (₹)
+              <input type="number" class="form-input" [(ngModel)]="request.price" min="0">
+              <span class="hint">The vendor replies with their final price. You pay only after they accept.</span>
+            </label>
+            <label>What do you need? <span class="hint">(optional)</span>
+              <textarea class="form-input" rows="3" [(ngModel)]="request.notes" placeholder="Theme, size, number of guests…"></textarea>
+            </label>
+          </div>
+        }
+        <div modal-footer>
+          <app-button variant="ghost" (onClick)="showRequest.set(false)">Cancel</app-button>
+          @if (myEvents().length) {
+            <app-button [loading]="isSubmitting()" [disabled]="!request.eventId || !request.serviceId || !request.eventDate" (onClick)="submitRequest()">Send request</app-button>
+          }
+        </div>
+      </app-modal>
+
+      <!-- Vendor: accept with a final price -->
+      <app-modal [isOpen]="!!quoteFor()" title="Accept and send your price" (onClose)="quoteFor.set(null)" [showFooter]="true">
+        <div class="form">
+          <label>Your final price (₹)
+            <input type="number" class="form-input" [(ngModel)]="quotePrice" min="0">
+            <span class="hint">They proposed ₹{{ quoteFor()?.priceAgreed | number }}. After you accept, they can pay online and Festivo holds the money until the job is done.</span>
+          </label>
+        </div>
+        <div modal-footer>
+          <app-button variant="ghost" (onClick)="quoteFor.set(null)">Cancel</app-button>
+          <app-button [loading]="isSubmitting()" (onClick)="sendQuote()">Accept booking</app-button>
+        </div>
+      </app-modal>
     </main>
   `,
   styles: [`
     @use '../../../styles/variables' as *;
     @use '../../../styles/mixins' as *;
 
-    .messages-page {
-      height: calc(100vh - $navbar-height);
-      background: $bg-secondary;
-    }
+    .chat-page { height: calc(100dvh - #{$navbar-height}); background: $bg-secondary; }
+    .chat-shell { display: grid; height: 100%; grid-template-columns: 1fr; @include md { grid-template-columns: 340px 1fr; } }
 
-    .messages-container {
-      display: grid;
-      grid-template-columns: 1fr;
-      height: 100%;
+    .inbox { display: flex; flex-direction: column; min-height: 0; background: $bg-primary; border-right: 1px solid $border-light;
+      @include max-md { &--hidden { display: none; } } }
+    .inbox__head { padding: $spacing-4 $spacing-4 $spacing-2; h1 { font-size: $font-size-xl; } }
+    .inbox__search { display: flex; align-items: center; gap: $spacing-2; margin: 0 $spacing-4 $spacing-3; padding: $spacing-2 $spacing-3;
+      border-radius: $radius-default; background: $neutral-100; color: $text-muted;
+      input { flex: 1; border: 0; background: none; font-size: $font-size-sm; &:focus { outline: none; } } }
+    .inbox__list { flex: 1; overflow-y: auto; @include scrollbar-custom; }
+    .inbox__empty { padding: $spacing-8 $spacing-6; text-align: center; color: $text-secondary;
+      p { margin: $spacing-2 0; } app-button { display: inline-block; margin-top: $spacing-2; } }
 
-      @include md {
-        grid-template-columns: 360px 1fr;
-      }
-    }
+    .conv { display: flex; gap: $spacing-3; align-items: center; width: 100%; padding: $spacing-3 $spacing-4;
+      border: 0; background: none; text-align: left; cursor: pointer;
+      &:hover { background: $neutral-50; } &--active { background: $primary-50; }
+      &--skeleton .line { flex: 1; height: 14px; } }
+    .conv__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .conv__top, .conv__bottom { display: flex; justify-content: space-between; align-items: center; gap: $spacing-2; }
+    .conv__name { font-weight: $font-weight-medium; @include truncate; }
+    .conv__time { font-size: $font-size-xs; color: $text-muted; flex-shrink: 0; }
+    .conv__preview { font-size: $font-size-sm; color: $text-secondary; @include truncate; }
+    .conv--unread .conv__name, .conv--unread .conv__preview { color: $text-primary; font-weight: $font-weight-semibold; }
+    .conv__count { min-width: 20px; height: 20px; padding: 0 6px; border-radius: $radius-full; background: $primary-600;
+      color: $text-inverse; font-size: 11px; font-weight: $font-weight-semibold; @include flex-center; }
 
-    .conversations-sidebar {
-      background: $bg-primary;
-      border-right: 1px solid $border-light;
-      display: flex;
-      flex-direction: column;
-      height: 100%;
+    .avatar { position: relative; @include avatar(44px); @include flex-center; flex-shrink: 0; background: $primary-100;
+      color: $primary-800; font-weight: $font-weight-semibold;
+      img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+      &--sm { width: 36px; height: 36px; } }
+    .avatar__online { position: absolute; right: 0; bottom: 0; width: 12px; height: 12px; border-radius: 50%;
+      background: $success; border: 2px solid $bg-primary; }
 
-      @include max-md {
-        display: none;
+    .thread { display: flex; flex-direction: column; min-height: 0; position: relative; background: $bg-primary;
+      @include max-md { display: none; &--open { display: flex; } } }
+    .thread__head { display: flex; align-items: center; gap: $spacing-3; padding: $spacing-2 $spacing-4; border-bottom: 1px solid $border-light; }
+    .thread__back { @include md { display: none; } }
+    .thread__who { flex: 1; min-width: 0; h2 { font-size: $font-size-base; @include truncate; } }
+    .thread__status { display: block; font-size: $font-size-xs; color: $success-dark; min-height: 1em; }
+    .icon-btn { @include flex-center; width: 40px; height: 40px; border: 0; border-radius: $radius-default; background: none;
+      color: $text-secondary; cursor: pointer; &:hover { background: $neutral-100; } }
 
-        &.show-sidebar {
-          display: flex;
-        }
-      }
-    }
+    .deal { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: $spacing-2 $spacing-4;
+      padding: $spacing-3 $spacing-4; background: $neutral-50; border-bottom: 1px solid $border-light; }
+    .deal__info { display: flex; flex-direction: column; min-width: 0; }
+    .deal__title { font-size: $font-size-sm; font-weight: $font-weight-semibold; @include truncate; }
+    .deal__state { font-size: $font-size-xs; font-weight: $font-weight-medium;
+      &--wait { color: $warning-dark; } &--act { color: $primary-700; } &--ok { color: $success-dark; } &--off { color: $text-muted; } }
+    .deal__actions { display: flex; align-items: center; gap: $spacing-2; }
+    .deal__link, .deal__more { font-size: $font-size-sm; font-weight: $font-weight-medium; }
+    .deal__more { flex-basis: 100%; font-size: $font-size-xs; }
 
-    .chat-area {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      background: $bg-primary;
+    .thread__messages { flex: 1; overflow-y: auto; padding: $spacing-4; display: flex; flex-direction: column; gap: $spacing-2; @include scrollbar-custom; }
+    .thread__note { text-align: center; color: $text-secondary; }
+    .thread__intro { margin: auto; max-width: 320px; text-align: center; color: $text-secondary; p { margin: $spacing-1 0; } }
+    .thread__placeholder { margin: auto; padding: $spacing-8; max-width: 360px; text-align: center; color: $text-secondary;
+      h2 { margin: $spacing-3 0 $spacing-1; font-size: $font-size-lg; color: $text-primary; } }
 
-      @include max-md {
-        display: none;
+    .day { display: flex; justify-content: center; margin: $spacing-3 0 $spacing-1;
+      span { padding: 2px $spacing-3; border-radius: $radius-full; background: $neutral-100; font-size: $font-size-xs; color: $text-secondary; } }
 
-        &.show-chat {
-          display: flex;
-        }
-      }
-    }
-
-    .sidebar-header {
-      @include flex-between;
-      padding: $spacing-4 $spacing-6;
-      border-bottom: 1px solid $border-light;
-
-      h2 {
-        font-size: $font-size-xl;
-        font-weight: $font-weight-semibold;
-      }
-    }
-
-    .search-box {
-      display: flex;
-      align-items: center;
-      gap: $spacing-3;
-      margin: $spacing-4;
-      padding: $spacing-3;
+    .bubble { align-self: flex-start; max-width: min(75%, 520px); padding: $spacing-2 $spacing-3; border-radius: $radius-lg $radius-lg $radius-lg 4px;
       background: $neutral-100;
-      border-radius: $radius-default;
+      p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+      &--mine { align-self: flex-end; border-radius: $radius-lg $radius-lg 4px $radius-lg; background: $primary-600; color: $text-inverse;
+        .bubble__meta { color: rgba(255, 255, 255, 0.8); } }
+      &--failed { background: $error-light; color: $error-dark; .bubble__meta { color: $error-dark; } } }
+    .bubble__meta { display: flex; justify-content: flex-end; align-items: center; gap: 4px; margin-top: 2px; font-size: 11px; color: $text-muted; }
+    .tick { display: inline-flex; letter-spacing: -3px; &--read { color: #a5f3fc; font-weight: $font-weight-bold; } }
+    .retry { border: 0; background: none; padding: 0; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; }
 
-      svg {
-        color: $text-muted;
-        flex-shrink: 0;
-      }
+    .event-card { align-self: center; display: flex; align-items: center; gap: $spacing-2; max-width: 90%; margin: $spacing-1 0;
+      padding: $spacing-2 $spacing-3; border: 1px solid $border-light; border-radius: $radius-default; background: $bg-secondary;
+      font-size: $font-size-sm; color: $text-secondary;
+      app-icon { color: $primary-600; flex-shrink: 0; } a { font-weight: $font-weight-semibold; white-space: nowrap; } }
 
-      input {
-        flex: 1;
-        border: none;
-        background: none;
-        font-size: $font-size-sm;
+    .jump { position: absolute; left: 50%; bottom: 76px; transform: translateX(-50%); padding: $spacing-1 $spacing-3; border: 0;
+      border-radius: $radius-full; background: $primary-600; color: $text-inverse; font-size: $font-size-sm; box-shadow: $shadow-md; cursor: pointer; }
 
-        &:focus {
-          outline: none;
-        }
+    .composer { display: flex; align-items: flex-end; gap: $spacing-2; padding: $spacing-3 $spacing-4;
+      padding-bottom: calc(#{$spacing-3} + env(safe-area-inset-bottom)); border-top: 1px solid $border-light;
+      textarea { flex: 1; resize: none; max-height: 140px; padding: $spacing-2 $spacing-4; border: 1px solid $border-default;
+        border-radius: 20px; font: inherit; line-height: 1.4; &:focus { outline: none; border-color: $primary-500; } } }
+    .send { @include flex-center; width: 42px; height: 42px; flex-shrink: 0; border: 0; border-radius: 50%; background: $primary-600;
+      color: $text-inverse; cursor: pointer; &:disabled { background: $neutral-300; cursor: default; } }
 
-        &::placeholder {
-          color: $text-muted;
-        }
-      }
-    }
-
-    .conversations-list {
-      flex: 1;
-      overflow-y: auto;
-      @include scrollbar-custom;
-    }
-
-    .loading-state {
-      padding: $spacing-4;
-    }
-
-    .skeleton-conv {
-      display: flex;
-      gap: $spacing-3;
-      padding: $spacing-3;
-    }
-
-    .skeleton--avatar {
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-    }
-
-    .skeleton-text {
-      flex: 1;
-    }
-
-    .empty-conversations {
-      @include flex-column-center;
-      padding: $spacing-12;
-      text-align: center;
-
-      .empty-icon {
-        font-size: 3rem;
-        margin-bottom: $spacing-4;
-      }
-
-      p {
-        font-weight: $font-weight-medium;
-        margin-bottom: $spacing-1;
-      }
-
-      .empty-hint {
-        font-size: $font-size-sm;
-        color: $text-secondary;
-      }
-    }
-
-    .conversation-item {
-      display: flex;
-      align-items: center;
-      gap: $spacing-3;
-      width: 100%;
-      padding: $spacing-3 $spacing-4;
-      text-align: left;
-      background: none;
-      border: none;
-      cursor: pointer;
-      transition: background $transition-fast;
-
-      &:hover {
-        background: $neutral-50;
-      }
-
-      &.active {
-        background: $primary-50;
-      }
-    }
-
-    .conv-avatar {
-      position: relative;
-      @include avatar(48px);
-      @include flex-center;
-      background: $bg-gradient-primary;
-      color: $text-inverse;
-      font-weight: $font-weight-semibold;
-      flex-shrink: 0;
-
-      img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        border-radius: inherit;
-      }
-    }
-
-    .unread-badge {
-      position: absolute;
-      top: -2px;
-      right: -2px;
-      @include flex-center;
-      min-width: 18px;
-      height: 18px;
-      padding: 0 4px;
-      background: $primary-600;
-      color: white;
-      border-radius: $radius-full;
-      font-size: 10px;
-      font-weight: $font-weight-bold;
-    }
-
-    .conv-content {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .conv-header {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: $spacing-1;
-    }
-
-    .conv-name {
-      font-weight: $font-weight-medium;
-    }
-
-    .conv-time {
-      font-size: $font-size-xs;
-      color: $text-muted;
-    }
-
-    .conv-preview {
-      font-size: $font-size-sm;
-      color: $text-secondary;
-      @include truncate;
-    }
-
-    .chat-header {
-      @include flex-between;
-      padding: $spacing-3 $spacing-4;
-      border-bottom: 1px solid $border-light;
-    }
-
-    .back-btn,
-    .more-btn {
-      @include flex-center;
-      width: 40px;
-      height: 40px;
-      border-radius: $radius-default;
-      color: $text-secondary;
-      background: none;
-      border: none;
-      cursor: pointer;
-
-      &:hover {
-        background: $neutral-100;
-      }
-    }
-
-    .back-btn {
-      display: none;
-
-      @include max-md {
-        display: flex;
-      }
-    }
-
-    .chat-user {
-      display: flex;
-      align-items: center;
-      gap: $spacing-3;
-      flex: 1;
-    }
-
-    .user-avatar {
-      @include avatar(40px);
-      @include flex-center;
-      background: $bg-gradient-primary;
-      color: $text-inverse;
-      font-weight: $font-weight-semibold;
-
-      img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        border-radius: inherit;
-      }
-    }
-
-    .user-info {
-      h3 {
-        font-size: $font-size-base;
-        font-weight: $font-weight-semibold;
-      }
-    }
-
-    .user-status {
-      font-size: $font-size-xs;
-      color: $text-muted;
-    }
-
-    .chat-messages {
-      flex: 1;
-      padding: $spacing-4;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: $spacing-3;
-      @include scrollbar-custom;
-    }
-
-    .loading-messages {
-      text-align: center;
-      color: $text-secondary;
-      padding: $spacing-8;
-    }
-
-    .message {
-      display: flex;
-      max-width: 70%;
-
-      &--sent {
-        align-self: flex-end;
-
-        .message-bubble {
-          background: $primary-600;
-          color: $text-inverse;
-          border-radius: $radius-lg $radius-lg 0 $radius-lg;
-        }
-
-        .message-time {
-          color: rgba(255,255,255,0.7);
-        }
-      }
-
-      &--received {
-        align-self: flex-start;
-
-        .message-bubble {
-          background: $neutral-100;
-          border-radius: $radius-lg $radius-lg $radius-lg 0;
-        }
-      }
-    }
-
-    .message-bubble {
-      padding: $spacing-3 $spacing-4;
-
-      p {
-        margin-bottom: $spacing-1;
-        word-wrap: break-word;
-      }
-    }
-
-    .message-time {
-      font-size: $font-size-xs;
-      color: $text-muted;
-    }
-
-    .chat-input {
-      display: flex;
-      align-items: center;
-      gap: $spacing-3;
-      padding: $spacing-4;
-      border-top: 1px solid $border-light;
-
-      input {
-        flex: 1;
-        padding: $spacing-3 $spacing-4;
-        border: 1px solid $border-light;
-        border-radius: $radius-full;
-        font-size: $font-size-base;
-
-        &:focus {
-          outline: none;
-          border-color: $primary-500;
-        }
-
-        &:disabled {
-          background: $neutral-100;
-        }
-      }
-    }
-
-    .no-chat-selected {
-      @include flex-column-center;
-      height: 100%;
-      text-align: center;
-      color: $text-secondary;
-
-      .empty-icon {
-        font-size: 4rem;
-        margin-bottom: $spacing-4;
-      }
-
-      h3 {
-        font-size: $font-size-xl;
-        font-weight: $font-weight-semibold;
-        color: $text-primary;
-        margin-bottom: $spacing-2;
-      }
-    }
+    .form { display: flex; flex-direction: column; gap: $spacing-4;
+      label { display: flex; flex-direction: column; gap: $spacing-1; font-size: $font-size-sm; font-weight: $font-weight-medium; } }
+    .hint { font-size: $font-size-xs; font-weight: $font-weight-regular; color: $text-secondary; }
   `]
 })
 export class MessagesComponent implements OnInit, OnDestroy {
-  private pollTimer?: ReturnType<typeof setInterval>;
-  private pollCount = 0;
+  @ViewChild('scroller') private scroller?: ElementRef<HTMLElement>;
+  @ViewChild('composer') private composer?: ElementRef<HTMLTextAreaElement>;
 
   private auth = inject(AuthService);
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   private messageService = inject(MessageService);
   private userService = inject(UserService);
   private toast = inject(ToastService);
+  private realtime = inject(RealtimeService);
+  private bookingService = inject(BookingService);
+  private serviceService = inject(ServiceService);
+  private eventService = inject(EventService);
 
   searchQuery = '';
-  newMessage = '';
+  draft = '';
+  today = new Date().toISOString().slice(0, 10);
 
   conversations = signal<Conversation[]>([]);
   messages = signal<Message[]>([]);
-  selectedConversation = signal<Conversation | null>(null);
   selectedUserId = signal<string | null>(null);
+  otherUser = signal<User | null>(null);
+  bookings = signal<Booking[]>([]);
+  theirServices = signal<Service[]>([]);
+  myEvents = signal<Event[]>([]);
+  online = signal<Record<string, boolean>>({});
+  typingFrom = signal<string | null>(null);
+  showJump = signal(false);
 
   isLoadingConversations = signal(true);
   isLoadingMessages = signal(false);
-  isSending = signal(false);
+  isSubmitting = signal(false);
+  showRequest = signal(false);
+  quoteFor = signal<Booking | null>(null);
+  quotePrice = 0;
+  request = { eventId: '', serviceId: '', eventDate: '', price: 0, notes: '' };
 
-  // For new conversations from route params
-  private targetUserId: string | null = null;
+  private subs: Subscription[] = [];
+  private pollTimer?: ReturnType<typeof setInterval>;
+  private typingTimer?: ReturnType<typeof setTimeout>;
+  private typingClear?: ReturnType<typeof setTimeout>;
+  private sentTyping = false;
+  private atBottom = true;
+
+  dayGroups = computed<DayGroup[]>(() => {
+    const groups: DayGroup[] = [];
+    for (const m of this.messages()) {
+      const label = this.dayLabel(m.createdAt);
+      const last = groups[groups.length - 1];
+      if (last?.label === label) last.messages.push(m); else groups.push({ label, messages: [m] });
+    }
+    return groups;
+  });
+
+  // The booking that needs attention first: open ones, newest first
+  private openBookings = computed(() =>
+    this.bookings().filter(b => ['pending', 'confirmed', 'in_progress'].includes(b.status)));
+  activeBooking = computed(() => this.openBookings()[0] || null);
+  otherActiveCount = computed(() => Math.max(0, this.openBookings().length - 1));
+  canRequestBooking = computed(() => this.theirServices().length > 0);
 
   ngOnInit(): void {
-    // Check if we're navigating to a specific user
-    this.targetUserId = this.route.snapshot.paramMap.get('userId');
     this.loadConversations();
-    this.pollTimer = setInterval(() => this.poll(), MESSAGE_POLL_MS);
-  }
-
-  loadConversations(): void {
-    this.isLoadingConversations.set(true);
-    this.messageService.getConversations().subscribe({
-      next: (response) => {
-        this.conversations.set(response.data);
-        this.isLoadingConversations.set(false);
-
-        // If we have a target user from route params, select that conversation
-        if (this.targetUserId) {
-          const existingConv = response.data.find(c => c.user._id === this.targetUserId);
-          if (existingConv) {
-            // Select existing conversation
-            this.selectConversation(existingConv);
-          } else {
-            // Create a new conversation placeholder by fetching the user
-            this.startNewConversation(this.targetUserId);
-          }
+    this.subs.push(
+      this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe(() => this.syncSelection()),
+      this.realtime.newMessage$.subscribe(m => this.onIncoming(m)),
+      this.realtime.messagesRead$.subscribe(({ readerId }) => {
+        if (readerId === this.selectedUserId()) {
+          this.messages.update(list => list.map(m => this.isMine(m) ? { ...m, isRead: true } : m));
         }
-      },
-      error: () => {
-        this.isLoadingConversations.set(false);
-      }
-    });
-  }
-
-  /**
-   * Start a new conversation with a user who we haven't messaged before
-   */
-  startNewConversation(userId: string): void {
-    this.userService.getUserProfile(userId).subscribe({
-      next: (response) => {
-        const user = response.data;
-        // Create a placeholder conversation
-        const newConv: Conversation = {
-          user: user,
-          lastMessage: {
-            _id: '',
-            sender: '',
-            receiver: userId,
-            messageText: '',
-            isRead: true,
-            createdAt: new Date(),
-            updatedAt: new Date()
-          },
-          unreadCount: 0
-        };
-
-        // Add to conversations list if not already present
-        this.conversations.update(convs => {
-          if (!convs.find(c => c.user._id === userId)) {
-            return [newConv, ...convs];
-          }
-          return convs;
-        });
-
-        // Select this conversation
-        this.selectedConversation.set(newConv);
-        this.selectedUserId.set(userId);
-        this.messages.set([]);
-      },
-      error: () => {
-        this.toast.error('Error', 'Could not load user information');
-      }
-    });
-  }
-
-  filteredConversations(): Conversation[] {
-    if (!this.searchQuery) return this.conversations();
-    return this.conversations().filter(c =>
-      c.user.name.toLowerCase().includes(this.searchQuery.toLowerCase())
+      }),
+      this.realtime.typing$.subscribe(({ userId, typing }) => {
+        this.typingFrom.set(typing ? userId : (this.typingFrom() === userId ? null : this.typingFrom()));
+        clearTimeout(this.typingClear);
+        if (typing) this.typingClear = setTimeout(() => this.typingFrom.set(null), 6000);
+      }),
+      this.realtime.presence$.subscribe(({ userId, online }) => this.online.update(o => ({ ...o, [userId]: online })))
     );
-  }
-
-  selectConversation(conv: Conversation): void {
-    this.selectedConversation.set(conv);
-    this.selectedUserId.set(conv.user._id);
-    this.loadMessages(conv.user._id);
-
-    // Mark as read
-    if (conv.unreadCount > 0) {
-      this.messageService.markConversationAsRead(conv.user._id).subscribe(() => {
-        this.conversations.update(conversations =>
-          conversations.map(c =>
-            c.user._id === conv.user._id ? { ...c, unreadCount: 0 } : c
-          )
-        );
-      });
-    }
+    this.syncSelection();
+    this.pollTimer = setInterval(() => {
+      if (!this.realtime.connected() && !document.hidden) this.refresh();
+    }, FALLBACK_POLL_MS);
   }
 
   ngOnDestroy(): void {
+    this.subs.forEach(s => s.unsubscribe());
     clearInterval(this.pollTimer);
+    clearTimeout(this.typingTimer);
+    clearTimeout(this.typingClear);
+    this.stopTyping();
+    this.realtime.activeChatUserId = null;
   }
 
-  // Quietly pick up new messages (no loading spinners)
-  private poll(): void {
-    if (document.hidden) return;
-    this.pollCount += 1;
+  // ---------- conversations ----------
 
-    const userId = this.selectedUserId();
-    if (userId) {
-      this.messageService.getConversation(userId).subscribe({
-        next: (response) => {
-          const current = this.messages();
-          const latest = response.data;
-          if (this.selectedUserId() === userId &&
-              (latest.length !== current.length || latest[latest.length - 1]?._id !== current[current.length - 1]?._id)) {
-            this.messages.set(latest);
-          }
-        }
-      });
-    }
-
-    if (this.pollCount % CONVERSATION_POLL_EVERY === 0) {
-      this.messageService.getConversations().subscribe({
-        next: (response) => this.conversations.set(response.data)
-      });
-    }
+  filteredConversations(): Conversation[] {
+    const q = this.searchQuery.trim().toLowerCase();
+    return q ? this.conversations().filter(c => c.user.name.toLowerCase().includes(q)) : this.conversations();
   }
 
-  loadMessages(userId: string): void {
-    this.isLoadingMessages.set(true);
-    this.messageService.getConversation(userId).subscribe({
-      next: (response) => {
-        this.messages.set(response.data);
-        this.isLoadingMessages.set(false);
+  private syncSelection(): void {
+    const userId = this.route.firstChild?.snapshot.paramMap.get('userId');
+    if (userId) this.select(userId); else this.resetThread();
+  }
+
+  openConversation(userId: string): void {
+    this.router.navigate(['/messages', userId]);
+  }
+
+  closeConversation(): void {
+    this.router.navigate(['/messages']);
+  }
+
+  private loadConversations(): void {
+    this.messageService.getConversations().subscribe({
+      next: res => {
+        this.conversations.set(res.data);
+        this.isLoadingConversations.set(false);
+        this.realtime.presence(res.data.map(c => c.user._id)).then(map => this.online.update(o => ({ ...o, ...map })));
       },
-      error: () => {
-        this.isLoadingMessages.set(false);
-      }
+      error: () => this.isLoadingConversations.set(false)
     });
   }
 
-  clearSelection(): void {
-    this.selectedConversation.set(null);
-    this.selectedUserId.set(null);
+  private select(userId: string): void {
+    if (this.selectedUserId() === userId) return;
+    this.stopTyping();
+    this.selectedUserId.set(userId);
+    this.realtime.activeChatUserId = userId;
     this.messages.set([]);
+    this.bookings.set([]);
+    this.theirServices.set([]);
+    this.draft = '';
+
+    const known = this.conversations().find(c => c.user._id === userId);
+    this.otherUser.set(known?.user || null);
+    if (!known) {
+      this.userService.getUserProfile(userId).subscribe({
+        next: res => this.otherUser.set(res.data),
+        error: () => this.toast.error('Could not open this chat', 'The person may no longer be on Festivo.')
+      });
+    }
+
+    this.loadMessages(userId);
+    this.loadBookings(userId);
+    this.serviceService.getServices({ provider: userId, limit: 20 }).subscribe({
+      next: res => { if (this.selectedUserId() === userId) this.theirServices.set(res.data || []); }
+    });
+    this.realtime.presence([userId]).then(map => this.online.update(o => ({ ...o, ...map })));
   }
 
-  isSentByMe(message: Message): boolean {
-    const currentUserId = this.auth.currentUser()?._id;
-    const sender = message.sender as User;
-    return sender?._id === currentUserId || message.sender === currentUserId;
+  private resetThread(): void {
+    this.stopTyping();
+    this.selectedUserId.set(null);
+    this.otherUser.set(null);
+    this.messages.set([]);
+    this.realtime.activeChatUserId = null;
   }
 
-  sendMessage(): void {
-    if (!this.newMessage.trim() || !this.selectedUserId()) return;
-
-    this.isSending.set(true);
-    this.messageService.sendMessage({
-      receiverId: this.selectedUserId()!,
-      messageText: this.newMessage.trim()
-    }).subscribe({
-      next: (response) => {
-        this.messages.update(messages => [...messages, response.data]);
-        this.newMessage = '';
-        this.isSending.set(false);
-
-        // Update conversation list
-        const conv = this.selectedConversation();
-        if (conv) {
-          this.conversations.update(conversations =>
-            conversations.map(c =>
-              c.user._id === conv.user._id
-                ? { ...c, lastMessage: response.data }
-                : c
-            )
-          );
-        }
+  private loadMessages(userId: string, quiet = false): void {
+    if (!quiet) this.isLoadingMessages.set(true);
+    this.messageService.getConversation(userId).subscribe({
+      next: res => {
+        if (this.selectedUserId() !== userId) return;
+        const pending = this.messages().filter(m => m.sendState);
+        this.messages.set([...res.data, ...pending]);
+        this.isLoadingMessages.set(false);
+        this.clearUnread(userId);
+        if (!quiet) this.scrollToBottom(true);
       },
-      error: () => {
-        this.isSending.set(false);
-        this.toast.error('Error', 'Failed to send message');
+      error: () => this.isLoadingMessages.set(false)
+    });
+  }
+
+  private loadBookings(userId: string): void {
+    this.bookingService.getBookingsWith(userId).subscribe({
+      next: res => { if (this.selectedUserId() === userId) this.bookings.set(res.data || []); }
+    });
+  }
+
+  // Opening a conversation marks it read on the server (getConversation)
+  private clearUnread(userId: string): void {
+    const conv = this.conversations().find(c => c.user._id === userId);
+    if (!conv?.unreadCount) return;
+    this.messageService.unreadCount.update(n => Math.max(0, n - conv.unreadCount));
+    this.conversations.update(list => list.map(c => c.user._id === userId ? { ...c, unreadCount: 0 } : c));
+  }
+
+  private refresh(): void {
+    this.loadConversations();
+    const id = this.selectedUserId();
+    if (id) this.loadMessages(id, true);
+  }
+
+  // ---------- live updates ----------
+
+  private onIncoming(m: Message): void {
+    const mine = this.isMine(m);
+    const otherId = mine ? this.idOf(m.receiver) : this.idOf(m.sender);
+    const open = otherId === this.selectedUserId();
+
+    if (open) {
+      if (!this.messages().some(x => x._id === m._id)) {
+        this.messages.update(list => [...list, m]);
+        this.scrollToBottom(mine);
+      }
+      if (!mine) {
+        this.typingFrom.set(null);
+        if (!document.hidden) this.messageService.markConversationAsRead(otherId).subscribe();
+      }
+      if (m.messageType === 'booking') this.loadBookings(otherId);
+    }
+
+    const existing = this.conversations().find(c => c.user._id === otherId);
+    if (!existing) {
+      this.loadConversations();
+      return;
+    }
+    const unread = !mine && !open ? existing.unreadCount + 1 : existing.unreadCount;
+    this.conversations.update(list => [
+      { ...existing, lastMessage: m, unreadCount: unread },
+      ...list.filter(c => c.user._id !== otherId)
+    ]);
+  }
+
+  // ---------- sending ----------
+
+  onEnter(event: KeyboardEvent): void {
+    if (event.shiftKey || event.isComposing) return;
+    event.preventDefault();
+    this.send();
+  }
+
+  send(): void {
+    const text = this.draft.trim();
+    const to = this.selectedUserId();
+    if (!text || !to) return;
+
+    const me = this.auth.currentUser();
+    const temp: Message = {
+      _id: 'tmp-' + Date.now(),
+      sender: me as User,
+      receiver: to,
+      messageText: text,
+      messageType: 'text',
+      isRead: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      sendState: 'sending'
+    };
+    this.messages.update(list => [...list, temp]);
+    this.draft = '';
+    this.resizeComposer();
+    this.stopTyping();
+    this.scrollToBottom(true);
+    this.deliver(temp);
+  }
+
+  retry(m: Message): void {
+    this.messages.update(list => list.map(x => x._id === m._id ? { ...x, sendState: 'sending' } : x));
+    this.deliver(m);
+  }
+
+  private deliver(temp: Message): void {
+    const to = this.idOf(temp.receiver);
+    this.messageService.sendMessage({ receiverId: to, messageText: temp.messageText }).subscribe({
+      next: res => {
+        // The live event may already have added the saved copy
+        this.messages.update(list => {
+          const withoutTemp = list.filter(x => x._id !== temp._id);
+          return withoutTemp.some(x => x._id === res.data._id) ? withoutTemp : [...withoutTemp, res.data];
+        });
+        this.bumpConversation(to, res.data);
+      },
+      error: () => this.messages.update(list => list.map(x => x._id === temp._id ? { ...x, sendState: 'failed' } : x))
+    });
+  }
+
+  private bumpConversation(userId: string, last: Message): void {
+    const existing = this.conversations().find(c => c.user._id === userId);
+    const user = existing?.user || this.otherUser();
+    if (!user) return;
+    this.conversations.update(list => [
+      { user, lastMessage: last, unreadCount: existing?.unreadCount || 0 },
+      ...list.filter(c => c.user._id !== userId)
+    ]);
+  }
+
+  onDraftInput(): void {
+    this.resizeComposer();
+    const to = this.selectedUserId();
+    if (!to) return;
+    if (!this.sentTyping && this.draft.trim()) {
+      this.realtime.typing(to, true);
+      this.sentTyping = true;
+    }
+    clearTimeout(this.typingTimer);
+    this.typingTimer = setTimeout(() => this.stopTyping(), TYPING_IDLE_MS);
+  }
+
+  private stopTyping(): void {
+    const to = this.selectedUserId();
+    if (this.sentTyping && to) this.realtime.typing(to, false);
+    this.sentTyping = false;
+  }
+
+  private resizeComposer(): void {
+    const el = this.composer?.nativeElement;
+    if (!el) return;
+    setTimeout(() => { el.style.height = 'auto'; el.style.height = `${el.scrollHeight}px`; });
+  }
+
+  // ---------- booking actions ----------
+
+  openRequest(): void {
+    this.showRequest.set(true);
+    this.eventService.getMyEvents({ limit: 50 } as any).subscribe({
+      next: res => {
+        const now = Date.now() - 864e5;
+        const upcoming = ((res.data as Event[]) || [])
+          .filter(e => !['cancelled', 'completed'].includes(e.status) && new Date(e.date).getTime() >= now)
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        this.myEvents.set(upcoming);
+        this.request = { eventId: upcoming[0]?._id || '', serviceId: this.theirServices()[0]?._id || '', eventDate: '', price: 0, notes: '' };
+        this.onRequestEvent();
+        this.onRequestService();
       }
     });
   }
 
-  formatTime(date: Date | string): string {
-    const now = new Date();
-    const msgDate = new Date(date);
-    const diff = now.getTime() - msgDate.getTime();
-    const hours = diff / (1000 * 60 * 60);
-
-    if (hours < 1) return 'Just now';
-    if (hours < 24) return `${Math.floor(hours)}h ago`;
-    return msgDate.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+  onRequestEvent(): void {
+    const e = this.myEvents().find(x => x._id === this.request.eventId);
+    if (e) this.request.eventDate = new Date(e.date).toISOString().slice(0, 10);
   }
 
-  formatMessageTime(date: Date | string): string {
-    return new Date(date).toLocaleTimeString('en-IN', {
-      hour: '2-digit',
-      minute: '2-digit'
+  onRequestService(): void {
+    const s = this.theirServices().find(x => x._id === this.request.serviceId);
+    if (s) this.request.price = s.basePrice;
+  }
+
+  submitRequest(): void {
+    this.isSubmitting.set(true);
+    this.bookingService.createBooking({
+      eventId: this.request.eventId,
+      serviceId: this.request.serviceId,
+      eventDate: this.request.eventDate,
+      priceAgreed: Number(this.request.price) || 0,
+      notes: this.request.notes.trim() || undefined
+    }).subscribe({
+      next: () => {
+        this.isSubmitting.set(false);
+        this.showRequest.set(false);
+        this.toast.success('Request sent', `${this.otherUser()?.name} will reply with their final price.`);
+        this.loadBookings(this.selectedUserId()!);
+      },
+      error: err => {
+        this.isSubmitting.set(false);
+        this.toast.error('Could not send request', err.error?.message || 'Please try again.');
+      }
+    });
+  }
+
+  openQuote(b: Booking): void {
+    this.quotePrice = b.priceAgreed;
+    this.quoteFor.set(b);
+  }
+
+  sendQuote(): void {
+    const b = this.quoteFor();
+    if (!b) return;
+    this.isSubmitting.set(true);
+    this.bookingService.confirmBooking(b._id, Number(this.quotePrice)).subscribe({
+      next: () => {
+        this.isSubmitting.set(false);
+        this.quoteFor.set(null);
+        this.toast.success('Booking accepted', 'They can now pay online.');
+        this.loadBookings(this.selectedUserId()!);
+      },
+      error: err => {
+        this.isSubmitting.set(false);
+        this.toast.error('Could not accept', err.error?.message || 'Please try again.');
+      }
+    });
+  }
+
+  decline(b: Booking): void {
+    if (!confirm('Decline this booking request?')) return;
+    this.bookingService.cancelBooking(b._id, 'Declined by vendor').subscribe({
+      next: () => this.loadBookings(this.selectedUserId()!),
+      error: err => this.toast.error('Could not decline', err.error?.message || 'Please try again.')
+    });
+  }
+
+  // ---------- display helpers ----------
+
+  iAmVendor(b: Booking): boolean {
+    return this.idOf(b.vendor) === this.auth.currentUser()?._id;
+  }
+
+  isAccepted(b: Booking): boolean {
+    return b.status === 'confirmed' || b.status === 'in_progress';
+  }
+
+  balance(b: Booking): number {
+    return Math.max(0, (b.priceAgreed || 0) - (b.pricePaid || 0));
+  }
+
+  serviceName(b: Booking): string {
+    return (b.service as Service)?.serviceName || 'Booking';
+  }
+
+  // Plain words for where the booking stands, from this user's side
+  dealStatus(b: Booking): string {
+    const vendor = this.iAmVendor(b);
+    if (b.status === 'pending') return vendor ? 'New request · waiting for your reply' : `Waiting for ${this.otherUser()?.name} to accept`;
+    if (this.balance(b) > 0) {
+      if (b.pricePaid > 0) return `Advance paid · ₹${this.balance(b).toLocaleString('en-IN')} still due`;
+      return vendor ? 'Accepted · waiting for payment' : 'Accepted · pay to lock the date';
+    }
+    return 'Paid · Festivo holds it until the job is done';
+  }
+
+  dealTone(b: Booking): string {
+    if (b.status === 'pending') return this.iAmVendor(b) ? 'act' : 'wait';
+    if (this.balance(b) > 0) return this.iAmVendor(b) ? 'wait' : 'act';
+    return 'ok';
+  }
+
+  isMine(m: Message): boolean {
+    return this.idOf(m.sender) === this.auth.currentUser()?._id;
+  }
+
+  isOnline(userId: string): boolean {
+    return !!this.online()[userId];
+  }
+
+  initial(name?: string): string {
+    return (name || '?').charAt(0).toUpperCase();
+  }
+
+  preview(m: Message): string {
+    if (!m?._id) return 'New conversation';
+    const prefix = this.isMine(m) ? 'You: ' : '';
+    if (m.messageType === 'voice') return prefix + 'Voice message';
+    if (m.messageType === 'image') return prefix + 'Photo';
+    return prefix + m.messageText;
+  }
+
+  listTime(date: Date | string): string {
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return '';
+    const label = this.dayLabel(d);
+    if (label === 'Today') return d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
+    return label === 'Yesterday' ? label : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  }
+
+  private dayLabel(date: Date | string): string {
+    const d = new Date(date);
+    const start = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+    const diff = Math.round((start(new Date()) - start(d)) / 864e5);
+    if (diff === 0) return 'Today';
+    if (diff === 1) return 'Yesterday';
+    return d.toLocaleDateString('en-IN', { weekday: diff < 7 ? 'long' : undefined, day: 'numeric', month: 'short',
+      year: d.getFullYear() === new Date().getFullYear() ? undefined : 'numeric' });
+  }
+
+  private idOf(ref: User | string): string {
+    return typeof ref === 'string' ? ref : ref?._id;
+  }
+
+  // ---------- scrolling ----------
+
+  onScroll(): void {
+    const el = this.scroller?.nativeElement;
+    if (!el) return;
+    this.atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    if (this.atBottom) this.showJump.set(false);
+  }
+
+  /** Follow new messages only if the reader is already at the bottom. */
+  scrollToBottom(force = false): void {
+    if (!force && !this.atBottom) {
+      this.showJump.set(true);
+      return;
+    }
+    setTimeout(() => {
+      const el = this.scroller?.nativeElement;
+      if (el) el.scrollTop = el.scrollHeight;
+      this.atBottom = true;
+      this.showJump.set(false);
     });
   }
 }

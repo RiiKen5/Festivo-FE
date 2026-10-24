@@ -64,6 +64,7 @@ export type ServiceAvailability =
   | 'not_taking_orders';
 
 export interface ServiceFilters {
+  provider?: string;
   category?: ServiceCategory;
   city?: string;
   minPrice?: number;
