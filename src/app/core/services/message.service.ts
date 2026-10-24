@@ -29,6 +29,21 @@ export class MessageService {
     return this.api.post<MessageResponse>(this.endpoint, data);
   }
 
+  /** Send a recorded voice message. */
+  sendVoice(receiverId: string, audio: Blob, durationSec: number): Observable<MessageResponse> {
+    const form = new FormData();
+    const ext = audio.type.includes('mp4') ? 'm4a' : audio.type.includes('ogg') ? 'ogg' : 'webm';
+    form.append('audio', audio, `voice.${ext}`);
+    form.append('receiverId', receiverId);
+    form.append('durationSec', String(Math.round(durationSec)));
+    return this.api.upload<MessageResponse>(`${this.endpoint}/voice`, form);
+  }
+
+  /** Voice notes need the user's login, so they're fetched rather than linked. */
+  getVoice(path: string): Observable<Blob> {
+    return this.api.getBlob(path.split('?')[0]);
+  }
+
   /**
    * Get conversation with a specific user
    * GET /api/v1/messages/conversation/:userId

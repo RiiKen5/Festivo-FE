@@ -39,6 +39,10 @@ export class ApiService {
     return this.http.delete<T>(`${this.baseUrl}${endpoint}`);
   }
 
+  getBlob(endpoint: string): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}${endpoint}`, { responseType: 'blob' });
+  }
+
   upload<T>(endpoint: string, formData: FormData): Observable<T> {
     return this.http.post<T>(`${this.baseUrl}${endpoint}`, formData);
   }

@@ -6,6 +6,7 @@ import { FormsModule } from '@angular/forms';
 import { Subscription, filter } from 'rxjs';
 import { ButtonComponent } from '../../shared/components/button/button.component';
 import { ModalComponent } from '../../shared/components/modal/modal.component';
+import { VoiceNoteComponent } from './voice-note.component';
 import { AuthService } from '../../core/services/auth.service';
 import { MessageService } from '../../core/services/message.service';
 import { UserService } from '../../core/services/user.service';
@@ -17,19 +18,20 @@ import { EventService } from '../../core/services/event.service';
 import { Conversation, Message } from '../../core/models/message.model';
 import { Booking } from '../../core/models/booking.model';
 import { Service } from '../../core/models/service.model';
-import { Event } from '../../core/models/event.model';
+import { Event as FestivoEvent } from '../../core/models/event.model';
 import { User } from '../../core/models/user.model';
 
 // Only used when the live connection is down
 const FALLBACK_POLL_MS = 20000;
 const TYPING_IDLE_MS = 2500;
+const MAX_RECORDING_SEC = 120;
 
 interface DayGroup { label: string; messages: Message[]; }
 
 @Component({
   selector: 'app-messages',
   standalone: true,
-  imports: [IconComponent, CommonModule, RouterModule, FormsModule, ButtonComponent, ModalComponent],
+  imports: [IconComponent, CommonModule, RouterModule, FormsModule, ButtonComponent, ModalComponent, VoiceNoteComponent],
   template: `
     <main class="chat-page">
       <div class="chat-shell">
@@ -147,7 +149,13 @@ interface DayGroup { label: string; messages: Message[]; }
                     </div>
                   } @else {
                     <div class="bubble" [class.bubble--mine]="isMine(m)" [class.bubble--failed]="m.sendState === 'failed'">
-                      <p>{{ m.messageText }}</p>
+                      @if (m.messageType === 'voice' && m.attachments?.length) {
+                        <app-voice-note [src]="m.attachments![0]"></app-voice-note>
+                      } @else if (m.messageType === 'voice') {
+                        <p>Voice message · sending…</p>
+                      } @else {
+                        <p>{{ m.messageText }}</p>
+                      }
                       <span class="bubble__meta">
                         {{ m.createdAt | date:'h:mm a' }}
                         @if (isMine(m)) {
@@ -172,15 +180,35 @@ interface DayGroup { label: string; messages: Message[]; }
               <button type="button" class="jump" (click)="scrollToBottom(true)">New messages ↓</button>
             }
 
-            <form class="composer" (submit)="$event.preventDefault(); send()">
-              <label class="visually-hidden" for="composer-input">Message {{ other.name }}</label>
-              <textarea id="composer-input" #composer rows="1" placeholder="Write a message…"
-                        [(ngModel)]="draft" name="draft" maxlength="5000"
-                        (input)="onDraftInput()" (keydown.enter)="onEnter($any($event))"></textarea>
-              <button type="submit" class="send" [disabled]="!draft.trim()" aria-label="Send message">
-                <app-icon name="send" [size]="18"></app-icon>
-              </button>
-            </form>
+            @if (recording()) {
+              <div class="composer composer--rec" role="group" aria-label="Recording voice message">
+                <button type="button" class="icon-btn" (click)="stopRecording(false)" aria-label="Cancel recording">
+                  <app-icon name="trash" [size]="18"></app-icon>
+                </button>
+                <span class="rec__dot" aria-hidden="true"></span>
+                <span class="rec__time" aria-live="off">{{ recClock() }}</span>
+                <span class="rec__hint">Recording… tap send when done</span>
+                <button type="button" class="send" (click)="stopRecording(true)" aria-label="Send voice message">
+                  <app-icon name="send" [size]="18"></app-icon>
+                </button>
+              </div>
+            } @else {
+              <form class="composer" (submit)="$event.preventDefault(); send()">
+                <label class="visually-hidden" for="composer-input">Message {{ other.name }}</label>
+                <textarea id="composer-input" #composer rows="1" placeholder="Write a message…"
+                          [(ngModel)]="draft" name="draft" maxlength="5000"
+                          (input)="onDraftInput()" (keydown.enter)="onEnter($any($event))"></textarea>
+                @if (draft.trim() || !canRecord) {
+                  <button type="submit" class="send" [disabled]="!draft.trim()" aria-label="Send message">
+                    <app-icon name="send" [size]="18"></app-icon>
+                  </button>
+                } @else {
+                  <button type="button" class="send send--mic" (click)="startRecording()" aria-label="Record a voice message">
+                    <app-icon name="mic" [size]="18"></app-icon>
+                  </button>
+                }
+              </form>
+            }
           } @else {
             <div class="thread__placeholder">
               <app-icon name="message" [size]="32"></app-icon>
@@ -330,6 +358,11 @@ interface DayGroup { label: string; messages: Message[]; }
       padding-bottom: calc(#{$spacing-3} + env(safe-area-inset-bottom)); border-top: 1px solid $border-light;
       textarea { flex: 1; resize: none; max-height: 140px; padding: $spacing-2 $spacing-4; border: 1px solid $border-default;
         border-radius: 20px; font: inherit; line-height: 1.4; &:focus { outline: none; border-color: $primary-500; } } }
+    .composer--rec { align-items: center; }
+    .rec__dot { width: 10px; height: 10px; border-radius: 50%; background: $error; animation: blink 1s infinite; }
+    @keyframes blink { 50% { opacity: 0.3; } }
+    .rec__time { font-variant-numeric: tabular-nums; font-weight: $font-weight-semibold; }
+    .rec__hint { flex: 1; font-size: $font-size-sm; color: $text-secondary; @include truncate; }
     .send { @include flex-center; width: 42px; height: 42px; flex-shrink: 0; border: 0; border-radius: 50%; background: $primary-600;
       color: $text-inverse; cursor: pointer; &:disabled { background: $neutral-300; cursor: default; } }
 
@@ -363,7 +396,7 @@ export class MessagesComponent implements OnInit, OnDestroy {
   otherUser = signal<User | null>(null);
   bookings = signal<Booking[]>([]);
   theirServices = signal<Service[]>([]);
-  myEvents = signal<Event[]>([]);
+  myEvents = signal<FestivoEvent[]>([]);
   online = signal<Record<string, boolean>>({});
   typingFrom = signal<string | null>(null);
   showJump = signal(false);
@@ -381,6 +414,15 @@ export class MessagesComponent implements OnInit, OnDestroy {
   private typingTimer?: ReturnType<typeof setTimeout>;
   private typingClear?: ReturnType<typeof setTimeout>;
   private sentTyping = false;
+
+  // Voice recording
+  readonly canRecord = typeof window !== 'undefined' && !!navigator.mediaDevices?.getUserMedia && typeof MediaRecorder !== 'undefined';
+  recording = signal(false);
+  recSeconds = signal(0);
+  private recorder?: MediaRecorder;
+  private recChunks: Blob[] = [];
+  private recTimer?: ReturnType<typeof setInterval>;
+  private recStarted = 0;
   private atBottom = true;
 
   dayGroups = computed<DayGroup[]>(() => {
@@ -429,6 +471,7 @@ export class MessagesComponent implements OnInit, OnDestroy {
     clearTimeout(this.typingTimer);
     clearTimeout(this.typingClear);
     this.stopTyping();
+    this.stopRecording(false);
     this.realtime.activeChatUserId = null;
   }
 
@@ -651,6 +694,81 @@ export class MessagesComponent implements OnInit, OnDestroy {
     setTimeout(() => { el.style.height = 'auto'; el.style.height = `${el.scrollHeight}px`; });
   }
 
+  // ---------- voice messages ----------
+
+  async startRecording(): Promise<void> {
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      this.toast.error('Microphone blocked', 'Allow microphone access in your browser to send voice messages.');
+      return;
+    }
+    // Safari records mp4; Chrome and Firefox prefer webm/ogg with Opus
+    const type = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/mp4'].find(t => MediaRecorder.isTypeSupported(t));
+    this.recorder = new MediaRecorder(stream, type ? { mimeType: type } : undefined);
+    this.recChunks = [];
+    this.recorder.ondataavailable = e => { if (e.data.size) this.recChunks.push(e.data); };
+    this.recorder.start();
+    this.recStarted = Date.now();
+    this.recSeconds.set(0);
+    this.recording.set(true);
+    this.stopTyping();
+    this.recTimer = setInterval(() => {
+      const sec = Math.floor((Date.now() - this.recStarted) / 1000);
+      this.recSeconds.set(sec);
+      if (sec >= MAX_RECORDING_SEC) this.stopRecording(true);
+    }, 250);
+  }
+
+  stopRecording(send: boolean): void {
+    const recorder = this.recorder;
+    clearInterval(this.recTimer);
+    this.recording.set(false);
+    if (!recorder) return;
+    this.recorder = undefined;
+    const duration = (Date.now() - this.recStarted) / 1000;
+    recorder.onstop = () => {
+      recorder.stream.getTracks().forEach(t => t.stop());
+      const to = this.selectedUserId();
+      if (!send || !to) return;
+      if (duration < 1) {
+        this.toast.info('Too short', 'Record for at least a second.');
+        return;
+      }
+      const blob = new Blob(this.recChunks, { type: (recorder.mimeType || 'audio/webm').split(';')[0] });
+      this.sendVoice(to, blob, duration);
+    };
+    if (recorder.state !== 'inactive') recorder.stop(); else recorder.onstop(new Event('stop'));
+  }
+
+  recClock(): string {
+    const s = this.recSeconds();
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  }
+
+  private sendVoice(to: string, blob: Blob, duration: number): void {
+    const temp: Message = {
+      _id: 'tmp-' + Date.now(), sender: this.auth.currentUser() as User, receiver: to, messageText: '',
+      messageType: 'voice', isRead: false, createdAt: new Date(), updatedAt: new Date(), sendState: 'sending'
+    };
+    this.messages.update(list => [...list, temp]);
+    this.scrollToBottom(true);
+    this.messageService.sendVoice(to, blob, duration).subscribe({
+      next: res => {
+        this.messages.update(list => {
+          const rest = list.filter(x => x._id !== temp._id);
+          return rest.some(x => x._id === res.data._id) ? rest : [...rest, res.data];
+        });
+        this.bumpConversation(to, res.data);
+      },
+      error: () => {
+        this.messages.update(list => list.filter(x => x._id !== temp._id));
+        this.toast.error('Voice message not sent', 'Please try again.');
+      }
+    });
+  }
+
   // ---------- booking actions ----------
 
   openRequest(): void {
@@ -658,7 +776,7 @@ export class MessagesComponent implements OnInit, OnDestroy {
     this.eventService.getMyEvents({ limit: 50 } as any).subscribe({
       next: res => {
         const now = Date.now() - 864e5;
-        const upcoming = ((res.data as Event[]) || [])
+        const upcoming = ((res.data as FestivoEvent[]) || [])
           .filter(e => !['cancelled', 'completed'].includes(e.status) && new Date(e.date).getTime() >= now)
           .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         this.myEvents.set(upcoming);
