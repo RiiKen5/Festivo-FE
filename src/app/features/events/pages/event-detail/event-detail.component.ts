@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, ViewChild } from '@angular/core';
 import { IconComponent, EVENT_TYPE_ICONS } from '../../../../shared/components/icon/icon.component';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { formatShortDate, formatTime, plural } from '../../../../shared/components/listing-cards/listing-format';
@@ -18,6 +18,7 @@ import { ToastService } from '../../../../core/services/toast.service';
 import { PaymentService, CheckoutDetails } from '../../../../core/services/payment.service';
 import { AttributionService } from '../../../../core/services/attribution.service';
 import { AnalyticsService } from '../../../../core/services/analytics.service';
+import { EventPlannerComponent } from '../../components/event-planner.component';
 import { Event } from '../../../../core/models/event.model';
 import { User } from '../../../../core/models/user.model';
 import { Rsvp, RsvpStatus } from '../../../../core/models/rsvp.model';
@@ -26,7 +27,7 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
 @Component({
   selector: 'app-event-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, ButtonComponent, ModalComponent, IconComponent, EmptyStateComponent],
+  imports: [EventPlannerComponent, CommonModule, RouterModule, FormsModule, ButtonComponent, ModalComponent, IconComponent, EmptyStateComponent],
   template: `
 
     @if (isLoading()) {
@@ -77,6 +78,10 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
             <div class="event-layout">
               <!-- Main Info -->
               <div class="event-main">
+                @if (isOrganizer() && event()?._id) {
+                  <app-event-planner #planner [eventId]="event()!._id" [city]="event()!.city" [isNew]="justCreated"
+                                     (edit)="openEditTaskModal($any($event))"></app-event-planner>
+                }
                 <section class="event-section">
                   <h2 class="section-title">About this event</h2>
                   <p class="event-description">{{ event()?.description }}</p>
@@ -144,99 +149,8 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
                   </div>
                 </section>
 
-                <!-- Tasks Section (Organizer Only) -->
+                <!-- Organizer only -->
                 @if (isOrganizer()) {
-                  <section class="event-section tasks-section">
-                    <div class="section-header">
-                      <h2 class="section-title">Event Tasks</h2>
-                      <app-button size="sm" (onClick)="openAddTaskModal()">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <line x1="12" y1="5" x2="12" y2="19"/>
-                          <line x1="5" y1="12" x2="19" y2="12"/>
-                        </svg>
-                        Add Task
-                      </app-button>
-                    </div>
-
-                    @if (isLoadingTasks()) {
-                      <div class="tasks-loading">
-                        <div class="spinner"></div>
-                        <span>Loading tasks...</span>
-                      </div>
-                    } @else if (tasks().length === 0) {
-                      <div class="tasks-empty">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                          <path d="M9 11l3 3L22 4"/>
-                          <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
-                        </svg>
-                        <h3>No tasks yet</h3>
-                        <p>Create tasks to organize your event planning</p>
-                      </div>
-                    } @else {
-                      <!-- Task Progress -->
-                      <div class="tasks-progress">
-                        <div class="progress-bar">
-                          <div class="progress-fill" [style.width.%]="getTaskCompletionPercent()"></div>
-                        </div>
-                        <span class="progress-text">
-                          {{ getCompletedTasksCount() }}/{{ tasks().length }} completed
-                        </span>
-                      </div>
-
-                      <!-- Task List -->
-                      <div class="tasks-list">
-                        @for (task of tasks(); track task._id) {
-                          <div class="task-item" [class.task-item--done]="task.status === 'done'">
-                            <button
-                              class="task-checkbox"
-                              [class.checked]="task.status === 'done'"
-                              (click)="toggleTaskStatus(task)">
-                              @if (task.status === 'done') {
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                                  <polyline points="20 6 9 17 4 12"/>
-                                </svg>
-                              }
-                            </button>
-
-                            <div class="task-content">
-                              <div class="task-header">
-                                <span class="task-name">{{ task.taskName }}</span>
-                                <span class="task-priority" [class]="'priority--' + task.priority">
-                                  {{ task.priority }}
-                                </span>
-                              </div>
-                              @if (task.description) {
-                                <p class="task-description">{{ task.description }}</p>
-                              }
-                              <div class="task-meta">
-                                <span class="task-category">{{ formatCategory(task.category) }}</span>
-                                @if (task.dueDate) {
-                                  <span class="task-due" [class.overdue]="isOverdue(task)">
-                                    Due: {{ task.dueDate | date:'shortDate' }}
-                                  </span>
-                                }
-                              </div>
-                            </div>
-
-                            <div class="task-actions">
-                              <button class="task-action" (click)="openEditTaskModal(task)">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                  <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-                                  <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                                </svg>
-                              </button>
-                              <button class="task-action task-action--delete" (click)="deleteTask(task)">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                  <polyline points="3 6 5 6 21 6"/>
-                                  <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-                                </svg>
-                              </button>
-                            </div>
-                          </div>
-                        }
-                      </div>
-                    }
-                  </section>
 
                   <!-- Manage Event (Organizer Only) -->
                   <section class="event-section manage-section" id="manage-event">
@@ -1635,6 +1549,8 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
 })
 export class EventDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
+  @ViewChild('planner') private planner?: EventPlannerComponent;
+  justCreated = false;
   private router = inject(Router);
   private eventService = inject(EventService);
   private rsvpService = inject(RsvpService);
@@ -1693,6 +1609,7 @@ export class EventDetailComponent implements OnInit {
   ngOnInit(): void {
     const slug = this.route.snapshot.paramMap.get('slug');
     this.inviteCode = this.route.snapshot.queryParamMap.get('invite');
+    this.justCreated = this.route.snapshot.queryParamMap.get('new') === '1';
     if (slug) {
       this.loadEvent(slug);
     }
@@ -1720,7 +1637,6 @@ export class EventDetailComponent implements OnInit {
           const organizer = response.data.organizer;
           const organizerId = typeof organizer === 'object' ? (organizer as User)._id : organizer;
           if (organizerId === this.auth.currentUser()?._id) {
-            this.loadTasks(response.data._id);
             this.loadManageData(response.data._id);
           }
         }
@@ -2263,6 +2179,7 @@ export class EventDetailComponent implements OnInit {
           this.tasks.update(tasks =>
             tasks.map(t => t._id === this.editingTask?._id ? response.data : t)
           );
+          this.planner?.reload();
           this.toast.success('Task Updated', 'Task has been updated successfully.');
           this.closeTaskModal();
           this.isSavingTask.set(false);
@@ -2284,6 +2201,7 @@ export class EventDetailComponent implements OnInit {
       }).subscribe({
         next: (response) => {
           this.tasks.update(tasks => [...tasks, response.data]);
+          this.planner?.reload();
           this.toast.success('Task Created', 'New task has been added.');
           this.closeTaskModal();
           this.isSavingTask.set(false);

@@ -1,3 +1,4 @@
+import { CitySelectComponent } from '../../../../shared/components/city-select/city-select.component';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
@@ -13,7 +14,7 @@ import { Service, ServiceCategory, ServiceFilters } from '../../../../core/model
 @Component({
   selector: 'app-service-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, ButtonComponent, IconComponent, EmptyStateComponent, VendorCardComponent, ErrorStateComponent],
+  imports: [CitySelectComponent, CommonModule, RouterModule, FormsModule, ButtonComponent, IconComponent, EmptyStateComponent, VendorCardComponent, ErrorStateComponent],
   template: `
     <main class="page">
       <div class="container">
@@ -30,11 +31,8 @@ import { Service, ServiceCategory, ServiceFilters } from '../../../../core/model
             <span class="visually-hidden">Search vendors</span>
             <input type="search" placeholder="Search vendors or services" [(ngModel)]="searchQuery" (input)="onSearch()">
           </label>
-          <label class="field">
-            <app-icon name="map-pin" [size]="18"></app-icon>
-            <span class="visually-hidden">City</span>
-            <input type="text" placeholder="Any city" [(ngModel)]="cityFilter" (input)="onSearch()">
-          </label>
+          <app-city-select class="toolbar__city" compact allowAny placeholder="Any city" ariaLabel="City"
+                           [(ngModel)]="cityFilter" (cityChange)="onSearch()"></app-city-select>
           <label class="field field--select">
             <span class="visually-hidden">Sort by</span>
             <select [(ngModel)]="sortBy" (change)="loadServices()">
@@ -144,6 +142,7 @@ export class ServiceListComponent implements OnInit {
       this.selectedCategory = category;
     }
     this.searchQuery = params.get('q') || '';
+    this.cityFilter = params.get('city') || '';
     this.loadServices();
   }
 

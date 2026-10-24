@@ -1,3 +1,4 @@
+import { EventPlan } from '../models/event-plan.model';
 import { Injectable } from '@angular/core';
 import { Observable, tap } from 'rxjs';
 import { ApiService } from './api.service';
@@ -52,6 +53,11 @@ export class EventService {
   // Protected endpoints
   getMyEvents(filters?: EventFilters): Observable<EventsResponse> {
     return this.api.get<EventsResponse>(`${this.endpoint}/my-events`, filters);
+  }
+
+  // Checklist, bookings and suggested vendors for the organizer's planner
+  getPlan(id: string): Observable<{ success: boolean; data: EventPlan }> {
+    return this.api.get(`${this.endpoint}/${id}/plan`);
   }
 
   createEvent(data: EventCreateData): Observable<EventResponse> {

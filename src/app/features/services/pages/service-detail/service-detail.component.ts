@@ -1792,8 +1792,12 @@ export class ServiceDetailComponent implements OnInit {
     { value: 'other', label: 'Other' }
   ];
 
+  private requestForEvent: string | null = null;
+
   ngOnInit(): void {
     const slug = this.route.snapshot.paramMap.get('slug');
+    // From the event planner: open the request form for that event
+    this.requestForEvent = this.route.snapshot.queryParamMap.get('event');
     if (slug) {
       this.loadService(slug);
     }
@@ -1820,6 +1824,9 @@ export class ServiceDetailComponent implements OnInit {
         this.isFavorite.set(this.favoriteService.isFavorite(response.data._id, 'service'));
         // Load reviews after service is loaded
         this.loadReviews();
+        if (this.requestForEvent && this.auth.isAuthenticated() && !this.isOwnService()) {
+          this.openBookingModal();
+        }
       },
       error: () => {
         this.isLoading.set(false);
@@ -1891,6 +1898,11 @@ export class ServiceDetailComponent implements OnInit {
         });
         this.userEvents.set(upcomingEvents);
         this.isLoadingEvents.set(false);
+        if (this.requestForEvent && upcomingEvents.some(e => e._id === this.requestForEvent)) {
+          this.bookingForm.eventId = this.requestForEvent;
+          this.onEventSelect(this.requestForEvent);
+          this.requestForEvent = null;
+        }
       },
       error: () => {
         this.userEvents.set([]);

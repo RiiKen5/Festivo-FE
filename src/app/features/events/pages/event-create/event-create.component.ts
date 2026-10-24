@@ -1,3 +1,4 @@
+import { CitySelectComponent } from '../../../../shared/components/city-select/city-select.component';
 import { ImageUploadComponent } from '../../../../shared/components/image-upload/image-upload.component';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
@@ -14,7 +15,7 @@ import { CustomValidators } from '../../../../shared/validators/custom-validator
 @Component({
   selector: 'app-event-create',
   standalone: true,
-  imports: [IconComponent, CommonModule, RouterModule, ReactiveFormsModule, ButtonComponent, InputComponent, ImageUploadComponent],
+  imports: [CitySelectComponent, IconComponent, CommonModule, RouterModule, ReactiveFormsModule, ButtonComponent, InputComponent, ImageUploadComponent],
   template: `
 
     <main class="create-event">
@@ -134,13 +135,14 @@ import { CustomValidators } from '../../../../shared/validators/custom-validator
               </div>
 
               <div class="form-group">
-                <app-input
+                <app-city-select
                   label="City"
-                  placeholder="e.g., Mumbai"
+                  placeholder="Search city"
                   formControlName="city"
                   [error]="getError('city')"
+                  hint="We'll suggest vendors in this city"
                   required
-                ></app-input>
+                ></app-city-select>
               </div>
 
               <div class="form-group form-group--full">
@@ -637,10 +639,10 @@ export class EventCreateComponent implements OnInit {
     request.subscribe({
       next: (response) => {
         this.toast.success(
-          this.isEditMode() ? 'Event Updated!' : 'Event Created!',
-          this.isEditMode() ? 'Your event has been updated successfully.' : 'Your event has been created successfully.'
+          this.isEditMode() ? 'Event updated' : 'Event created',
+          this.isEditMode() ? 'Your changes are saved.' : 'Your planning checklist is ready below.'
         );
-        this.router.navigate(['/events', response.data.slug]);
+        this.router.navigate(['/events', response.data.slug], this.isEditMode() ? {} : { queryParams: { new: 1 } });
       },
       error: () => {
         this.isSubmitting.set(false);

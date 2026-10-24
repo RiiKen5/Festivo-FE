@@ -1,3 +1,4 @@
+import { CitySelectComponent } from '../../../../shared/components/city-select/city-select.component';
 import { LogoComponent } from '../../../../shared/components/logo/logo.component';
 import { AuthAsideComponent } from '../../../../shared/components/auth-aside/auth-aside.component';
 import { Component, inject, signal, OnInit, NgZone, PLATFORM_ID, Inject } from '@angular/core';
@@ -16,7 +17,7 @@ declare const google: any;
 @Component({
   selector: 'app-register',
   standalone: true,
-  imports: [IconComponent, AuthAsideComponent, LogoComponent, CommonModule, RouterModule, ReactiveFormsModule, ButtonComponent, InputComponent],
+  imports: [CitySelectComponent, IconComponent, AuthAsideComponent, LogoComponent, CommonModule, RouterModule, ReactiveFormsModule, ButtonComponent, InputComponent],
   template: `
     <div class="auth-page">
       <div class="auth-container">
@@ -106,13 +107,13 @@ declare const google: any;
             </div>
 
             <div class="form-group">
-              <app-input
-                type="text"
+              <app-city-select
                 label="City"
-                placeholder="Enter your City"
+                placeholder="Search your city"
                 formControlName="city"
                 [error]="getError('city')"
-              ></app-input>
+                required
+              ></app-city-select>
             </div>
 
             <div class="form-group">

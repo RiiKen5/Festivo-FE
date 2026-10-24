@@ -1,3 +1,4 @@
+import { CitySelectComponent } from '../../shared/components/city-select/city-select.component';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -11,7 +12,7 @@ import { ToastService } from '../../core/services/toast.service';
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [IconComponent, CommonModule, RouterModule, ReactiveFormsModule, ButtonComponent, InputComponent],
+  imports: [CitySelectComponent, IconComponent, CommonModule, RouterModule, ReactiveFormsModule, ButtonComponent, InputComponent],
   template: `
 
     <main class="profile-page">
@@ -163,11 +164,11 @@ import { ToastService } from '../../core/services/toast.service';
                     </div>
 
                     <div class="form-group">
-                      <app-input
+                      <app-city-select
                         label="City"
                         formControlName="city"
-                        placeholder="Your city"
-                      ></app-input>
+                        placeholder="Search your city"
+                      ></app-city-select>
                     </div>
 
                     <div class="form-actions">

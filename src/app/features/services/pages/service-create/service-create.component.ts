@@ -1,3 +1,4 @@
+import { CitySelectComponent } from '../../../../shared/components/city-select/city-select.component';
 import { ImageUploadComponent } from '../../../../shared/components/image-upload/image-upload.component';
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
@@ -14,7 +15,7 @@ import { CustomValidators } from '../../../../shared/validators/custom-validator
 @Component({
   selector: 'app-service-create',
   standalone: true,
-  imports: [IconComponent, 
+  imports: [CitySelectComponent, IconComponent, 
     CommonModule,
     RouterModule,
     ReactiveFormsModule,
@@ -130,12 +131,14 @@ import { CustomValidators } from '../../../../shared/validators/custom-validator
 
             <div class="form-row">
               <div class="form-group">
-                <app-input
+                <app-city-select
                   label="City"
                   formControlName="city"
-                  placeholder="e.g., Mumbai"
+                  placeholder="Search city"
                   [error]="getError('city')"
-                ></app-input>
+                  hint="Customers in this city will find you"
+                  required
+                ></app-city-select>
               </div>
             </div>
 

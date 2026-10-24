@@ -1,3 +1,4 @@
+import { CitySelectComponent } from '../../../../shared/components/city-select/city-select.component';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
@@ -14,7 +15,7 @@ import { Event, EventType, EventFilters } from '../../../../core/models/event.mo
 @Component({
   selector: 'app-event-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, ButtonComponent, IconComponent, EmptyStateComponent, EventCardComponent, ErrorStateComponent],
+  imports: [CitySelectComponent, CommonModule, RouterModule, FormsModule, ButtonComponent, IconComponent, EmptyStateComponent, EventCardComponent, ErrorStateComponent],
   template: `
     <main class="page">
       <div class="container">
@@ -37,11 +38,8 @@ import { Event, EventType, EventFilters } from '../../../../core/models/event.mo
             <span class="visually-hidden">Search events</span>
             <input type="search" placeholder="Search events" [(ngModel)]="searchQuery" (input)="onSearch()">
           </label>
-          <label class="field">
-            <app-icon name="map-pin" [size]="18"></app-icon>
-            <span class="visually-hidden">City</span>
-            <input type="text" placeholder="Any city" [(ngModel)]="cityFilter" (input)="onSearch()">
-          </label>
+          <app-city-select class="toolbar__city" compact allowAny placeholder="Any city" ariaLabel="City"
+                           [(ngModel)]="cityFilter" (cityChange)="onSearch()"></app-city-select>
           <label class="field field--select">
             <span class="visually-hidden">Sort by</span>
             <select [(ngModel)]="sortBy" (change)="loadEvents()">
