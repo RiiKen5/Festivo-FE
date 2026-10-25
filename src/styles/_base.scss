@@ -443,6 +443,11 @@ table {
 }
 
 .form-textarea {
+  // Multi-line: size to the rows attribute instead of the single-line height
+  height: auto;
+  min-height: 88px;
+  padding: $spacing-3;
+  line-height: 1.5;
   resize: vertical;
 }
 

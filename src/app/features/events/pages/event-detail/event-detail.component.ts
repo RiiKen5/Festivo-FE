@@ -525,80 +525,60 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
         </div>
       </app-modal>
 
-      <!-- Task Modal -->
+      <!-- Checklist item (add / edit) -->
       <app-modal
         [isOpen]="taskModal"
-        [title]="editingTask ? 'Edit Task' : 'Add Task'"
+        [title]="editingTask ? 'Edit checklist item' : 'Add to your checklist'"
         (onClose)="closeTaskModal()"
         [showFooter]="true"
       >
         <div class="task-form">
           <div class="form-group">
-            <label class="form-label">Task Name *</label>
-            <input
-              type="text"
-              class="form-input"
-              [(ngModel)]="taskFormData.taskName"
-              placeholder="e.g., Book the venue"
-            >
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Description</label>
-            <textarea
-              class="form-textarea"
-              [(ngModel)]="taskFormData.description"
-              placeholder="Add more details..."
-              rows="3"
-            ></textarea>
+            <label class="form-label" for="item-name">What needs to be done?</label>
+            <input id="item-name" type="text" class="form-input" [(ngModel)]="taskFormData.taskName" placeholder="e.g. Book the venue, order balloons">
           </div>
 
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label">Category *</label>
-              <select class="form-select" [(ngModel)]="taskFormData.category">
-                <option value="">Select category</option>
-                <option value="venue">Venue</option>
-                <option value="catering">Catering</option>
-                <option value="decoration">Decoration</option>
-                <option value="entertainment">Entertainment</option>
-                <option value="photography">Photography</option>
-                <option value="guest_management">Guest Management</option>
-                <option value="logistics">Logistics</option>
-                <option value="budget">Budget</option>
-                <option value="other">Other</option>
-              </select>
+              <label class="form-label" for="item-due">Get it done by <span class="form-hint">(optional)</span></label>
+              <input id="item-due" type="date" class="form-input" [(ngModel)]="taskFormData.dueDate">
             </div>
-
             <div class="form-group">
-              <label class="form-label">Priority</label>
-              <select class="form-select" [(ngModel)]="taskFormData.priority">
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
+              <label class="form-label" for="item-priority">How important?</label>
+              <select id="item-priority" class="form-select" [(ngModel)]="taskFormData.priority">
+                <option value="low">Can wait</option>
+                <option value="medium">Normal</option>
+                <option value="high">Important</option>
+                <option value="urgent">Very urgent</option>
               </select>
             </div>
           </div>
 
           <div class="form-group">
-            <label class="form-label">Due Date</label>
-            <input
-              type="date"
-              class="form-input"
-              [(ngModel)]="taskFormData.dueDate"
-            >
+            <label class="form-label" for="item-type">What is it about? <span class="form-hint">(optional)</span></label>
+            <select id="item-type" class="form-select" [(ngModel)]="taskFormData.category">
+              <option value="venue">Venue</option>
+              <option value="catering">Food &amp; catering</option>
+              <option value="decoration">Decoration</option>
+              <option value="entertainment">Music &amp; entertainment</option>
+              <option value="photography">Photos &amp; video</option>
+              <option value="guest_management">Guests &amp; invitations</option>
+              <option value="logistics">Travel &amp; setup</option>
+              <option value="budget">Money &amp; budget</option>
+              <option value="other">Something else</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="item-notes">Notes <span class="form-hint">(optional)</span></label>
+            <textarea id="item-notes" class="form-textarea" [(ngModel)]="taskFormData.description" placeholder="Anything to remember, like a phone number or budget" rows="3"></textarea>
           </div>
         </div>
 
         <div modal-footer>
           <app-button variant="ghost" (onClick)="closeTaskModal()">Cancel</app-button>
-          <app-button
-            (onClick)="saveTask()"
-            [loading]="isSavingTask()"
-            [disabled]="!taskFormData.taskName || !taskFormData.category"
-          >
-            {{ editingTask ? 'Update Task' : 'Add Task' }}
+          <app-button (onClick)="saveTask()" [loading]="isSavingTask()" [disabled]="!taskFormData.taskName.trim()">
+            {{ editingTask ? 'Save' : 'Add to checklist' }}
           </app-button>
         </div>
       </app-modal>
@@ -1269,254 +1249,7 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
       color: $primary-600;
     }
 
-    // Tasks Section
-    .tasks-section {
-      .section-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding-bottom: $spacing-3;
-        border-bottom: 1px solid $border-light;
-        margin-bottom: $spacing-4;
-
-        .section-title {
-          border: none;
-          padding: 0;
-          margin: 0;
-        }
-      }
-    }
-
-    .tasks-loading {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: $spacing-3;
-      padding: $spacing-8;
-      color: $text-muted;
-
-      .spinner {
-        width: 24px;
-        height: 24px;
-        border: 3px solid $border-light;
-        border-top-color: $primary-600;
-        border-radius: $radius-full;
-        animation: spin 0.8s linear infinite;
-      }
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    .tasks-empty {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: $spacing-8;
-      text-align: center;
-      color: $text-muted;
-
-      svg {
-        margin-bottom: $spacing-3;
-        opacity: 0.5;
-      }
-
-      h3 {
-        font-size: $font-size-base;
-        font-weight: $font-weight-semibold;
-        color: $text-primary;
-        margin-bottom: $spacing-1;
-      }
-
-      p {
-        font-size: $font-size-sm;
-      }
-    }
-
-    .tasks-progress {
-      display: flex;
-      align-items: center;
-      gap: $spacing-3;
-      margin-bottom: $spacing-4;
-    }
-
-    .progress-bar {
-      flex: 1;
-      height: 8px;
-      background: $neutral-200;
-      border-radius: $radius-full;
-      overflow: hidden;
-    }
-
-    .progress-fill {
-      height: 100%;
-      background: $success;
-      border-radius: $radius-full;
-      transition: width 0.3s ease;
-    }
-
-    .progress-text {
-      font-size: $font-size-sm;
-      color: $text-secondary;
-      white-space: nowrap;
-    }
-
-    .tasks-list {
-      display: flex;
-      flex-direction: column;
-      gap: $spacing-2;
-    }
-
-    .task-item {
-      display: flex;
-      align-items: flex-start;
-      gap: $spacing-3;
-      padding: $spacing-3;
-      border: 1px solid $border-light;
-      border-radius: $radius-default;
-      transition: all $transition-fast;
-
-      &:hover {
-        border-color: $primary-200;
-        background: $neutral-50;
-
-        .task-actions {
-          opacity: 1;
-        }
-      }
-
-      &--done {
-        opacity: 0.7;
-
-        .task-name {
-          text-decoration: line-through;
-          color: $text-muted;
-        }
-      }
-    }
-
-    .task-checkbox {
-      @include flex-center;
-      width: 22px;
-      height: 22px;
-      border: 2px solid $border-default;
-      border-radius: $radius-default;
-      background: $bg-primary;
-      cursor: pointer;
-      flex-shrink: 0;
-      margin-top: 2px;
-      transition: all $transition-fast;
-
-      &:hover {
-        border-color: $primary-400;
-      }
-
-      &.checked {
-        background: $success;
-        border-color: $success;
-        color: white;
-      }
-    }
-
-    .task-content {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .task-header {
-      display: flex;
-      align-items: center;
-      gap: $spacing-2;
-      margin-bottom: $spacing-1;
-    }
-
-    .task-name {
-      font-weight: $font-weight-medium;
-      color: $text-primary;
-    }
-
-    .task-priority {
-      font-size: $font-size-xs;
-      padding: 2px $spacing-2;
-      border-radius: $radius-full;
-      text-transform: capitalize;
-
-      &.priority--low {
-        background: $neutral-100;
-        color: $text-secondary;
-      }
-
-      &.priority--medium {
-        background: $info-light;
-        color: $info-dark;
-      }
-
-      &.priority--high {
-        background: $warning-light;
-        color: $warning-dark;
-      }
-
-      &.priority--urgent {
-        background: $error-light;
-        color: $error-dark;
-      }
-    }
-
-    .task-description {
-      font-size: $font-size-sm;
-      color: $text-secondary;
-      margin-bottom: $spacing-2;
-    }
-
-    .task-meta {
-      display: flex;
-      gap: $spacing-3;
-      font-size: $font-size-xs;
-      color: $text-muted;
-    }
-
-    .task-category {
-      text-transform: capitalize;
-    }
-
-    .task-due {
-      &.overdue {
-        color: $error;
-        font-weight: $font-weight-medium;
-      }
-    }
-
-    .task-actions {
-      display: flex;
-      gap: $spacing-1;
-      opacity: 0;
-      transition: opacity $transition-fast;
-    }
-
-    .task-action {
-      @include flex-center;
-      width: 28px;
-      height: 28px;
-      background: none;
-      border: none;
-      border-radius: $radius-default;
-      color: $text-muted;
-      cursor: pointer;
-      transition: all $transition-fast;
-
-      &:hover {
-        background: $neutral-100;
-        color: $text-primary;
-      }
-
-      &--delete:hover {
-        background: $error-light;
-        color: $error;
-      }
-    }
-
-    // Task Form
+    // Checklist item form
     .task-form {
       .form-row {
         display: grid;
@@ -1529,26 +1262,6 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
       }
     }
 
-    .form-input,
-    .form-select,
-    .form-textarea {
-      width: 100%;
-      padding: $spacing-3;
-      border: 1px solid $border-default;
-      border-radius: $radius-default;
-      font-family: inherit;
-      font-size: $font-size-base;
-      transition: border-color $transition-fast;
-
-      &:focus {
-        outline: none;
-        border-color: $primary-500;
-      }
-    }
-
-    .form-textarea {
-      resize: vertical;
-    }
   `]
 })
 export class EventDetailComponent implements OnInit {
@@ -1593,7 +1306,7 @@ export class EventDetailComponent implements OnInit {
   } = {
     taskName: '',
     description: '',
-    category: '',
+    category: 'other',
     priority: 'medium',
     dueDate: ''
   };
@@ -2148,7 +1861,7 @@ export class EventDetailComponent implements OnInit {
         );
       },
       error: () => {
-        this.toast.error('Error', 'Failed to update task status.');
+        this.toast.error('Could not update your checklist', 'Please try again.');
       }
     });
   }
@@ -2158,7 +1871,7 @@ export class EventDetailComponent implements OnInit {
     this.taskFormData = {
       taskName: '',
       description: '',
-      category: '',
+      category: 'other',
       priority: 'medium',
       dueDate: ''
     };
@@ -2201,7 +1914,7 @@ export class EventDetailComponent implements OnInit {
             tasks.map(t => t._id === this.editingTask?._id ? response.data : t)
           );
           this.planner?.reload();
-          this.toast.success('Task Updated', 'Task has been updated successfully.');
+          this.toast.success('Checklist updated');
           this.closeTaskModal();
           this.isSavingTask.set(false);
         },
@@ -2223,7 +1936,7 @@ export class EventDetailComponent implements OnInit {
         next: (response) => {
           this.tasks.update(tasks => [...tasks, response.data]);
           this.planner?.reload();
-          this.toast.success('Task Created', 'New task has been added.');
+          this.toast.success('Added to your checklist');
           this.closeTaskModal();
           this.isSavingTask.set(false);
         },
