@@ -32,6 +32,8 @@ export interface Event {
   status: EventStatus;
   entryFee: number;
   isPaid: boolean;
+  // Who pays Festivo's ticket fee: taken from the host's price, or added on top for the guest
+  ticketFeePaidBy?: 'host' | 'guest';
   coverPhoto?: string;
   photos: string[];
   tags: string[];
@@ -101,6 +103,7 @@ export interface EventCreateData {
   isPublic?: boolean;
   entryFee?: number;
   isPaid?: boolean;
+  ticketFeePaidBy?: 'host' | 'guest';
   coverPhoto?: string;
   photos?: string[];
   tags?: string[];

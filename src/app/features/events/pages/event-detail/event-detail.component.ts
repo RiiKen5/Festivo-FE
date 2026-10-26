@@ -67,7 +67,7 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
               <li><app-icon name="map-pin" [size]="18"></app-icon>{{ event()?.locationName || event()?.city }}</li>
               <li>
                 <app-icon name="ticket" [size]="18"></app-icon>
-                @if (isTicketed()) { ₹{{ event()?.entryFee | number }} per person } @else { Free entry }
+                @if (isTicketed()) { ₹{{ ticketPrice() | number:'1.0-2' }} per person } @else { Free entry }
               </li>
             </ul>
           </header>
@@ -263,7 +263,7 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
                   @if (event()?.isPaid) {
                     <div class="sidebar-price">
                       <span class="price-label">Entry Fee</span>
-                      <span class="price-value">₹{{ event()?.entryFee }}</span>
+                      <span class="price-value">₹{{ ticketPrice() | number:'1.0-2' }}</span>
                     </div>
                   }
 
@@ -326,7 +326,7 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
                         <!-- User hasn't RSVP'd yet -->
                         <app-button fullWidth (onClick)="rsvpModal = true">
                           @if (isTicketed()) {
-                            Buy Ticket - ₹{{ event()?.entryFee }}
+                            Buy Ticket - ₹{{ ticketPrice() | number:'1.0-2' }}
                           } @else {
                             RSVP Now - Free
                           }
@@ -345,10 +345,39 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
                           }
                         </app-button>
                       }
-                    } @else if (isTicketed()) {
-                      <app-button [routerLink]="['/auth/login']" [queryParams]="{returnUrl: returnUrl()}" fullWidth>
-                        Log in to buy a ticket
+                    } @else if (guestRsvp()?.status === 'pending_payment') {
+                      <!-- Ticket reserved without an account, not paid yet -->
+                      <div class="rsvp-status-card">
+                        <div class="rsvp-status-header">
+                          <span>Your ticket is reserved, {{ guestRsvp()!.guestName }}. Complete payment to confirm it.</span>
+                        </div>
+                      </div>
+                      <app-button fullWidth [loading]="isSubmittingRsvp()" (onClick)="completeGuestPayment()">
+                        Pay ₹{{ ticketTotal(guestRsvp()!.guestsCount || 0) | number:'1.0-2' }}
                       </app-button>
+                      <app-button variant="ghost" fullWidth [loading]="isCancellingRsvp()" (onClick)="cancelGuestRsvp()">Cancel</app-button>
+                    } @else if (isTicketed() && guestRsvp()?.paymentStatus === 'paid' && guestRsvp()?.status === 'going') {
+                      <!-- Ticket bought without an account -->
+                      <div class="rsvp-status-card">
+                        <div class="rsvp-status-header">
+                          <span class="rsvp-check"><app-icon name="check" [size]="14"></app-icon></span>
+                          <span>You have a ticket, {{ guestRsvp()!.guestName }}!</span>
+                        </div>
+                        @if (guestRsvp()!.checkInCode) {
+                          <div class="rsvp-code">
+                            <span class="code-label">Check-in Code:</span>
+                            <span class="code-value">{{ guestRsvp()!.checkInCode }}</span>
+                          </div>
+                        }
+                        @if (guestRsvp()!.guestsCount > 0) {
+                          <div class="rsvp-guests">+{{ guestRsvp()!.guestsCount }} guest(s)</div>
+                        }
+                      </div>
+                      <p class="form-hint">Save your check-in code (take a screenshot). Cancel 48+ hours before the event for a full refund.</p>
+                      <app-button variant="ghost" fullWidth [loading]="isCancellingRsvp()" (onClick)="cancelGuestRsvp()">Cancel ticket</app-button>
+                    } @else if (isTicketed()) {
+                      <app-button fullWidth (onClick)="openRsvp()">Buy ticket, no sign-up needed</app-button>
+                      <p class="form-hint">Already have an account? <a class="inline-link" [routerLink]="['/auth/login']" [queryParams]="{returnUrl: returnUrl()}">Log in</a></p>
                     } @else if (guestRsvp()) {
                       <!-- RSVP saved without an account -->
                       <div class="rsvp-status-card">
@@ -436,12 +465,18 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
               <strong>{{ rsvpState() === 'going' ? "You're going" : 'Maybe' }}</strong>
               {{ formatShortDay() }}
             } @else {
-              <strong>{{ isTicketed() ? '₹' + (event()?.entryFee | number) : 'Free' }}</strong>
+              <strong>{{ isTicketed() ? '₹' + (ticketPrice() | number:'1.0-2') : 'Free' }}</strong>
               {{ formatShortDay() }}
             }
           </div>
-          @if (!auth.isAuthenticated() && isTicketed()) {
-            <app-button [routerLink]="['/auth/login']" [queryParams]="{ returnUrl: returnUrl() }">Log in to buy</app-button>
+          @if (!auth.isAuthenticated() && guestRsvp()?.status === 'pending_payment') {
+            <app-button [loading]="isSubmittingRsvp()" (onClick)="completeGuestPayment()">Pay to confirm</app-button>
+          } @else if (!auth.isAuthenticated() && isTicketed()) {
+            @if (guestRsvp()?.paymentStatus === 'paid' && guestRsvp()?.status === 'going') {
+              <app-button variant="secondary" (onClick)="scrollToActions()">View ticket</app-button>
+            } @else {
+              <app-button (onClick)="openRsvp()">Buy ticket</app-button>
+            }
           } @else if (!auth.isAuthenticated()) {
             <app-button [variant]="guestRsvp() ? 'secondary' : 'primary'" (onClick)="openRsvp()">{{ guestRsvp() ? 'Change RSVP' : 'RSVP' }}</app-button>
           } @else if (userRsvp()?.status === 'pending_payment') {
@@ -491,7 +526,11 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
               <input id="guest-name" class="form-input" type="text" [(ngModel)]="guestName" maxlength="80" autocomplete="name" placeholder="So the host knows who's coming">
             </div>
             <div class="form-group">
-              <label class="form-label" for="guest-phone">Mobile number <span class="form-hint">(optional, to change your answer from another phone)</span></label>
+              @if (isTicketed()) {
+                <label class="form-label" for="guest-phone">Mobile number <span class="form-hint">(for your ticket and any refund)</span></label>
+              } @else {
+                <label class="form-label" for="guest-phone">Mobile number <span class="form-hint">(optional, to change your answer from another phone)</span></label>
+              }
               <input id="guest-phone" class="form-input" type="tel" inputmode="numeric" [(ngModel)]="guestPhone" maxlength="14" autocomplete="tel" placeholder="98765 43210">
             </div>
           }
@@ -548,8 +587,11 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
           @if (isTicketed()) {
             <div class="rsvp-total">
               <span>Total Amount:</span>
-              <span class="total-value">₹{{ ticketTotal(guestsCount) }}</span>
+              <span class="total-value">₹{{ ticketTotal(guestsCount) | number:'1.0-2' }}</span>
             </div>
+            @if (event()?.ticketFeePaidBy === 'guest') {
+              <p class="form-hint">Includes Festivo's {{ ticketFeePercent() }}% booking fee.</p>
+            }
           }
         </div>
 
@@ -558,7 +600,7 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
           <app-button
             (onClick)="confirmRsvp()"
             [loading]="isSubmittingRsvp()"
-            [disabled]="(!selectedRsvpStatus && !isTicketed()) || (!auth.isAuthenticated() && guestName.trim().length < 2)"
+            [disabled]="(!selectedRsvpStatus && !isTicketed()) || (!auth.isAuthenticated() && (guestName.trim().length < 2 || (isTicketed() && guestPhone.replace(' ', '').length < 10)))"
           >
             {{ isTicketed() ? 'Continue to Payment' : userRsvp() || guestRsvp() ? 'Update RSVP' : 'Confirm RSVP' }}
           </app-button>
@@ -1362,6 +1404,7 @@ export class EventDetailComponent implements OnInit {
   isFavorite = signal(false);
   isSubmittingRsvp = signal(false);
   isCancellingRsvp = signal(false);
+  ticketFeePercent = signal(5);
 
   // Tasks
   tasks = signal<Task[]>([]);
@@ -1396,6 +1439,7 @@ export class EventDetailComponent implements OnInit {
   guestsCount = 0;
 
   ngOnInit(): void {
+    this.payments.getConfig().subscribe(config => this.ticketFeePercent.set(config.ticketFeePercent));
     const slug = this.route.snapshot.paramMap.get('slug');
     this.inviteCode = this.route.snapshot.queryParamMap.get('invite');
     this.justCreated = this.route.snapshot.queryParamMap.get('new') === '1';
@@ -1632,8 +1676,16 @@ export class EventDetailComponent implements OnInit {
     return (this.event()?.entryFee || 0) > 0;
   }
 
+  // What one ticket costs the buyer, including the fee when the host passes it on
+  ticketPrice(): number {
+    const event = this.event();
+    if (!event) return 0;
+    const fee = event.ticketFeePaidBy === 'guest' ? this.ticketFeePercent() : 0;
+    return Math.round((event.entryFee || 0) * (100 + fee)) / 100;
+  }
+
   ticketTotal(guests: number): number {
-    return (this.event()?.entryFee || 0) * (guests + 1);
+    return Math.round(this.ticketPrice() * (guests + 1) * 100) / 100;
   }
 
   returnUrl(): string {
@@ -1749,6 +1801,11 @@ export class EventDetailComponent implements OnInit {
 
   confirmRsvp(): void {
     if (!this.event()) return;
+    if (this.isTicketed() && !this.auth.isAuthenticated()) {
+      this.selectedRsvpStatus = 'going';
+      this.submitGuestRsvp();
+      return;
+    }
     if (this.isTicketed()) {
       this.buyTicket();
       return;
@@ -1852,7 +1909,7 @@ export class EventDetailComponent implements OnInit {
   openRsvp(): void {
     const g = this.guestRsvp();
     if (g) {
-      this.selectedRsvpStatus = g.status === 'cancelled' ? 'going' : g.status;
+      this.selectedRsvpStatus = g.status === 'cancelled' || g.status === 'pending_payment' ? 'going' : g.status;
       this.guestsCount = g.guestsCount || 0;
       this.guestName = this.guestName || g.guestName;
     } else if (!this.selectedRsvpStatus) {
@@ -1896,6 +1953,12 @@ export class EventDetailComponent implements OnInit {
       next: res => {
         try { localStorage.setItem(key, res.data.guestToken); } catch { /* storage blocked */ }
         const g = res.data.rsvp;
+        if (res.data.checkout) {
+          this.guestRsvp.set(g);
+          this.rsvpModal = false;
+          this.payGuestTicket(res.data.checkout, res.data.guestToken);
+          return;
+        }
         // Keep the headcount on the page in step with the change
         const held = (x: GuestRsvp | null) => x && x.status === 'going' ? 1 + (x.guestsCount || 0) : 0;
         this.event.set({ ...event, currentAttendees: Math.max(0, event.currentAttendees - held(before) + held(g)) });
@@ -1907,6 +1970,62 @@ export class EventDetailComponent implements OnInit {
       },
       // The app's error handler shows the message
       error: () => this.isSubmittingRsvp.set(false)
+    });
+  }
+
+  // Ticket reserved without an account: pay through Razorpay, confirmed with the guest's token
+  private async payGuestTicket(checkout: CheckoutDetails, token: string): Promise<void> {
+    const event = this.event()!;
+    try {
+      const result = await this.payments.checkout(checkout, `Ticket: ${event.title}`, {
+        name: this.guestName.trim(), contact: this.guestPhone.trim() || undefined
+      }, token);
+      if (result === 'paid') {
+        this.analytics.track('ticket_purchased', { eventId: event._id, amount: checkout.amount, guest: true });
+        const g = (await firstValueFrom(this.rsvpService.getGuestRsvp(token))).data;
+        this.guestRsvp.set(g);
+        this.event.set({ ...event, currentAttendees: event.currentAttendees + 1 + (g.guestsCount || 0) });
+        this.toast.success('Ticket confirmed!', `Your check-in code is ${g.checkInCode}. Take a screenshot.`);
+      } else {
+        this.toast.info('Payment not completed', 'Your ticket is reserved. Complete payment to confirm it.');
+      }
+    } catch (error: any) {
+      this.toast.error('Payment failed', error?.error?.message || error?.message || 'Please try again.');
+    } finally {
+      this.isSubmittingRsvp.set(false);
+    }
+  }
+
+  // Retry payment for a reserved ticket; the phone number is already on file
+  completeGuestPayment(): void {
+    const g = this.guestRsvp();
+    if (!g) return;
+    this.guestName = this.guestName || g.guestName;
+    this.guestsCount = g.guestsCount || 0;
+    this.selectedRsvpStatus = 'going';
+    this.submitGuestRsvp();
+  }
+
+  cancelGuestRsvp(): void {
+    const event = this.event();
+    if (!event) return;
+    let token: string | null = null;
+    try { token = localStorage.getItem(this.guestTokenKey(event._id)); } catch { /* storage blocked */ }
+    if (!token) return;
+    const before = this.guestRsvp();
+    if (before?.paymentStatus === 'paid' &&
+        !confirm('Cancel your ticket? You get a full refund 48+ hours before the event; after that, no refund.')) return;
+    this.isCancellingRsvp.set(true);
+    this.rsvpService.cancelGuestRsvp(token).subscribe({
+      next: res => {
+        const held = before && before.status === 'going' ? 1 + (before.guestsCount || 0) : 0;
+        this.event.set({ ...event, currentAttendees: Math.max(0, event.currentAttendees - held) });
+        this.guestRsvp.set(null);
+        try { localStorage.removeItem(this.guestTokenKey(event._id)); } catch { /* ignore */ }
+        this.isCancellingRsvp.set(false);
+        this.toast.success('Cancelled', res.message);
+      },
+      error: () => this.isCancellingRsvp.set(false)
     });
   }
 

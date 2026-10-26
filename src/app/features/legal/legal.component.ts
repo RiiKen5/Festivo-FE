@@ -12,7 +12,7 @@ const BUSINESS = {
   supportEmail: 'admin@paathly.in',
   supportPhone: '+91 63620 75832',
   grievanceOfficer: 'Grievance Officer',
-  lastUpdated: '23 October 2026'
+  lastUpdated: '26 October 2026'
 };
 
 type Page = 'terms' | 'privacy' | 'refunds' | 'contact';
@@ -41,6 +41,7 @@ type Page = 'terms' | 'privacy' | 'refunds' | 'contact';
 
             <h2>1. What Festivo does</h2>
             <p>Festivo is a marketplace where organizers plan events, book independent service providers ("vendors") such as bakers, decorators and photographers, and sell or share event tickets. Vendors are independent businesses, not Festivo employees. Each vendor is responsible for the services they provide.</p>
+            <p>Festivo is an intermediary: it connects organizers, vendors and guests and collects payments on their behalf. It is not a party to the agreement between an organizer and a vendor, and does not provide the services itself.</p>
 
             <h2>2. Accounts</h2>
             <p>You must give accurate information, keep your password private, and be at least 18 years old to book services, sell tickets or receive payouts. You are responsible for activity on your account. We may suspend accounts that break these terms or harm other users.</p>
@@ -50,17 +51,22 @@ type Page = 'terms' | 'privacy' | 'refunds' | 'contact';
               <li>An organizer sends a booking request; the vendor confirms it at their final price (their quote).</li>
               <li>Organizers pay online through Festivo. We hold the payment and release it to the vendor after the booking is completed. If the organizer doesn't mark it complete, it completes automatically 3 days after the event date.</li>
               <li>Vendors may also record cash or direct payments they receive. Festivo does not hold or guarantee those payments.</li>
+              <li><strong>Arrival code.</strong> When a vendor accepts, the organizer gets a 4-digit code on their booking page. The vendor enters it when they arrive, which records that they came.</li>
+              <li><strong>Reporting a problem.</strong> If a vendor doesn't arrive, or doesn't deliver what was agreed, the organizer can use "Report a problem" on the booking any time until it is completed (up to 3 days after the event). A no-show can be reported from the day of the event. Reporting freezes the vendor's payout.</li>
+              <li><strong>Vendor reply.</strong> The vendor has 24 hours to reply with their side and evidence, such as photos. If they don't reply in time and did not enter the arrival code, the organizer is refunded in full automatically for what they paid online.</li>
+              <li><strong>Festivo's decision.</strong> If the vendor replies, or entered the arrival code, Festivo reviews the booking, messages and evidence and decides: a full refund, a partial refund, or payment to the vendor. We tell both sides why.</li>
+              <li><strong>No-shows.</strong> A verified no-show is shown on the vendor's profile and lowers their listings in search. Festivo may also deduct a penalty from the vendor's next payout, or suspend the account.</li>
               <li>Cancellations and refunds follow our <a routerLink="/refund-policy">Cancellation &amp; Refund Policy</a>.</li>
             </ul>
 
             <h2>4. Fees</h2>
-            <p>Festivo charges vendors a commission of 15% on bookings paid online, and event organizers a fee of 5% on tickets sold. Fees are deducted before payout. Organizers and attendees pay the listed price; we do not add hidden charges.</p>
+            <p>Festivo charges vendors a commission of 15% on bookings paid online, and event organizers a fee of 5% on tickets sold. Fees are deducted before payout. An organizer may choose to add the ticket fee to the price guests pay instead; the full price is shown before payment. Organizers and attendees pay the listed price; we do not add hidden charges.</p>
 
             <h2>5. Payouts</h2>
-            <p>Vendors and organizers must add UPI or bank details to receive payouts. Payouts are usually sent within 7 working days of becoming due. We may hold a payout while we investigate a dispute or suspected fraud.</p>
+            <p>Vendors and organizers must add UPI or bank details to receive payouts. Payouts are usually sent within 7 working days of becoming due. We may hold, freeze or reverse a payout while a reported problem or suspected fraud is open, and until it is settled.</p>
 
             <h2>6. Events and tickets</h2>
-            <p>Organizers are responsible for their events, including venue permissions, safety and any applicable licences. A ticket admits the number of people it was bought for. Private events are only visible to people with the organizer's invite link.</p>
+            <p>Organizers are responsible for their events, including venue permissions, safety and any applicable licences. A ticket admits the number of people it was bought for. Guests can buy tickets without an account by giving their name and mobile number; the ticket is kept in the browser they bought it on, so they should save their check-in code. Private events are only visible to people with the organizer's invite link.</p>
 
             <h2>7. Content and reviews</h2>
             <p>You own what you post, and give Festivo permission to display it on the platform. Reviews can only be left for completed bookings and must be honest. We remove content that is unlawful, abusive, misleading or that infringes others' rights.</p>
@@ -142,7 +148,8 @@ type Page = 'terms' | 'privacy' | 'refunds' | 'contact';
             <p>Refunds are issued automatically to the original payment method through Razorpay when the cancellation is made. Banks usually credit them within 5–7 working days.</p>
 
             <h2>Problems with a service</h2>
-            <p>If a vendor did not deliver what was agreed, email {{ b.supportEmail }} before the booking is completed (within 3 days of the event). We will review the booking and messages and may hold the vendor's payout while we resolve it.</p>
+            <p>If a vendor didn't arrive, or didn't deliver what was agreed, use <strong>Report a problem</strong> on the booking before it is completed (within 3 days of the event). The vendor's payout is frozen and they have 24 hours to reply. If they don't reply, and didn't enter your arrival code, you are refunded in full for what you paid online, automatically. Otherwise Festivo reviews both sides and decides on a full refund, a partial refund or payment to the vendor. You can also email {{ b.supportEmail }}.</p>
+            <p>Cash or direct payments made to the vendor outside Festivo can't be refunded by Festivo.</p>
           }
 
           @case ('contact') {

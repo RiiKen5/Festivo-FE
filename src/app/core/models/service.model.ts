@@ -30,6 +30,8 @@ export interface Service {
   totalRatings: number;
   totalBookings: number;
   completedBookings: number;
+  // Verified no-shows by this vendor, shown publicly
+  noShowCount?: number;
   views: number;
   isVerified: boolean;
   verifiedAt?: Date;

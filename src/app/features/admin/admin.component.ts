@@ -5,9 +5,9 @@ import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ButtonComponent } from '../../shared/components/button/button.component';
 import { ToastService } from '../../core/services/toast.service';
-import { AdminService, AdminStats, GrowthMetrics, PayoutItem } from '../../core/services/admin.service';
+import { AdminService, AdminStats, DisputeDecision, DisputeItem, GrowthMetrics, PayoutItem } from '../../core/services/admin.service';
 
-type Tab = 'overview' | 'growth' | 'payouts' | 'verification' | 'reviews';
+type Tab = 'overview' | 'growth' | 'payouts' | 'disputes' | 'verification' | 'reviews';
 
 @Component({
   selector: 'app-admin',
@@ -24,6 +24,9 @@ type Tab = 'overview' | 'growth' | 'payouts' | 'verification' | 'reviews';
           <button [class.active]="tab() === 'growth'" (click)="select('growth')">Growth</button>
           <button [class.active]="tab() === 'payouts'" (click)="select('payouts')">
             Payouts @if (stats()?.payoutsDue?.count) { <span class="count">{{ stats()?.payoutsDue?.count }}</span> }
+          </button>
+          <button [class.active]="tab() === 'disputes'" (click)="select('disputes')">
+            Problems @if (stats()?.openDisputes) { <span class="count">{{ stats()?.openDisputes }}</span> }
           </button>
           <button [class.active]="tab() === 'verification'" (click)="select('verification')">
             Vendor verification @if (stats()?.pendingVerification) { <span class="count">{{ stats()?.pendingVerification }}</span> }
@@ -113,6 +116,9 @@ type Tab = 'overview' | 'growth' | 'payouts' | 'verification' | 'reviews';
                     paid ₹{{ p.amount | number:'1.0-2' }}, fee ₹{{ p.platformFee | number:'1.0-2' }}
                     @if (p.refundedAmount) { , refunded ₹{{ p.refundedAmount | number:'1.0-2' }} }
                   </div>
+                  @if (p.payee.penaltyDue) {
+                    <div class="warning">Deduct a ₹{{ p.payee.penaltyDue | number:'1.0-2' }} no-show penalty: send ₹{{ (p.payeeAmount - (p.payee.penaltyDue > p.payeeAmount ? p.payeeAmount : p.payee.penaltyDue)) | number:'1.0-2' }}. It's recorded when you mark this paid.</div>
+                  }
                   <div class="payee-details">
                     @if (p.payee.payoutDetails; as d) {
                       @if (d.method === 'upi') {
@@ -128,6 +134,63 @@ type Tab = 'overview' | 'growth' | 'payouts' | 'verification' | 'reviews';
                 <div class="row-actions">
                   <input class="form-input" placeholder="UTR / reference" [(ngModel)]="references[p._id]">
                   <app-button size="sm" [disabled]="!references[p._id]" (onClick)="markPaid(p)">Mark paid</app-button>
+                </div>
+              </div>
+            }
+          }
+
+          @case ('disputes') {
+            <p class="muted">Problems organizers reported. The vendor's payout is frozen until you decide. Unanswered reports are refunded automatically after 24 hours, unless the vendor entered the arrival code.</p>
+            @if (disputes().length === 0) {
+              <p class="empty">No open problems.</p>
+            }
+            @for (b of disputes(); track b._id) {
+              <div class="row-card dispute-card">
+                <div class="row-main">
+                  <strong>{{ reasonLabel(b.dispute.reason) }}</strong> · {{ b.service?.serviceName }} for {{ b.event?.title }}
+                  ({{ b.eventDate | date:'d MMM' }}, {{ b.event?.city }})
+                  <div class="muted">
+                    Organizer {{ b.organizer.name }} ({{ b.organizer.phone || b.organizer.email }}) ·
+                    Vendor {{ b.vendor.name }} ({{ b.vendor.phone || b.vendor.email }}){{ b.vendor.noShowCount ? ' · ' + b.vendor.noShowCount + ' earlier no-show(s)' : '' }}
+                  </div>
+                  <div class="muted">
+                    Price ₹{{ b.priceAgreed | number }} · paid online and refundable ₹{{ b.refundableOnline | number }} ·
+                    @if (b.arrivedAt) { <strong>arrival code entered {{ b.arrivedAt | date:'d MMM, h:mm a' }}</strong> } @else { no arrival recorded }
+                  </div>
+                  <p><strong>Organizer:</strong> {{ b.dispute.details }}</p>
+                  @if (b.dispute.vendorResponse) {
+                    <p><strong>Vendor:</strong> {{ b.dispute.vendorResponse }}</p>
+                    <div class="evidence">
+                      @for (url of b.dispute.vendorEvidence || []; track url) {
+                        <a [href]="url" target="_blank" rel="noopener"><img [src]="url" alt="Vendor evidence" /></a>
+                      }
+                    </div>
+                  } @else {
+                    <p class="muted">No reply from the vendor yet (due {{ b.dispute.respondBy | date:'d MMM, h:mm a' }}).</p>
+                  }
+                  <a [routerLink]="['/bookings', b._id]" target="_blank">Open booking and chat</a>
+                </div>
+                <div class="dispute-decision">
+                  <label>Decision
+                    <select class="form-input" [(ngModel)]="decisionFor(b._id).resolution">
+                      <option value="refund">Refund the organizer in full</option>
+                      <option value="partial">Refund part, pay the vendor the rest</option>
+                      <option value="release">Pay the vendor</option>
+                    </select>
+                  </label>
+                  @if (decisionFor(b._id).resolution === 'partial') {
+                    <label>Refund (₹)
+                      <input class="form-input" type="number" min="1" [max]="b.refundableOnline" [(ngModel)]="decisionFor(b._id).amount">
+                    </label>
+                  }
+                  <label class="check"><input type="checkbox" [(ngModel)]="decisionFor(b._id).noShow"> Record a verified no-show (ranks the vendor last, shows on their profile)</label>
+                  <label>Penalty from the vendor's next payout (₹, optional)
+                    <input class="form-input" type="number" min="0" [(ngModel)]="decisionFor(b._id).penalty">
+                  </label>
+                  <label>Note to both sides
+                    <input class="form-input" [(ngModel)]="decisionFor(b._id).note" placeholder="Why you decided this">
+                  </label>
+                  <app-button size="sm" (onClick)="resolve(b)">Settle</app-button>
                 </div>
               </div>
             }
@@ -300,6 +363,30 @@ type Tab = 'overview' | 'growth' | 'payouts' | 'verification' | 'reviews';
       td { font-variant-numeric: tabular-nums; }
     }
 
+    .dispute-card {
+      flex-wrap: wrap;
+      p { margin: $spacing-2 0; overflow-wrap: anywhere; }
+    }
+
+    .dispute-decision {
+      display: flex;
+      flex-direction: column;
+      gap: $spacing-2;
+      min-width: 240px;
+      flex: 1;
+      font-size: $font-size-sm;
+
+      label { display: flex; flex-direction: column; gap: $spacing-1; }
+      .check { flex-direction: row; align-items: flex-start; }
+    }
+
+    .evidence {
+      display: flex;
+      flex-wrap: wrap;
+      gap: $spacing-2;
+      img { width: 64px; height: 64px; object-fit: cover; border-radius: $radius-default; }
+    }
+
     .muted { color: $text-secondary; font-size: $font-size-sm; }
     .warning { color: $warning-dark; }
     .empty { color: $text-secondary; padding: $spacing-8 0; text-align: center; }
@@ -315,6 +402,8 @@ export class AdminComponent implements OnInit {
   services = signal<any[]>([]);
   reviews = signal<any[]>([]);
   references: Record<string, string> = {};
+  disputes = signal<DisputeItem[]>([]);
+  private decisions: Record<string, DisputeDecision> = {};
   growth = signal<GrowthMetrics | null>(null);
   growthDays = signal(30);
   category = categoryLabel;
@@ -327,6 +416,7 @@ export class AdminComponent implements OnInit {
     this.tab.set(tab);
     if (tab === 'growth') this.loadGrowth(this.growthDays());
     if (tab === 'payouts') this.admin.getPayouts().subscribe(p => this.payouts.set(p));
+    if (tab === 'disputes') this.admin.getDisputes().subscribe(d => this.disputes.set(d));
     if (tab === 'verification') this.admin.getUnverifiedServices().subscribe(s => this.services.set(s));
     if (tab === 'reviews') this.admin.getFlaggedReviews().subscribe(r => this.reviews.set(r));
   }
@@ -347,6 +437,30 @@ export class AdminComponent implements OnInit {
     this.admin.markPayoutPaid(payout._id, reference).subscribe(() => {
       this.payouts.update(list => list.filter(p => p._id !== payout._id));
       this.toast.success('Payout recorded', `${payout.payee.name} has been notified.`);
+      this.loadStats();
+    });
+  }
+
+  decisionFor(id: string): DisputeDecision {
+    return this.decisions[id] ??= { resolution: 'refund', noShow: false };
+  }
+
+  reasonLabel(reason: string): string {
+    return { no_show: "Vendor didn't come", not_as_agreed: 'Not done as agreed', other: 'Other problem' }[reason] || reason;
+  }
+
+  resolve(booking: DisputeItem): void {
+    const d = this.decisionFor(booking._id);
+    const decision: DisputeDecision = {
+      resolution: d.resolution,
+      amount: d.resolution === 'partial' ? Number(d.amount) : undefined,
+      noShow: !!d.noShow,
+      penalty: d.penalty ? Number(d.penalty) : 0,
+      note: d.note?.trim() || undefined
+    };
+    this.admin.resolveDispute(booking._id, decision).subscribe(() => {
+      this.disputes.update(list => list.filter(b => b._id !== booking._id));
+      this.toast.success('Settled', 'Both sides have been notified.');
       this.loadStats();
     });
   }

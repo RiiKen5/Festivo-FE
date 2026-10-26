@@ -10,7 +10,8 @@ import {
   PaymentUpdateData,
   BookingsResponse,
   BookingResponse,
-  BookingStats
+  BookingStats,
+  DisputeReason
 } from '../models/booking.model';
 
 @Injectable({
@@ -87,6 +88,26 @@ export class BookingService {
 
   completeBooking(id: string): Observable<BookingResponse> {
     return this.api.post<BookingResponse>(`${this.endpoint}/${id}/complete`, {});
+  }
+
+  // Vendor enters the organizer's 4-digit code when they arrive
+  confirmArrival(id: string, code: string): Observable<BookingResponse> {
+    return this.api.post<BookingResponse>(`${this.endpoint}/${id}/arrive`, { code });
+  }
+
+  markArrived(id: string): Observable<BookingResponse> {
+    return this.api.post<BookingResponse>(`${this.endpoint}/${id}/mark-arrived`, {});
+  }
+
+  // Organizer reports a no-show or a job not done as agreed; freezes the payout
+  reportProblem(id: string, reason: DisputeReason, details: string): Observable<BookingResponse> {
+    return this.api.post<BookingResponse>(`${this.endpoint}/${id}/report-problem`, { reason, details }).pipe(
+      tap(() => this.analytics.track('booking_problem_reported', { bookingId: id, reason }))
+    );
+  }
+
+  respondToDispute(id: string, response: string, evidence: string[]): Observable<BookingResponse> {
+    return this.api.post<BookingResponse>(`${this.endpoint}/${id}/dispute-response`, { response, evidence });
   }
 
   // Vendor records an offline payment they received. Organizers pay online via PaymentService.

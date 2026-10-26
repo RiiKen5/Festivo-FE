@@ -9,6 +9,7 @@ export type AnalyticsEvent =
   | 'service_created'
   | 'booking_requested'
   | 'booking_confirmed'
+  | 'booking_problem_reported'
   | 'payment_completed'
   | 'rsvp_created'
   | 'ticket_purchased'

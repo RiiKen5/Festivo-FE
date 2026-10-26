@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { ApiService } from './api.service';
 import { PaymentRecord, PayoutDetails } from './payment.service';
+import { BookingDispute } from '../models/booking.model';
 
 export interface MoneyTotals {
   collected: number;
@@ -18,6 +19,7 @@ export interface AdminStats {
   payoutsDue: { amount: number; count: number };
   pendingVerification: number;
   flaggedReviews: number;
+  openDisputes: number;
 }
 
 export interface GrowthSourceRow {
@@ -45,7 +47,32 @@ export interface GrowthMetrics {
 }
 
 export interface PayoutItem extends PaymentRecord {
-  payee: { _id: string; name: string; email: string; phone?: string; payoutDetails?: PayoutDetails };
+  payee: { _id: string; name: string; email: string; phone?: string; penaltyDue?: number; noShowCount?: number; payoutDetails?: PayoutDetails };
+}
+
+type Party = { _id: string; name: string; email: string; phone?: string };
+
+export interface DisputeItem {
+  _id: string;
+  status: string;
+  priceAgreed: number;
+  pricePaid: number;
+  eventDate: string;
+  arrivedAt?: string;
+  refundableOnline: number;
+  organizer: Party;
+  vendor: Party & { noShowCount?: number };
+  service?: { serviceName: string; category: string };
+  event?: { title: string; date: string; city: string };
+  dispute: BookingDispute;
+}
+
+export interface DisputeDecision {
+  resolution: 'refund' | 'partial' | 'release';
+  amount?: number;
+  noShow?: boolean;
+  penalty?: number;
+  note?: string;
 }
 
 @Injectable({
@@ -70,6 +97,14 @@ export class AdminService {
 
   markPayoutPaid(paymentId: string, reference: string): Observable<unknown> {
     return this.api.post(`${this.endpoint}/payouts/${paymentId}/mark-paid`, { reference });
+  }
+
+  getDisputes(status: 'open' | 'resolved' = 'open'): Observable<DisputeItem[]> {
+    return this.api.get<{ data: DisputeItem[] }>(`${this.endpoint}/disputes`, { status }).pipe(map(r => r.data));
+  }
+
+  resolveDispute(bookingId: string, decision: DisputeDecision): Observable<unknown> {
+    return this.api.post(`${this.endpoint}/disputes/${bookingId}/resolve`, decision);
   }
 
   getUnverifiedServices(): Observable<any[]> {

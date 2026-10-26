@@ -1,4 +1,5 @@
 import { GuestRsvp, GuestRsvpData } from '../models/rsvp.model';
+import { CheckoutDetails } from './payment.service';
 import { Injectable } from '@angular/core';
 import { Observable, tap } from 'rxjs';
 import { ApiService } from './api.service';
@@ -30,11 +31,19 @@ export class RsvpService {
     );
   }
 
-  /** RSVP without an account (free events). Keep the returned token to change it later. */
-  guestRsvp(data: GuestRsvpData): Observable<{ success: boolean; data: { rsvp: GuestRsvp; guestToken: string } }> {
-    return this.api.post<{ success: boolean; data: { rsvp: GuestRsvp; guestToken: string } }>(`${this.endpoint}/guest`, data).pipe(
+  /**
+   * RSVP or buy a ticket without an account. Keep the returned token to
+   * change or cancel it later. Paid events also return a checkout to pay.
+   */
+  guestRsvp(data: GuestRsvpData): Observable<{ success: boolean; data: { rsvp: GuestRsvp; guestToken: string; checkout?: CheckoutDetails } }> {
+    return this.api.post<{ success: boolean; data: { rsvp: GuestRsvp; guestToken: string; checkout?: CheckoutDetails } }>(`${this.endpoint}/guest`, data).pipe(
       tap(res => this.analytics.track('rsvp_created', { eventId: data.eventId, status: res.data?.rsvp.status, viaInvite: !!data.inviteCode, guest: true }))
     );
+  }
+
+  /** A guest cancels their RSVP or ticket; tickets are refunded under the ticket policy. */
+  cancelGuestRsvp(token: string): Observable<{ success: boolean; message: string; data: { rsvp: GuestRsvp; refundIssued: number } }> {
+    return this.api.post(`${this.endpoint}/guest/cancel`, { token });
   }
 
   /** A guest's own RSVP from their saved token. */

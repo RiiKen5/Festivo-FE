@@ -93,6 +93,10 @@ import { BookingCreateData } from '../../../../core/models/booking.model';
                     <span class="meta-divider" aria-hidden="true">·</span>
                     <span class="service-bookings">{{ count(service()?.completedBookings, 'booking') }} completed</span>
                   }
+                  @if (service()?.noShowCount) {
+                    <span class="meta-divider" aria-hidden="true">·</span>
+                    <span class="service-noshow">{{ count(service()?.noShowCount, 'verified no-show') }}</span>
+                  }
                   <span class="meta-divider" aria-hidden="true">·</span>
                   <span class="service-location"><app-icon name="map-pin" [size]="16"></app-icon>{{ service()?.city }}</span>
                 </div>
@@ -745,6 +749,11 @@ import { BookingCreateData } from '../../../../core/models/booking.model';
       font-size: $font-size-sm;
       font-weight: $font-weight-semibold;
       box-shadow: $shadow-sm;
+    }
+
+    .service-noshow {
+      color: $error-dark;
+      font-weight: $font-weight-semibold;
     }
 
     .service-new {

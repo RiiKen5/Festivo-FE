@@ -13,7 +13,8 @@ import { ReviewService } from '../../../../core/services/review.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { PaymentService } from '../../../../core/services/payment.service';
-import { Booking, BookingStatus, PaymentMethod } from '../../../../core/models/booking.model';
+import { UploadService } from '../../../../core/services/upload.service';
+import { Booking, BookingStatus, DisputeReason, PaymentMethod } from '../../../../core/models/booking.model';
 import { ReviewCreateData } from '../../../../core/models/review.model';
 import { Event } from '../../../../core/models/event.model';
 import { Service } from '../../../../core/models/service.model';
@@ -74,6 +75,91 @@ import { User } from '../../../../core/models/user.model';
                     <app-button variant="secondary" [loading]="actionLoading()" (onClick)="completeBooking()">Mark as done</app-button>
                   } @else if (step.action === 'review') {
                     <app-button variant="secondary" (onClick)="showReviewModal.set(true)">Leave a review</app-button>
+                  }
+                </div>
+              }
+
+              <!-- Arrival check and reported problems -->
+              @if (showDayOfCard()) {
+                <div class="dayof-card">
+                  @if (booking()?.dispute?.status ? booking()?.dispute : null; as d) {
+                    @if (d.status === 'open') {
+                      <h2>Problem reported · payment on hold</h2>
+                      <p class="dayof-quote">"{{ d.details }}"</p>
+                      @if (isVendor()) {
+                        @if (d.vendorRespondedAt) {
+                          <p class="action-hint">You replied on {{ d.vendorRespondedAt | date:'d MMM, h:mm a' }}. Festivo is reviewing both sides and will let you both know.</p>
+                        } @else {
+                          <p class="action-hint">The organizer says you {{ d.reason === 'no_show' ? "didn't arrive" : "didn't deliver what was agreed" }}. Your payout is on hold. Reply by <strong>{{ d.respondBy | date:'d MMM, h:mm a' }}</strong> with your side and photos (for example, the set-up at the venue). If you don't reply, the organizer is refunded.</p>
+                          <div class="form-group">
+                            <label for="dispute-reply">What happened</label>
+                            <textarea id="dispute-reply" class="form-textarea" rows="3" [(ngModel)]="disputeReply" placeholder="For example: I arrived at 4 pm and set up everything agreed. Photos attached."></textarea>
+                          </div>
+                          <div class="evidence">
+                            @for (url of disputeEvidence(); track url) {
+                              <img [src]="url" alt="Photo you attached" />
+                            }
+                            @if (disputeEvidence().length < 6) {
+                              <label class="evidence-add">
+                                <input type="file" accept="image/*" (change)="addEvidence($event)" [disabled]="uploadingEvidence()" />
+                                {{ uploadingEvidence() ? 'Uploading…' : '+ Add photo' }}
+                              </label>
+                            }
+                          </div>
+                          <app-button [loading]="actionLoading()" [disabled]="disputeReply.trim().length < 10" (onClick)="sendDisputeReply()">Send reply</app-button>
+                        }
+                      } @else {
+                        <p class="action-hint">
+                          @if (d.vendorRespondedAt) {
+                            The vendor replied. Festivo is reviewing both sides and will let you know. Your money stays on hold until then.
+                          } @else {
+                            The vendor has until <strong>{{ d.respondBy | date:'d MMM, h:mm a' }}</strong> to reply. If they don't, you get a full refund of what you paid online, automatically.
+                          }
+                        </p>
+                      }
+                      @if (d.vendorResponse && !isVendor()) {
+                        <p class="dayof-quote"><strong>Vendor:</strong> "{{ d.vendorResponse }}"</p>
+                        @if (d.vendorEvidence?.length) {
+                          <div class="evidence">
+                            @for (url of d.vendorEvidence; track url) {
+                              <a [href]="url" target="_blank" rel="noopener"><img [src]="url" alt="Photo from the vendor" /></a>
+                            }
+                          </div>
+                        }
+                      }
+                    } @else {
+                      <h2>Reported problem settled</h2>
+                      <p class="action-hint">
+                        @switch (d.resolution) {
+                          @case ('refund') { The organizer was refunded{{ d.refunded ? ' ₹' + (d.refunded | number) : '' }}. }
+                          @case ('partial') { ₹{{ d.refunded | number }} was refunded to the organizer and the rest paid to the vendor. }
+                          @default { The payment was released to the vendor. }
+                        }
+                        @if (d.noShow) { Recorded as a no-show. }
+                        {{ d.resolutionNote }}
+                      </p>
+                    }
+                  } @else if (isVendor()) {
+                    <h2>On the day</h2>
+                    @if (booking()?.arrivedAt) {
+                      <p class="action-hint">Arrival confirmed at {{ booking()?.arrivedAt | date:'d MMM, h:mm a' }}.</p>
+                    } @else {
+                      <p class="action-hint">When you arrive, ask the organizer for the 4-digit code on their booking page and enter it here. It confirms you came.</p>
+                      <div class="arrival-row">
+                        <label for="arrival-code" class="sr-only">Arrival code</label>
+                        <input id="arrival-code" class="form-input arrival-input" inputmode="numeric" maxlength="4" placeholder="0000" [(ngModel)]="arrivalInput" />
+                        <app-button [loading]="actionLoading()" [disabled]="arrivalInput.length !== 4" (onClick)="confirmArrival()">I've arrived</app-button>
+                      </div>
+                    }
+                  } @else {
+                    <h2>On the day</h2>
+                    @if (booking()?.arrivedAt) {
+                      <p class="action-hint">The vendor arrived at {{ booking()?.arrivedAt | date:'d MMM, h:mm a' }}.</p>
+                    } @else {
+                      <p class="arrival-code" aria-label="Arrival code">{{ booking()?.arrivalCode }}</p>
+                      <p class="action-hint">Your arrival code. Give it to the vendor only when they arrive; they enter it to confirm they came. If they don't turn up, use "Report a problem" and your money stays on hold.</p>
+                      <app-button variant="ghost" size="sm" [loading]="actionLoading()" (onClick)="markArrived()">They're here, mark as arrived</app-button>
+                    }
                   }
                 </div>
               }
@@ -239,14 +325,19 @@ import { User } from '../../../../core/models/user.model';
                 } @else {
                   <!-- Organizer Actions -->
                   <!-- Paying is in the banner at the top -->
-                  @if ((booking()?.status === 'confirmed' || booking()?.status === 'in_progress') && nextStep()?.action !== 'complete') {
+                  @if ((booking()?.status === 'confirmed' || booking()?.status === 'in_progress') && nextStep()?.action !== 'complete' && !disputeOpen()) {
                     <app-button variant="secondary" fullWidth [loading]="actionLoading()" (onClick)="completeBooking()">
                       Mark as done
                     </app-button>
                   }
+                  @if ((booking()?.status === 'confirmed' || booking()?.status === 'in_progress') && !booking()?.dispute?.status) {
+                    <app-button variant="ghost" fullWidth (onClick)="showProblemModal.set(true)">
+                      Report a problem
+                    </app-button>
+                  }
                 }
 
-                @if (booking()?.status === 'pending' || booking()?.status === 'confirmed') {
+                @if ((booking()?.status === 'pending' || booking()?.status === 'confirmed') && !disputeOpen()) {
                   <app-button
                     variant="ghost"
                     fullWidth
@@ -293,6 +384,33 @@ import { User } from '../../../../core/models/user.model';
           </div>
         </div>
       </main>
+
+      <!-- Report a problem -->
+      <app-modal
+        [isOpen]="showProblemModal()"
+        title="Report a problem"
+        (onClose)="showProblemModal.set(false)"
+        [showFooter]="true"
+      >
+        <fieldset class="problem-reasons">
+          <legend>What went wrong?</legend>
+          <label><input type="radio" name="problem" value="no_show" [(ngModel)]="problemReason" [disabled]="!canReportNoShow()" /> The vendor didn't come</label>
+          <label><input type="radio" name="problem" value="not_as_agreed" [(ngModel)]="problemReason" /> They came, but didn't do what was agreed</label>
+          <label><input type="radio" name="problem" value="other" [(ngModel)]="problemReason" /> Something else</label>
+        </fieldset>
+        @if (!canReportNoShow()) {
+          <p class="policy-note">{{ booking()?.arrivedAt ? 'The vendor confirmed their arrival with your code, so "didn\'t come" isn\'t available.' : 'You can report a no-show from the day of the event.' }}</p>
+        }
+        <div class="form-group">
+          <label for="problem-details">Tell us what happened</label>
+          <textarea id="problem-details" class="form-textarea" rows="3" [(ngModel)]="problemDetails" placeholder="For example: The decorator didn't come and isn't answering calls."></textarea>
+        </div>
+        <p class="policy-note">Your payment stays on hold. The vendor gets 24 hours to reply with their side. If they don't, you're refunded in full automatically. If they do, Festivo looks at both sides and decides.</p>
+        <div modal-footer>
+          <app-button variant="ghost" (onClick)="showProblemModal.set(false)">Close</app-button>
+          <app-button variant="danger" [loading]="actionLoading()" [disabled]="!problemReason || problemDetails.trim().length < 10" (onClick)="reportProblem()">Report problem</app-button>
+        </div>
+      </app-modal>
 
       <!-- Cancel Modal -->
       <app-modal
@@ -596,6 +714,7 @@ import { User } from '../../../../core/models/user.model';
         }
 
         .booking-header { order: 1; }
+        .dayof-card { order: 2; }
         .actions-card { order: 2; }
         .detail-card { order: 3; }
         .contact-card { order: 4; }
@@ -805,6 +924,89 @@ import { User } from '../../../../core/models/user.model';
       font-size: $font-size-sm;
       color: $text-secondary;
       margin: 0;
+    }
+
+    .dayof-card {
+      @include card;
+      margin-bottom: $spacing-6;
+      display: flex;
+      flex-direction: column;
+      gap: $spacing-3;
+      align-items: flex-start;
+
+      h2 {
+        font-size: $font-size-lg;
+        font-weight: $font-weight-semibold;
+        margin: 0;
+      }
+    }
+
+    .arrival-code {
+      font-size: 2.25rem;
+      font-weight: $font-weight-bold;
+      letter-spacing: 0.4em;
+      font-variant-numeric: tabular-nums;
+      margin: 0;
+    }
+
+    .arrival-row {
+      display: flex;
+      gap: $spacing-2;
+      align-items: center;
+    }
+
+    .arrival-input {
+      width: 7rem;
+      font-size: $font-size-lg;
+      letter-spacing: 0.3em;
+      text-align: center;
+    }
+
+    .dayof-quote {
+      margin: 0;
+      font-size: $font-size-sm;
+      overflow-wrap: anywhere;
+    }
+
+    .evidence {
+      display: flex;
+      flex-wrap: wrap;
+      gap: $spacing-2;
+
+      img {
+        width: 72px;
+        height: 72px;
+        object-fit: cover;
+        border-radius: $radius-default;
+      }
+    }
+
+    .evidence-add {
+      width: 72px;
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      border: 1px dashed $border-light;
+      border-radius: $radius-default;
+      font-size: $font-size-xs;
+      color: $text-secondary;
+      cursor: pointer;
+
+      input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+    }
+
+    .problem-reasons {
+      border: 0;
+      padding: 0;
+      margin: 0 0 $spacing-3;
+      display: flex;
+      flex-direction: column;
+      gap: $spacing-2;
+
+      legend { font-weight: $font-weight-semibold; margin-bottom: $spacing-2; }
+      label { display: flex; gap: $spacing-2; align-items: center; }
     }
 
     .cancellation-info {
@@ -1019,6 +1221,7 @@ export class BookingDetailComponent implements OnInit {
   private auth = inject(AuthService);
   private toast = inject(ToastService);
   private payments = inject(PaymentService);
+  private uploads = inject(UploadService);
 
   booking = signal<Booking | null>(null);
   isLoading = signal(true);
@@ -1028,12 +1231,19 @@ export class BookingDetailComponent implements OnInit {
   showPaymentModal = signal(false);
   showReviewModal = signal(false);
   showConfirmModal = signal(false);
+  showProblemModal = signal(false);
+  uploadingEvidence = signal(false);
+  disputeEvidence = signal<string[]>([]);
   isPaying = signal(false);
   paymentsEnabled = signal(false);
   commissionPercent = signal(15);
   quotePrice = 0;
 
   cancelReason = '';
+  arrivalInput = '';
+  problemReason: DisputeReason | '' = '';
+  problemDetails = '';
+  disputeReply = '';
   paymentAmount: number = 0;
   paymentMethod: PaymentMethod | '' = '';
   transactionId = '';
@@ -1240,6 +1450,9 @@ export class BookingDetailComponent implements OnInit {
     const accepted = b.status === 'confirmed' || b.status === 'in_progress';
     const eventPassed = new Date(b.eventDate).getTime() < Date.now();
 
+    if (b.dispute?.status === 'open') {
+      return null;
+    }
     if (b.status === 'pending') {
       return vendor
         ? { title: `${other} wants to book you`, text: 'Accept with your final price, or decline. They pay only after you accept.', tone: 'act', action: 'quote' }
@@ -1287,6 +1500,102 @@ export class BookingDetailComponent implements OnInit {
       error: () => {
         this.actionLoading.set(false);
       }
+    });
+  }
+
+  disputeOpen(): boolean {
+    return this.booking()?.dispute?.status === 'open';
+  }
+
+  // The arrival check matters from the day before the event (set-up) until
+  // the job is settled; a reported problem stays visible afterwards
+  showDayOfCard(): boolean {
+    const b = this.booking();
+    if (!b) return false;
+    if (b.dispute?.status) return true;
+    if (b.status !== 'confirmed' && b.status !== 'in_progress') return false;
+    const dayBefore = new Date(b.eventDate).getTime() - 36 * 60 * 60 * 1000;
+    return Date.now() >= dayBefore || !!b.arrivedAt;
+  }
+
+  canReportNoShow(): boolean {
+    const b = this.booking();
+    if (!b || b.arrivedAt) return false;
+    const eventDay = new Date(b.eventDate);
+    eventDay.setHours(0, 0, 0, 0);
+    return Date.now() >= eventDay.getTime();
+  }
+
+  confirmArrival(): void {
+    const id = this.booking()?._id;
+    if (!id) return;
+    this.actionLoading.set(true);
+    this.bookingService.confirmArrival(id, this.arrivalInput.trim()).subscribe({
+      next: () => {
+        this.actionLoading.set(false);
+        this.arrivalInput = '';
+        this.reload();
+        this.toast.success('Arrival confirmed', 'The organizer has been told you are here.');
+      },
+      error: () => this.actionLoading.set(false)
+    });
+  }
+
+  markArrived(): void {
+    const id = this.booking()?._id;
+    if (!id) return;
+    this.actionLoading.set(true);
+    this.bookingService.markArrived(id).subscribe({
+      next: () => { this.actionLoading.set(false); this.reload(); },
+      error: () => this.actionLoading.set(false)
+    });
+  }
+
+  reportProblem(): void {
+    const id = this.booking()?._id;
+    if (!id || !this.problemReason) return;
+    this.actionLoading.set(true);
+    this.bookingService.reportProblem(id, this.problemReason, this.problemDetails.trim()).subscribe({
+      next: () => {
+        this.actionLoading.set(false);
+        this.showProblemModal.set(false);
+        this.problemDetails = '';
+        this.reload();
+        this.toast.success('Problem reported', 'Your payment is on hold. The vendor has 24 hours to reply.');
+      },
+      error: () => this.actionLoading.set(false)
+    });
+  }
+
+  async addEvidence(event: globalThis.Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    this.uploadingEvidence.set(true);
+    try {
+      const url = await firstValueFrom(this.uploads.uploadImage(file));
+      this.disputeEvidence.update(list => [...list, url]);
+    } catch {
+      // The error interceptor already showed why
+    } finally {
+      this.uploadingEvidence.set(false);
+    }
+  }
+
+  sendDisputeReply(): void {
+    const id = this.booking()?._id;
+    if (!id) return;
+    this.actionLoading.set(true);
+    this.bookingService.respondToDispute(id, this.disputeReply.trim(), this.disputeEvidence()).subscribe({
+      next: () => {
+        this.actionLoading.set(false);
+        this.disputeReply = '';
+        this.disputeEvidence.set([]);
+        this.reload();
+        this.toast.success('Reply sent', 'Festivo will review both sides and let you know.');
+      },
+      error: () => this.actionLoading.set(false)
     });
   }
 

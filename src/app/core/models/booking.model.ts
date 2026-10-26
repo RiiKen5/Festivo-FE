@@ -33,9 +33,31 @@ export interface Booking {
   cancelledBy?: User | string;
   cancelledAt?: Date;
   completedAt?: Date;
+  // Only the organizer receives this; they read it to the vendor on arrival
+  arrivalCode?: string;
+  arrivedAt?: Date;
+  dispute?: BookingDispute;
   paymentBalance?: number;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export type DisputeReason = 'no_show' | 'not_as_agreed' | 'other';
+
+export interface BookingDispute {
+  status: 'open' | 'resolved';
+  reason: DisputeReason;
+  details: string;
+  openedAt: Date;
+  respondBy: Date;
+  vendorResponse?: string;
+  vendorEvidence?: string[];
+  vendorRespondedAt?: Date;
+  resolution?: 'refund' | 'partial' | 'release';
+  refunded?: number;
+  noShow?: boolean;
+  resolutionNote?: string;
+  resolvedAt?: Date;
 }
 
 export interface BookingPayment {

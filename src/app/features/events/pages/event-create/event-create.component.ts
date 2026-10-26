@@ -9,6 +9,7 @@ import { ButtonComponent } from '../../../../shared/components/button/button.com
 import { InputComponent } from '../../../../shared/components/input/input.component';
 import { EventService } from '../../../../core/services/event.service';
 import { ToastService } from '../../../../core/services/toast.service';
+import { PaymentService } from '../../../../core/services/payment.service';
 import { EventType, VibeScore } from '../../../../core/models/event.model';
 import { CustomValidators } from '../../../../shared/validators/custom-validators';
 
@@ -211,6 +212,18 @@ import { CustomValidators } from '../../../../shared/validators/custom-validator
                   formControlName="entryFee"
                 ></app-input>
               </div>
+              <fieldset class="form-group fee-payer">
+                <legend>Festivo's {{ ticketFeePercent() }}% ticket fee</legend>
+                <label class="form-checkbox">
+                  <input type="radio" formControlName="ticketFeePaidBy" value="host">
+                  <span>I pay it. Guests pay ₹{{ entryFee() | number }}, you get ₹{{ hostGetsIfHostPays() | number:'1.0-2' }} a ticket.</span>
+                </label>
+                <label class="form-checkbox">
+                  <input type="radio" formControlName="ticketFeePaidBy" value="guest">
+                  <span>Guests pay it. Guests pay ₹{{ guestPaysIfGuestPays() | number:'1.0-2' }}, you get the full ₹{{ entryFee() | number }}.</span>
+                </label>
+                <p class="cover-hint">Guests can buy without creating an account. Ticket money is paid to you after the event.</p>
+              </fieldset>
             }
           </section>
 
@@ -339,6 +352,16 @@ import { CustomValidators } from '../../../../shared/validators/custom-validator
       margin-bottom: $spacing-6;
       padding-bottom: $spacing-4;
       border-bottom: 1px solid $border-light;
+    }
+
+    .fee-payer {
+      border: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+
+      legend { font-weight: 600; margin-bottom: 0.5rem; }
     }
 
     .cover-hint {
@@ -519,6 +542,20 @@ export class EventCreateComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private eventService = inject(EventService);
   private toast = inject(ToastService);
+  private payments = inject(PaymentService);
+  ticketFeePercent = signal(5);
+
+  entryFee(): number {
+    return Number(this.form?.get('entryFee')?.value) || 0;
+  }
+
+  hostGetsIfHostPays(): number {
+    return Math.round(this.entryFee() * (100 - this.ticketFeePercent())) / 100;
+  }
+
+  guestPaysIfGuestPays(): number {
+    return Math.round(this.entryFee() * (100 + this.ticketFeePercent())) / 100;
+  }
 
   isEditMode = signal(false);
   isSubmitting = signal(false);
@@ -557,6 +594,7 @@ export class EventCreateComponent implements OnInit {
     budget: ['', [CustomValidators.positiveNumber(), CustomValidators.priceRange(0, 100000000)]],
     isPaid: [false],
     entryFee: [0, [CustomValidators.positiveNumber()]],
+    ticketFeePaidBy: ['host'],
     vibeScore: ['party'],
     isPublic: [true],
     tags: ['', [Validators.maxLength(200)]],
@@ -569,6 +607,7 @@ export class EventCreateComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    this.payments.getConfig().subscribe(config => this.ticketFeePercent.set(config.ticketFeePercent));
     const slug = this.route.snapshot.paramMap.get('slug');
     if (slug && this.route.snapshot.url.some(s => s.path === 'edit')) {
       this.isEditMode.set(true);
@@ -596,6 +635,7 @@ export class EventCreateComponent implements OnInit {
           budget: event.budget || '',
           isPaid: event.isPaid,
           entryFee: event.entryFee || 0,
+          ticketFeePaidBy: event.ticketFeePaidBy || 'host',
           vibeScore: event.vibeScore,
           isPublic: event.isPublic,
           coverPhoto: event.coverPhoto || '',
@@ -682,6 +722,7 @@ export class EventCreateComponent implements OnInit {
       budget: values.budget ? Number(values.budget) : undefined,
       isPaid: values.isPaid,
       entryFee: values.isPaid ? Number(values.entryFee) : 0,
+      ticketFeePaidBy: values.ticketFeePaidBy,
       vibeScore: values.vibeScore,
       isPublic: values.isPublic,
       coverPhoto: values.coverPhoto || undefined,

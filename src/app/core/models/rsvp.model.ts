@@ -67,7 +67,9 @@ export interface GuestRsvp {
   _id: string;
   event: string;
   guestName: string;
-  status: 'going' | 'maybe' | 'not_going' | 'cancelled';
+  status: 'going' | 'maybe' | 'not_going' | 'cancelled' | 'pending_payment';
   guestsCount: number;
+  paymentStatus?: 'unpaid' | 'paid' | 'refunded';
+  amountPaid?: number;
   checkInCode?: string;
 }

@@ -106,7 +106,8 @@ export class PaymentService {
   async checkout(
     details: CheckoutDetails,
     description: string,
-    prefill: { name?: string; email?: string; contact?: string } = {}
+    prefill: { name?: string; email?: string; contact?: string } = {},
+    guestToken?: string
   ): Promise<CheckoutResult> {
     await this.loadScript();
 
@@ -131,10 +132,12 @@ export class PaymentService {
 
     if (!response) return 'dismissed';
 
-    await firstValueFrom(this.api.post(`${this.endpoint}/verify`, {
+    // Tickets bought without an account prove ownership with the guest's token
+    await firstValueFrom(this.api.post(`${this.endpoint}/${guestToken ? 'guest/verify' : 'verify'}`, {
       razorpay_order_id: response.razorpay_order_id,
       razorpay_payment_id: response.razorpay_payment_id,
-      razorpay_signature: response.razorpay_signature
+      razorpay_signature: response.razorpay_signature,
+      guestToken
     }));
     this.analytics.track('payment_completed', { amount: details.amount, currency: details.currency });
     return 'paid';
