@@ -6,7 +6,10 @@ export type RsvpStatus = 'going' | 'maybe' | 'not_going' | 'cancelled' | 'pendin
 export interface Rsvp {
   _id: string;
   event: Event | string;
-  attendee: User | string;
+  // Absent for guests who RSVPed without an account (guestName instead)
+  attendee?: User | string;
+  guestName?: string;
+  guestPhone?: string;
   status: RsvpStatus;
   guestsCount: number;
   checkInCode?: string;
@@ -47,4 +50,24 @@ export interface RsvpsResponse {
 export interface MyRsvpResponse {
   success: boolean;
   data: Rsvp | null;
+}
+
+// RSVP without an account, from the invite link
+export interface GuestRsvpData {
+  eventId: string;
+  inviteCode?: string;
+  name: string;
+  phone?: string;
+  status: 'going' | 'maybe' | 'not_going';
+  guestsCount: number;
+  guestToken?: string;
+}
+
+export interface GuestRsvp {
+  _id: string;
+  event: string;
+  guestName: string;
+  status: 'going' | 'maybe' | 'not_going' | 'cancelled';
+  guestsCount: number;
+  checkInCode?: string;
 }

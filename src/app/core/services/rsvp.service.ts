@@ -1,3 +1,4 @@
+import { GuestRsvp, GuestRsvpData } from '../models/rsvp.model';
 import { Injectable } from '@angular/core';
 import { Observable, tap } from 'rxjs';
 import { ApiService } from './api.service';
@@ -27,6 +28,18 @@ export class RsvpService {
     return this.api.post<RsvpResponse>(this.endpoint, data).pipe(
       tap(res => this.analytics.track('rsvp_created', { eventId: data.eventId, status: res.data?.status, viaInvite: !!data.inviteCode }))
     );
+  }
+
+  /** RSVP without an account (free events). Keep the returned token to change it later. */
+  guestRsvp(data: GuestRsvpData): Observable<{ success: boolean; data: { rsvp: GuestRsvp; guestToken: string } }> {
+    return this.api.post<{ success: boolean; data: { rsvp: GuestRsvp; guestToken: string } }>(`${this.endpoint}/guest`, data).pipe(
+      tap(res => this.analytics.track('rsvp_created', { eventId: data.eventId, status: res.data?.rsvp.status, viaInvite: !!data.inviteCode, guest: true }))
+    );
+  }
+
+  /** A guest's own RSVP from their saved token. */
+  getGuestRsvp(token: string): Observable<{ success: boolean; data: GuestRsvp }> {
+    return this.api.get<{ success: boolean; data: GuestRsvp }>(`${this.endpoint}/guest`, { token });
   }
 
   /**

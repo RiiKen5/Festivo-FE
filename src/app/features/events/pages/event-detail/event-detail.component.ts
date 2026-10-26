@@ -22,7 +22,7 @@ import { EventPlannerComponent } from '../../components/event-planner.component'
 import { InvitationCardComponent } from '../../components/invitation-card.component';
 import { Event } from '../../../../core/models/event.model';
 import { User } from '../../../../core/models/user.model';
-import { Rsvp, RsvpStatus } from '../../../../core/models/rsvp.model';
+import { Rsvp, RsvpStatus, GuestRsvp } from '../../../../core/models/rsvp.model';
 import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/models/task.model';
 
 @Component({
@@ -205,7 +205,8 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
                         @for (rsvp of guests(); track rsvp._id) {
                           <li class="guest">
                             <div class="guest-info">
-                              <span class="guest-name">{{ attendeeName(rsvp) }}</span>
+                              <span class="guest-name">{{ attendeeName(rsvp) }}@if (!rsvp.attendee) { <span class="guest-tag">no account</span> }</span>
+                              @if (rsvp.guestPhone) { <a class="guest-phone" [href]="'tel:+91' + rsvp.guestPhone">{{ rsvp.guestPhone }}</a> }
                               <span class="guest-meta">
                                 {{ rsvpStatusLabel(rsvp.status) }}
                                 @if (rsvp.guestsCount) { · +{{ rsvp.guestsCount }} guest(s) }
@@ -344,10 +345,32 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
                           }
                         </app-button>
                       }
-                    } @else {
+                    } @else if (isTicketed()) {
                       <app-button [routerLink]="['/auth/login']" [queryParams]="{returnUrl: returnUrl()}" fullWidth>
-                        Login to RSVP
+                        Log in to buy a ticket
                       </app-button>
+                    } @else if (guestRsvp()) {
+                      <!-- RSVP saved without an account -->
+                      <div class="rsvp-status-card">
+                        <div class="rsvp-status-header">
+                          <span class="rsvp-check"><app-icon name="check" [size]="14"></app-icon></span>
+                          <span>{{ guestRsvp()!.status === 'going' ? "You're going, " + guestRsvp()!.guestName : guestRsvp()!.status === 'maybe' ? 'Maybe, ' + guestRsvp()!.guestName : "You can't go" }}</span>
+                        </div>
+                        @if (guestRsvp()!.status === 'going' && guestRsvp()!.checkInCode) {
+                          <div class="rsvp-code">
+                            <span class="code-label">Check-in Code:</span>
+                            <span class="code-value">{{ guestRsvp()!.checkInCode }}</span>
+                          </div>
+                        }
+                        @if (guestRsvp()!.guestsCount > 0) {
+                          <div class="rsvp-guests">+{{ guestRsvp()!.guestsCount }} guest(s)</div>
+                        }
+                      </div>
+                      <app-button variant="secondary" fullWidth (onClick)="openRsvp()">Change my response</app-button>
+                      <p class="form-hint">Save your check-in code. You can change your answer from this browser.</p>
+                    } @else {
+                      <app-button fullWidth (onClick)="openRsvp()">RSVP, no sign-up needed</app-button>
+                      <p class="form-hint">Already have an account? <a class="inline-link" [routerLink]="['/auth/login']" [queryParams]="{returnUrl: returnUrl()}">Log in</a></p>
                     }
                   </div>
 
@@ -409,16 +432,18 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
       @if (showMobileCta()) {
         <div class="mobile-cta">
           <div class="mobile-cta__price">
-            @if (userRsvp()?.status === 'going' || userRsvp()?.status === 'maybe') {
-              <strong>{{ userRsvp()?.status === 'going' ? "You're going" : 'Maybe' }}</strong>
+            @if (rsvpState() === 'going' || rsvpState() === 'maybe') {
+              <strong>{{ rsvpState() === 'going' ? "You're going" : 'Maybe' }}</strong>
               {{ formatShortDay() }}
             } @else {
               <strong>{{ isTicketed() ? '₹' + (event()?.entryFee | number) : 'Free' }}</strong>
               {{ formatShortDay() }}
             }
           </div>
-          @if (!auth.isAuthenticated()) {
-            <app-button [routerLink]="['/auth/login']" [queryParams]="{ returnUrl: returnUrl() }">Log in to join</app-button>
+          @if (!auth.isAuthenticated() && isTicketed()) {
+            <app-button [routerLink]="['/auth/login']" [queryParams]="{ returnUrl: returnUrl() }">Log in to buy</app-button>
+          } @else if (!auth.isAuthenticated()) {
+            <app-button [variant]="guestRsvp() ? 'secondary' : 'primary'" (onClick)="openRsvp()">{{ guestRsvp() ? 'Change RSVP' : 'RSVP' }}</app-button>
           } @else if (userRsvp()?.status === 'pending_payment') {
             <app-button [loading]="isSubmittingRsvp()" (onClick)="completeTicketPayment()">Pay to confirm</app-button>
           } @else if (userRsvp()) {
@@ -450,7 +475,7 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
       <!-- RSVP Modal -->
       <app-modal
         [isOpen]="rsvpModal"
-        [title]="userRsvp() ? 'Update Your RSVP' : 'RSVP to Event'"
+        [title]="userRsvp() || guestRsvp() ? 'Update Your RSVP' : 'RSVP to Event'"
         (onClose)="rsvpModal = false"
         [showFooter]="true"
       >
@@ -459,6 +484,17 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
             <h4>{{ event()?.title }}</h4>
             <p>{{ formatDate(event()?.date) }} at {{ event()?.time }}</p>
           </div>
+
+          @if (!auth.isAuthenticated()) {
+            <div class="form-group">
+              <label class="form-label" for="guest-name">Your name</label>
+              <input id="guest-name" class="form-input" type="text" [(ngModel)]="guestName" maxlength="80" autocomplete="name" placeholder="So the host knows who's coming">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="guest-phone">Mobile number <span class="form-hint">(optional, to change your answer from another phone)</span></label>
+              <input id="guest-phone" class="form-input" type="tel" inputmode="numeric" [(ngModel)]="guestPhone" maxlength="14" autocomplete="tel" placeholder="98765 43210">
+            </div>
+          }
 
           @if (!isTicketed()) {
           <div class="form-group">
@@ -505,6 +541,10 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
             <p class="form-hint">You + {{ guestsCount }} guest(s) = {{ guestsCount + 1 }} total</p>
           </div>
 
+          @if (!auth.isAuthenticated()) {
+            <p class="privacy-note"><app-icon name="shield" [size]="14"></app-icon> Only the host sees your name and number. Festivo never shares them with vendors or anyone else.</p>
+          }
+
           @if (isTicketed()) {
             <div class="rsvp-total">
               <span>Total Amount:</span>
@@ -518,9 +558,9 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
           <app-button
             (onClick)="confirmRsvp()"
             [loading]="isSubmittingRsvp()"
-            [disabled]="!selectedRsvpStatus && !isTicketed()"
+            [disabled]="(!selectedRsvpStatus && !isTicketed()) || (!auth.isAuthenticated() && guestName.trim().length < 2)"
           >
-            {{ isTicketed() ? 'Continue to Payment' : userRsvp() ? 'Update RSVP' : 'Confirm RSVP' }}
+            {{ isTicketed() ? 'Continue to Payment' : userRsvp() || guestRsvp() ? 'Update RSVP' : 'Confirm RSVP' }}
           </app-button>
         </div>
       </app-modal>
@@ -1053,6 +1093,20 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
       font-weight: $font-weight-medium;
     }
 
+    .guest-tag {
+      margin-left: $spacing-2;
+      padding: 0 $spacing-2;
+      border-radius: $radius-full;
+      background: $neutral-100;
+      color: $text-secondary;
+      font-size: $font-size-xs;
+      font-weight: $font-weight-regular;
+    }
+
+    .guest-phone {
+      font-size: $font-size-xs;
+    }
+
     .guest-meta {
       font-size: $font-size-sm;
       color: $text-secondary;
@@ -1076,6 +1130,20 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
     }
 
     // RSVP Status Card
+    .inline-link {
+      text-decoration: underline;
+    }
+
+    .privacy-note {
+      display: flex;
+      gap: $spacing-2;
+      align-items: flex-start;
+      margin: 0 0 $spacing-3;
+      font-size: $font-size-xs;
+      color: $text-secondary;
+      app-icon { color: $primary-600; flex-shrink: 0; margin-top: 1px; }
+    }
+
     .rsvp-status-card {
       background: $success-light;
       border-radius: $radius-default;
@@ -1285,6 +1353,10 @@ export class EventDetailComponent implements OnInit {
 
   event = signal<Event | null>(null);
   userRsvp = signal<Rsvp | null>(null);
+  // RSVP made without an account, remembered in this browser
+  guestRsvp = signal<GuestRsvp | null>(null);
+  guestName = '';
+  guestPhone = '';
   isLoading = signal(true);
   isLoadingRsvp = signal(false);
   isFavorite = signal(false);
@@ -1345,6 +1417,10 @@ export class EventDetailComponent implements OnInit {
 
         // Check if favorited
         this.isFavorite.set(this.favoriteService.isFavorite(response.data._id, 'event'));
+
+        if (!this.auth.isAuthenticated() && response.data._id) {
+          this.loadGuestRsvp(response.data._id);
+        }
 
         // Load user's RSVP status if authenticated
         if (this.auth.isAuthenticated() && response.data._id) {
@@ -1458,7 +1534,8 @@ export class EventDetailComponent implements OnInit {
   }
 
   attendeeName(rsvp: Rsvp): string {
-    return typeof rsvp.attendee === 'object' ? rsvp.attendee.name : 'Guest';
+    if (rsvp.attendee && typeof rsvp.attendee === 'object') return rsvp.attendee.name;
+    return rsvp.guestName || 'Guest';
   }
 
   private runEventAction(request: Observable<any>, success: string): void {
@@ -1678,6 +1755,11 @@ export class EventDetailComponent implements OnInit {
     }
     if (!this.selectedRsvpStatus) return;
 
+    if (!this.auth.isAuthenticated()) {
+      this.submitGuestRsvp();
+      return;
+    }
+
     this.isSubmittingRsvp.set(true);
 
     const existingRsvp = this.userRsvp();
@@ -1759,6 +1841,72 @@ export class EventDetailComponent implements OnInit {
         this.toast.error('Cancel Failed', message);
         this.isCancellingRsvp.set(false);
       }
+    });
+  }
+
+  // Going / maybe / ... for whoever is viewing: signed-in or guest
+  rsvpState(): string | null {
+    return this.userRsvp()?.status || this.guestRsvp()?.status || null;
+  }
+
+  openRsvp(): void {
+    const g = this.guestRsvp();
+    if (g) {
+      this.selectedRsvpStatus = g.status === 'cancelled' ? 'going' : g.status;
+      this.guestsCount = g.guestsCount || 0;
+      this.guestName = this.guestName || g.guestName;
+    } else if (!this.selectedRsvpStatus) {
+      this.selectedRsvpStatus = 'going';
+    }
+    this.rsvpModal = true;
+  }
+
+  private guestTokenKey(eventId: string): string {
+    return `festivo_guest_rsvp_${eventId}`;
+  }
+
+  private loadGuestRsvp(eventId: string): void {
+    let token: string | null = null;
+    try { token = localStorage.getItem(this.guestTokenKey(eventId)); } catch { /* storage blocked */ }
+    if (!token) return;
+    this.rsvpService.getGuestRsvp(token).subscribe({
+      next: res => this.guestRsvp.set(res.data),
+      error: () => { try { localStorage.removeItem(this.guestTokenKey(eventId)); } catch { /* ignore */ } }
+    });
+  }
+
+  private submitGuestRsvp(): void {
+    const event = this.event();
+    if (!event || !this.selectedRsvpStatus) return;
+    const key = this.guestTokenKey(event._id);
+    let token: string | undefined;
+    try { token = localStorage.getItem(key) || undefined; } catch { /* storage blocked */ }
+    const before = this.guestRsvp();
+
+    this.isSubmittingRsvp.set(true);
+    this.rsvpService.guestRsvp({
+      eventId: event._id,
+      inviteCode: this.inviteCode || undefined,
+      name: this.guestName.trim(),
+      phone: this.guestPhone.trim() || undefined,
+      status: this.selectedRsvpStatus as 'going' | 'maybe' | 'not_going',
+      guestsCount: this.guestsCount,
+      guestToken: token
+    }).subscribe({
+      next: res => {
+        try { localStorage.setItem(key, res.data.guestToken); } catch { /* storage blocked */ }
+        const g = res.data.rsvp;
+        // Keep the headcount on the page in step with the change
+        const held = (x: GuestRsvp | null) => x && x.status === 'going' ? 1 + (x.guestsCount || 0) : 0;
+        this.event.set({ ...event, currentAttendees: Math.max(0, event.currentAttendees - held(before) + held(g)) });
+        this.guestRsvp.set(g);
+        this.rsvpModal = false;
+        this.isSubmittingRsvp.set(false);
+        this.toast.success(g.status === 'going' ? "You're on the list" : 'Response saved',
+          g.status === 'going' ? `Your check-in code is ${g.checkInCode}.` : 'The host can see your answer.');
+      },
+      // The app's error handler shows the message
+      error: () => this.isSubmittingRsvp.set(false)
     });
   }
 
