@@ -62,8 +62,10 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
         }
       }
 
-      // Show toast for non-401 errors
-      if (error.status !== 401) {
+      // Show toast for non-401 errors; warnings the user can override are
+      // asked about by the screen itself
+      const askable = error.error?.error?.details?.canOverride;
+      if (error.status !== 401 && !askable) {
         toast.error('Error', errorMessage);
       }
 

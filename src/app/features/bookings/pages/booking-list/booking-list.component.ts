@@ -659,7 +659,7 @@ export class BookingListComponent implements OnInit {
     (event as MouseEvent).stopPropagation();
     this.actionLoading.set(booking._id);
 
-    this.bookingService.confirmBooking(booking._id).subscribe({
+    this.bookingService.accept(booking._id).subscribe({
       next: () => {
         this.bookings.update(bookings =>
           bookings.map(b =>

@@ -1,3 +1,4 @@
+import { AvailabilityService, dayKey } from '../../../../core/services/availability.service';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { plural, priceUnitLabel } from '../../../../shared/components/listing-cards/listing-format';
@@ -506,9 +507,18 @@ import { BookingCreateData } from '../../../../core/models/booking.model';
                 id="booking-date"
                 [(ngModel)]="bookingForm.eventDate"
                 class="form-input"
+                [class.form-input--error]="dateProblem()"
                 [min]="minBookingDate"
+                [attr.aria-describedby]="dateProblem() ? 'booking-date-problem' : 'booking-date-hint'"
               />
-              <span class="form-hint">When do you need this service?</span>
+              @if (dateProblem(); as problem) {
+                <span class="form-error" id="booking-date-problem" role="alert">{{ problem }}</span>
+              } @else {
+                <span class="form-hint" id="booking-date-hint">When do you need this service?</span>
+              }
+              @if (nextUnavailable().length) {
+                <span class="form-hint">Not available: {{ nextUnavailable().join(', ') }}</span>
+              }
             </div>
 
             <div class="form-group">
@@ -1535,7 +1545,8 @@ import { BookingCreateData } from '../../../../core/models/booking.model';
       .form-input,
       .form-textarea {
         width: 100%;
-        padding: $spacing-3;
+        // Fields have a fixed height; vertical padding would clip the text
+        padding: 0 $spacing-3;
         border: 1px solid $border-default;
         border-radius: $radius-default;
         font-family: inherit;
@@ -1562,8 +1573,10 @@ import { BookingCreateData } from '../../../../core/models/booking.model';
       }
 
       .form-textarea {
-        resize: vertical;
+        height: auto;
         min-height: 80px;
+        padding: $spacing-3;
+        resize: vertical;
       }
 
       .form-hint {
@@ -1736,6 +1749,7 @@ export class ServiceDetailComponent implements OnInit {
   private eventService = inject(EventService);
   private favoriteService = inject(FavoriteService);
   private toast = inject(ToastService);
+  private availabilityService = inject(AvailabilityService);
   private attribution = inject(AttributionService);
   private analytics = inject(AnalyticsService);
   auth = inject(AuthService);
@@ -1868,6 +1882,7 @@ export class ServiceDetailComponent implements OnInit {
     this.bookingError.set('');
     this.resetBookingForm();
     this.loadUserEvents();
+    this.loadUnavailable();
   }
 
   closeBookingModal(): void {
@@ -1920,10 +1935,39 @@ export class ServiceDetailComponent implements OnInit {
     }
   }
 
+  // Days the vendor can't take (blocked by them, or already fully booked)
+  private unavailable = signal<{ blocked: Set<string>; full: Set<string> }>({ blocked: new Set(), full: new Set() });
+
+  private loadUnavailable(): void {
+    const id = this.service()?._id;
+    if (!id) return;
+    const from = dayKey(new Date());
+    const to = dayKey(new Date(Date.now() + 119 * 864e5));
+    this.availabilityService.unavailable(id, from, to).subscribe({
+      next: d => this.unavailable.set({ blocked: new Set(d.blocked), full: new Set(d.full) })
+    });
+  }
+
+  dateProblem(): string {
+    const day = this.bookingForm.eventDate;
+    const name = this.getProvider()?.name || 'This vendor';
+    if (!day) return '';
+    if (this.unavailable().blocked.has(day)) return `${name} isn't available on this date. Please choose another day.`;
+    if (this.unavailable().full.has(day)) return `${name} is already booked on this date. Please choose another day.`;
+    return '';
+  }
+
+  nextUnavailable(): string[] {
+    const { blocked, full } = this.unavailable();
+    return [...blocked, ...full].sort().slice(0, 5)
+      .map(d => new Date(`${d}T12:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }));
+  }
+
   canSubmitBooking(): boolean {
     return !!(
       this.bookingForm.eventId &&
       this.bookingForm.eventDate &&
+      !this.dateProblem() &&
       this.bookingForm.priceAgreed > 0 &&
       !this.isSubmittingBooking()
     );
@@ -1963,7 +2007,7 @@ export class ServiceDetailComponent implements OnInit {
       },
       error: (err) => {
         this.isSubmittingBooking.set(false);
-        const errorMessage = err.error?.message || 'Failed to create booking. Please try again.';
+        const errorMessage = err.error?.error?.message || err.error?.message || 'Could not send the request. Please try again.';
         this.bookingError.set(errorMessage);
       }
     });

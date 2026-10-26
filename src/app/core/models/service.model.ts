@@ -22,6 +22,8 @@ export interface Service {
     coordinates: [number, number];
   };
   availability: ServiceAvailability;
+  // Accepted bookings per day; 0 = no limit, unset = category default
+  dailyCapacity?: number;
   availableDates: Date[];
   blackoutDates: Date[];
   ratingAverage: number;
@@ -103,6 +105,7 @@ export interface ServiceCreateData {
 
 export interface ServiceUpdateData extends Partial<ServiceCreateData> {
   isActive?: boolean;
+  dailyCapacity?: number;
 }
 
 export interface ServicesResponse {

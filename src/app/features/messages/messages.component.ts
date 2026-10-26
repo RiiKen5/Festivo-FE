@@ -1,3 +1,4 @@
+import { AvailabilityService, dayKey } from '../../core/services/availability.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { Component, inject, signal, computed, OnInit, OnDestroy, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -237,7 +238,8 @@ interface DayGroup { label: string; messages: Message[]; }
               </select>
             </label>
             <label>Date
-              <input type="date" class="form-input" [(ngModel)]="request.eventDate" [min]="today">
+              <input type="date" class="form-input" [class.form-input--error]="requestDateProblem()" [(ngModel)]="request.eventDate" [min]="today">
+              @if (requestDateProblem(); as problem) { <span class="form-error" role="alert">{{ problem }}</span> }
             </label>
             <label>Your budget (₹)
               <input type="number" class="form-input" [(ngModel)]="request.price" min="0">
@@ -251,7 +253,7 @@ interface DayGroup { label: string; messages: Message[]; }
         <div modal-footer>
           <app-button variant="ghost" (onClick)="showRequest.set(false)">Cancel</app-button>
           @if (myEvents().length) {
-            <app-button [loading]="isSubmitting()" [disabled]="!request.eventId || !request.serviceId || !request.eventDate" (onClick)="submitRequest()">Send request</app-button>
+            <app-button [loading]="isSubmitting()" [disabled]="!request.eventId || !request.serviceId || !request.eventDate || !!requestDateProblem()" (onClick)="submitRequest()">Send request</app-button>
           }
         </div>
       </app-modal>
@@ -385,6 +387,7 @@ export class MessagesComponent implements OnInit, OnDestroy {
   private bookingService = inject(BookingService);
   private serviceService = inject(ServiceService);
   private eventService = inject(EventService);
+  private availability = inject(AvailabilityService);
 
   searchQuery = '';
   draft = '';
@@ -795,6 +798,22 @@ export class MessagesComponent implements OnInit, OnDestroy {
   onRequestService(): void {
     const s = this.theirServices().find(x => x._id === this.request.serviceId);
     if (s) this.request.price = s.basePrice;
+    this.requestUnavailable.set({ blocked: [], full: [] });
+    if (s) {
+      this.availability.unavailable(s._id, dayKey(new Date()), dayKey(new Date(Date.now() + 119 * 864e5)))
+        .subscribe({ next: d => this.requestUnavailable.set(d) });
+    }
+  }
+
+  // Blocked or fully booked days for the chosen service
+  private requestUnavailable = signal<{ blocked: string[]; full: string[] }>({ blocked: [], full: [] });
+
+  requestDateProblem(): string {
+    const day = this.request.eventDate;
+    const name = this.otherUser()?.name || 'They';
+    if (day && this.requestUnavailable().blocked.includes(day)) return `${name} isn't available on this date. Please pick another day.`;
+    if (day && this.requestUnavailable().full.includes(day)) return `${name} is already booked on this date. Please pick another day.`;
+    return '';
   }
 
   submitRequest(): void {
@@ -812,10 +831,7 @@ export class MessagesComponent implements OnInit, OnDestroy {
         this.toast.success('Request sent', `${this.otherUser()?.name} will reply with their final price.`);
         this.loadBookings(this.selectedUserId()!);
       },
-      error: err => {
-        this.isSubmitting.set(false);
-        this.toast.error('Could not send request', err.error?.message || 'Please try again.');
-      }
+      error: () => this.isSubmitting.set(false)
     });
   }
 
@@ -828,17 +844,15 @@ export class MessagesComponent implements OnInit, OnDestroy {
     const b = this.quoteFor();
     if (!b) return;
     this.isSubmitting.set(true);
-    this.bookingService.confirmBooking(b._id, Number(this.quotePrice)).subscribe({
+    this.bookingService.accept(b._id, Number(this.quotePrice)).subscribe({
       next: () => {
         this.isSubmitting.set(false);
         this.quoteFor.set(null);
         this.toast.success('Booking accepted', 'They can now pay online.');
         this.loadBookings(this.selectedUserId()!);
       },
-      error: err => {
-        this.isSubmitting.set(false);
-        this.toast.error('Could not accept', err.error?.message || 'Please try again.');
-      }
+      // The error popup (if any) is shown by the app's error handler
+      error: () => this.isSubmitting.set(false)
     });
   }
 

@@ -459,3 +459,13 @@ table {
   &--ok { background: $success-light; color: $success-dark; }
   &--off { background: $neutral-100; color: $text-secondary; }
 }
+
+.form-error {
+  @include form-error;
+  display: block;
+}
+
+.form-input--error,
+.form-input--error:focus {
+  border-color: $error;
+}

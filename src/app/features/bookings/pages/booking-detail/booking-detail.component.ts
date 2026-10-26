@@ -925,6 +925,9 @@ import { User } from '../../../../core/models/user.model';
     }
 
     .form-textarea {
+      height: auto;
+      min-height: 88px;
+      padding: $spacing-3;
       resize: vertical;
     }
 
@@ -1106,6 +1109,11 @@ export class BookingDetailComponent implements OnInit {
         this.booking.set(response.data);
         this.paymentAmount = this.getBalance();
         this.isLoading.set(false);
+        // From the "How was ...?" notification or email
+        const b = response.data;
+        if (this.route.snapshot.queryParamMap.get('review') === '1' && b.status === 'completed' && !b.rating && !this.isVendor()) {
+          this.showReviewModal.set(true);
+        }
       },
       error: (err) => {
         // Only "not found / not yours" should read as a missing booking
@@ -1269,7 +1277,7 @@ export class BookingDetailComponent implements OnInit {
     if (!id) return;
 
     this.actionLoading.set(true);
-    this.bookingService.confirmBooking(id, this.quotePrice).subscribe({
+    this.bookingService.accept(id, this.quotePrice).subscribe({
       next: () => {
         this.reload();
         this.actionLoading.set(false);

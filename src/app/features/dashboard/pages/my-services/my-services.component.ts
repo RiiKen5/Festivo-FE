@@ -23,12 +23,18 @@ import { Service, ServiceCategory } from '../../../../core/models/service.model'
             <h1>My Services</h1>
             <p>Manage your service listings</p>
           </div>
+          <div class="header-actions">
+          <app-button variant="secondary" routerLink="/dashboard/calendar">
+            <app-icon name="calendar" [size]="18"></app-icon>
+            Calendar
+          </app-button>
           <app-button routerLink="/services/create">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M12 5v14M5 12h14"/>
             </svg>
             Add New Service
           </app-button>
+          </div>
         </div>
 
         @if (isLoading()) {
@@ -232,6 +238,8 @@ import { Service, ServiceCategory } from '../../../../core/models/service.model'
         grid-template-columns: repeat(4, 1fr);
       }
     }
+
+    .header-actions { display: flex; flex-wrap: wrap; gap: $spacing-2; }
 
     .share-tip {
       display: flex;

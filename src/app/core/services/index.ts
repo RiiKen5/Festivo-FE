@@ -16,3 +16,4 @@ export * from './admin.service';
 export * from './upload.service';
 export * from './attribution.service';
 export * from './analytics.service';
+export * from './availability.service';

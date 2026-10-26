@@ -138,6 +138,7 @@ import { LogoComponent } from '../logo/logo.component';
                     <a role="menuitem" routerLink="/dashboard/events" class="navbar__menu-item" (click)="closeMenus()"><app-icon name="party" [size]="16"></app-icon>My events</a>
                     @if (canProvideServices()) {
                       <a role="menuitem" routerLink="/dashboard/my-services" class="navbar__menu-item" (click)="closeMenus()"><app-icon name="store" [size]="16"></app-icon>My services</a>
+                      <a role="menuitem" routerLink="/dashboard/calendar" class="navbar__menu-item" (click)="closeMenus()"><app-icon name="calendar" [size]="16"></app-icon>My calendar</a>
                     }
                     <a role="menuitem" routerLink="/dashboard/earnings" class="navbar__menu-item" (click)="closeMenus()"><app-icon name="wallet" [size]="16"></app-icon>Earnings &amp; payouts</a>
                     @if (isAdmin()) {
@@ -186,6 +187,7 @@ import { LogoComponent } from '../logo/logo.component';
             </a>
             @if (canProvideServices()) {
               <a routerLink="/dashboard/my-services" routerLinkActive="active" class="navbar__mobile-link"><app-icon name="store"></app-icon>My services</a>
+              <a routerLink="/dashboard/calendar" routerLinkActive="active" class="navbar__mobile-link"><app-icon name="calendar"></app-icon>My calendar</a>
             }
             <a routerLink="/dashboard/earnings" routerLinkActive="active" class="navbar__mobile-link"><app-icon name="wallet"></app-icon>Earnings &amp; payouts</a>
             @if (isAdmin()) {

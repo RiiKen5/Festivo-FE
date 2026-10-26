@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Observable, tap } from 'rxjs';
+import { Observable, tap, catchError, throwError } from 'rxjs';
 import { ApiService } from './api.service';
 import { AnalyticsService } from './analytics.service';
 import {
@@ -57,9 +57,27 @@ export class BookingService {
   }
 
   // Vendor accepts, optionally at a revised price (their quote)
-  confirmBooking(id: string, priceAgreed?: number): Observable<BookingResponse> {
-    return this.api.post<BookingResponse>(`${this.endpoint}/${id}/confirm`, { priceAgreed }).pipe(
+  // allowOverbook: the vendor saw the "day is full / blocked" warning and accepts anyway
+  confirmBooking(id: string, priceAgreed?: number, allowOverbook = false): Observable<BookingResponse> {
+    return this.api.post<BookingResponse>(`${this.endpoint}/${id}/confirm`, { priceAgreed, allowOverbook }).pipe(
       tap(res => this.analytics.track('booking_confirmed', { bookingId: id, price: res.data?.priceAgreed }))
+    );
+  }
+
+  /**
+   * Vendor accepts. If the day is already full or blocked, the API warns
+   * first; ask the vendor and accept anyway if they agree. A declined
+   * warning errors with { cancelled: true }.
+   */
+  accept(id: string, priceAgreed?: number): Observable<BookingResponse> {
+    return this.confirmBooking(id, priceAgreed).pipe(
+      catchError(err => {
+        const warning = err?.error?.error;
+        if (err?.status !== 409 || !warning?.details?.canOverride) return throwError(() => err);
+        return confirm(`${warning.message}\n\nAccept this booking anyway?`)
+          ? this.confirmBooking(id, priceAgreed, true)
+          : throwError(() => ({ cancelled: true }));
+      })
     );
   }
 
