@@ -5,9 +5,9 @@ import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ButtonComponent } from '../../shared/components/button/button.component';
 import { ToastService } from '../../core/services/toast.service';
-import { AdminService, AdminStats, DisputeDecision, DisputeItem, GrowthMetrics, PayoutItem } from '../../core/services/admin.service';
+import { AdminService, AdminStats, DisputeDecision, DisputeItem, GrowthMetrics, PayoutItem, VendorList, VendorRow } from '../../core/services/admin.service';
 
-type Tab = 'overview' | 'growth' | 'payouts' | 'disputes' | 'verification' | 'reviews';
+type Tab = 'overview' | 'growth' | 'payouts' | 'disputes' | 'vendors' | 'verification' | 'reviews';
 
 @Component({
   selector: 'app-admin',
@@ -28,6 +28,7 @@ type Tab = 'overview' | 'growth' | 'payouts' | 'disputes' | 'verification' | 're
           <button [class.active]="tab() === 'disputes'" (click)="select('disputes')">
             Problems @if (stats()?.openDisputes) { <span class="count">{{ stats()?.openDisputes }}</span> }
           </button>
+          <button [class.active]="tab() === 'vendors'" (click)="select('vendors')">Vendors</button>
           <button [class.active]="tab() === 'verification'" (click)="select('verification')">
             Vendor verification @if (stats()?.pendingVerification) { <span class="count">{{ stats()?.pendingVerification }}</span> }
           </button>
@@ -197,6 +198,40 @@ type Tab = 'overview' | 'growth' | 'payouts' | 'disputes' | 'verification' | 're
                   <app-button size="sm" (onClick)="resolve(b)">Settle</app-button>
                 </div>
               </div>
+            }
+          }
+
+          @case ('vendors') {
+            @if (vendorList(); as v) {
+              <p class="muted">
+                Founding vendors: <strong>{{ v.founding.taken }} of {{ v.founding.limit }}</strong>
+                @if (v.founding.open) { · offer open until {{ v.founding.until | date:'d MMM y':'+0530' }} } @else { · offer closed }.
+                New listings claim a spot automatically. Changing someone's status applies to their new bookings only.
+              </p>
+              @if (v.vendors.length === 0) {
+                <p class="empty">No vendors have listed yet.</p>
+              }
+              @for (u of v.vendors; track u._id) {
+                <div class="row-card">
+                  <div class="row-main">
+                    <strong>{{ u.name }}</strong>
+                    @if (u.foundingVendor) { <span class="pill">Founding</span> }
+                    @if (u.verified) { <span class="pill">Verified</span> }
+                    @if (u.noShowCount) { <span class="pill">{{ u.noShowCount }} no-show(s)</span> }
+                    <div class="muted">{{ u.names.join(', ') }} · {{ u.city }} · listed {{ u.firstListed | date:'d MMM y' }}</div>
+                    <div class="muted">{{ u.email }}{{ u.phone ? ' · ' + u.phone : '' }}</div>
+                  </div>
+                  <div class="row-actions">
+                    @if (u.foundingVendor) {
+                      <app-button size="sm" variant="ghost" (onClick)="setFounding(u, false)">Remove founding</app-button>
+                    } @else {
+                      <app-button size="sm" variant="secondary" [disabled]="!v.founding.open || v.founding.taken >= v.founding.limit" (onClick)="setFounding(u, true)">Make founding</app-button>
+                    }
+                  </div>
+                </div>
+              }
+            } @else {
+              <p class="muted">Loading…</p>
             }
           }
 
@@ -417,6 +452,7 @@ export class AdminComponent implements OnInit {
   reviews = signal<any[]>([]);
   references: Record<string, string> = {};
   disputes = signal<DisputeItem[]>([]);
+  vendorList = signal<VendorList | null>(null);
   private decisions: Record<string, DisputeDecision> = {};
   growth = signal<GrowthMetrics | null>(null);
   growthDays = signal(30);
@@ -431,6 +467,7 @@ export class AdminComponent implements OnInit {
     if (tab === 'growth') this.loadGrowth(this.growthDays());
     if (tab === 'payouts') this.admin.getPayouts().subscribe(p => this.payouts.set(p));
     if (tab === 'disputes') this.admin.getDisputes().subscribe(d => this.disputes.set(d));
+    if (tab === 'vendors') this.loadVendors();
     if (tab === 'verification') this.admin.getUnverifiedServices().subscribe(s => this.services.set(s));
     if (tab === 'reviews') this.admin.getFlaggedReviews().subscribe(r => this.reviews.set(r));
   }
@@ -457,6 +494,19 @@ export class AdminComponent implements OnInit {
       this.payouts.update(list => list.filter(p => p._id + p.part !== key));
       const { sent, feeWaived } = res.data;
       this.toast.success('Payout recorded', `₹${sent.toLocaleString('en-IN')} to ${payout.payee.name}${feeWaived ? ' (late, so no Festivo fee)' : ''}. They have been notified.`);
+      this.loadStats();
+    });
+  }
+
+  private loadVendors(): void {
+    this.admin.getVendors().subscribe(v => this.vendorList.set(v));
+  }
+
+  setFounding(vendor: VendorRow, founding: boolean): void {
+    if (!founding && !confirm(`Remove founding terms from ${vendor.name}? Their new bookings will use the standard fees.`)) return;
+    this.admin.setFoundingVendor(vendor._id, founding).subscribe(() => {
+      this.toast.success(founding ? 'Founding terms granted' : 'Founding terms removed', vendor.name);
+      this.loadVendors();
       this.loadStats();
     });
   }

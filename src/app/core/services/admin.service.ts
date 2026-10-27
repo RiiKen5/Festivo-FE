@@ -72,6 +72,25 @@ export interface DisputeItem {
   dispute: BookingDispute;
 }
 
+export interface VendorRow {
+  _id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  city?: string;
+  services: number;
+  names: string[];
+  verified: boolean;
+  firstListed: string;
+  foundingVendor?: boolean;
+  noShowCount?: number;
+}
+
+export interface VendorList {
+  vendors: VendorRow[];
+  founding: { taken: number; limit: number; open: boolean; until: string };
+}
+
 export interface DisputeDecision {
   resolution: 'refund' | 'partial' | 'release';
   amount?: number;
@@ -110,6 +129,14 @@ export class AdminService {
 
   resolveDispute(bookingId: string, decision: DisputeDecision): Observable<unknown> {
     return this.api.post(`${this.endpoint}/disputes/${bookingId}/resolve`, decision);
+  }
+
+  getVendors(): Observable<VendorList> {
+    return this.api.get<{ data: VendorList }>(`${this.endpoint}/vendors`).pipe(map(r => r.data));
+  }
+
+  setFoundingVendor(userId: string, founding: boolean): Observable<unknown> {
+    return this.api.post(`${this.endpoint}/vendors/${userId}/founding`, { founding });
   }
 
   getUnverifiedServices(): Observable<any[]> {

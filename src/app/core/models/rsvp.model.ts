@@ -58,6 +58,8 @@ export interface GuestRsvpData {
   inviteCode?: string;
   name: string;
   phone?: string;
+  // Optional: we email the check-in code and a link back to the RSVP
+  email?: string;
   status: 'going' | 'maybe' | 'not_going';
   guestsCount: number;
   guestToken?: string;

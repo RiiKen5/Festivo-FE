@@ -97,7 +97,7 @@ type Page = 'terms' | 'privacy' | 'refunds' | 'contact';
               <li><strong>Payments:</strong> payments are processed by Razorpay. We store payment references and amounts, never your card or UPI PIN.</li>
               <li><strong>Payout details:</strong> UPI ID or bank account, for vendors and organizers who receive money.</li>
               <li><strong>Technical data:</strong> IP address and basic logs, to keep the service secure.</li>
-              <li><strong>RSVPs without an account:</strong> the name you give, how many people you're bringing and, if you choose, your mobile number. Only the event's organizers see them; they are never shared with vendors or anyone else. Your browser keeps a private code so you can change your answer.</li>
+              <li><strong>RSVPs without an account:</strong> the name you give, how many people you're bringing and, if you choose, your mobile number. Only the event's organizers see them. If you give an email, we use it only to send your check-in code and a private link to your RSVP or ticket; organizers don't see it. These details are never shared with vendors or anyone else. Your browser keeps a private code so you can change your answer.</li>
               <li><strong>How you found us:</strong> the link or website that first brought you to Festivo (for example a campaign tag or a shared link) and the first page you visited, saved in your browser and with your account when you sign up. We also use Google Analytics, which sets cookies, to see which pages and features are used; it receives your account ID but not your name, email or phone number. You can block it with your browser's cookie or tracker settings.</li>
             </ul>
 

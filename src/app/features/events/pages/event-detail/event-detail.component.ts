@@ -533,6 +533,10 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
               }
               <input id="guest-phone" class="form-input" type="tel" inputmode="numeric" [(ngModel)]="guestPhone" maxlength="14" autocomplete="tel" placeholder="98765 43210">
             </div>
+            <div class="form-group">
+              <label class="form-label" for="guest-email">Email <span class="form-hint">(optional, we'll send your check-in code and a link to {{ isTicketed() ? 'your ticket' : 'change your answer' }})</span></label>
+              <input id="guest-email" class="form-input" type="email" [(ngModel)]="guestEmail" maxlength="120" autocomplete="email" placeholder="you@example.com">
+            </div>
           }
 
           @if (!isTicketed()) {
@@ -1399,6 +1403,8 @@ export class EventDetailComponent implements OnInit {
   guestRsvp = signal<GuestRsvp | null>(null);
   guestName = '';
   guestPhone = '';
+  guestEmail = '';
+  private guestTokenFromLink: string | null = null;
   isLoading = signal(true);
   isLoadingRsvp = signal(false);
   isFavorite = signal(false);
@@ -1442,6 +1448,8 @@ export class EventDetailComponent implements OnInit {
     this.payments.getConfig().subscribe(config => this.ticketFeePercent.set(config.ticketFeePercent));
     const slug = this.route.snapshot.paramMap.get('slug');
     this.inviteCode = this.route.snapshot.queryParamMap.get('invite');
+    // Private link from the guest's email: brings their RSVP or ticket to this device
+    this.guestTokenFromLink = this.route.snapshot.queryParamMap.get('guest');
     this.justCreated = this.route.snapshot.queryParamMap.get('new') === '1';
     if (slug) {
       this.loadEvent(slug);
@@ -1922,9 +1930,22 @@ export class EventDetailComponent implements OnInit {
     return `festivo_guest_rsvp_${eventId}`;
   }
 
+  // The guest's private token: saved in this browser, or from their email link
+  private storedGuestToken(eventId: string): string | null {
+    try {
+      const saved = localStorage.getItem(this.guestTokenKey(eventId));
+      if (saved) return saved;
+    } catch { /* storage blocked */ }
+    return this.guestTokenFromLink;
+  }
+
   private loadGuestRsvp(eventId: string): void {
-    let token: string | null = null;
-    try { token = localStorage.getItem(this.guestTokenKey(eventId)); } catch { /* storage blocked */ }
+    if (this.guestTokenFromLink) {
+      try { localStorage.setItem(this.guestTokenKey(eventId), this.guestTokenFromLink); } catch { /* storage blocked */ }
+      // Keep the private token out of the address bar and browser history
+      this.router.navigate([], { relativeTo: this.route, queryParams: { guest: null }, queryParamsHandling: 'merge', replaceUrl: true });
+    }
+    const token = this.storedGuestToken(eventId);
     if (!token) return;
     this.rsvpService.getGuestRsvp(token).subscribe({
       next: res => this.guestRsvp.set(res.data),
@@ -1936,8 +1957,7 @@ export class EventDetailComponent implements OnInit {
     const event = this.event();
     if (!event || !this.selectedRsvpStatus) return;
     const key = this.guestTokenKey(event._id);
-    let token: string | undefined;
-    try { token = localStorage.getItem(key) || undefined; } catch { /* storage blocked */ }
+    const token = this.storedGuestToken(event._id) || undefined;
     const before = this.guestRsvp();
 
     this.isSubmittingRsvp.set(true);
@@ -1946,6 +1966,7 @@ export class EventDetailComponent implements OnInit {
       inviteCode: this.inviteCode || undefined,
       name: this.guestName.trim(),
       phone: this.guestPhone.trim() || undefined,
+      email: this.guestEmail.trim() || undefined,
       status: this.selectedRsvpStatus as 'going' | 'maybe' | 'not_going',
       guestsCount: this.guestsCount,
       guestToken: token
@@ -2009,8 +2030,7 @@ export class EventDetailComponent implements OnInit {
   cancelGuestRsvp(): void {
     const event = this.event();
     if (!event) return;
-    let token: string | null = null;
-    try { token = localStorage.getItem(this.guestTokenKey(event._id)); } catch { /* storage blocked */ }
+    const token = this.storedGuestToken(event._id);
     if (!token) return;
     const before = this.guestRsvp();
     if (before?.paymentStatus === 'paid' &&
