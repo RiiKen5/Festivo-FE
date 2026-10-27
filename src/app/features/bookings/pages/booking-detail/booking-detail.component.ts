@@ -203,6 +203,12 @@ import { User } from '../../../../core/models/user.model';
                       ₹{{ getBalance() | number }}
                     </span>
                   </div>
+                  @if (isVendor()) {
+                    <div class="detail-item">
+                      <span class="label">Festivo fee</span>
+                      <span class="value">{{ feeLabel() }}</span>
+                    </div>
+                  }
                 </div>
 
                 @if (booking()?.notes) {
@@ -505,7 +511,7 @@ import { User } from '../../../../core/models/user.model';
           <div class="form-group">
             <label>Your final price (₹)</label>
             <input type="number" class="form-input" [(ngModel)]="quotePrice" min="0">
-            <p class="hint">The organizer proposed ₹{{ booking()?.priceAgreed | number }}. You receive this amount minus the {{ commissionPercent() }}% Festivo fee on online payments.</p>
+            <p class="hint">The organizer proposed ₹{{ booking()?.priceAgreed | number }}. On online payments you receive ₹{{ vendorReceives(quotePrice) | number:'1.0-0' }} after Festivo's {{ feeLabel() }}.</p>
           </div>
         </div>
         <div modal-footer>
@@ -1236,7 +1242,7 @@ export class BookingDetailComponent implements OnInit {
   disputeEvidence = signal<string[]>([]);
   isPaying = signal(false);
   paymentsEnabled = signal(false);
-  commissionPercent = signal(15);
+  feeCap = signal(1000);
   quotePrice = 0;
 
   cancelReason = '';
@@ -1268,7 +1274,7 @@ export class BookingDetailComponent implements OnInit {
     this.payments.getConfig().subscribe({
       next: (config) => {
         this.paymentsEnabled.set(config.enabled);
-        this.commissionPercent.set(config.bookingCommissionPercent);
+        this.feeCap.set(config.bookingFees.cap);
       },
       error: () => this.paymentsEnabled.set(false)
     });
@@ -1501,6 +1507,22 @@ export class BookingDetailComponent implements OnInit {
         this.actionLoading.set(false);
       }
     });
+  }
+
+  feePercent(): number {
+    return this.booking()?.feePercent ?? 10;
+  }
+
+  // "3% fee (your own customer)", "5% fee (new customer, founding rate)", ...
+  feeLabel(): string {
+    const b = this.booking();
+    const who = b?.source === 'vendor_link' ? 'your own customer' : 'new customer from Festivo';
+    return `${this.feePercent()}% fee (${who}${b?.foundingTerms ? ', founding rate' : ''}, max ₹${this.feeCap().toLocaleString('en-IN')})`;
+  }
+
+  vendorReceives(price: number): number {
+    const fee = Math.min((Number(price) || 0) * this.feePercent() / 100, this.feeCap());
+    return (Number(price) || 0) - fee;
   }
 
   disputeOpen(): boolean {

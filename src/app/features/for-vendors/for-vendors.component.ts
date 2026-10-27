@@ -1,9 +1,12 @@
 import { Component, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { map } from 'rxjs';
 import { RouterModule } from '@angular/router';
 import { ButtonComponent } from '../../shared/components/button/button.component';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { AuthService } from '../../core/services/auth.service';
 import { AnalyticsService } from '../../core/services/analytics.service';
+import { PaymentService } from '../../core/services/payment.service';
 
 // Landing page for vendor outreach (home bakers, decorators, photographers).
 // Every claim here matches config/policies.js and the Terms; keep them in sync.
@@ -24,7 +27,10 @@ import { AnalyticsService } from '../../core/services/analytics.service';
           <app-button [routerLink]="ctaLink()" [queryParams]="ctaParams()" size="lg" (onClick)="cta('hero')">List your service, free</app-button>
           <app-button routerLink="/services" variant="secondary" size="lg">See vendors on Festivo</app-button>
         </div>
-        <p class="hero__note">No signup fee, no monthly plan. A 15% commission only on bookings paid online.</p>
+        <p class="hero__note">Free to list, no monthly plan. Festivo charges only when a customer pays online: 3% on your own customers, 10% on new customers Festivo brings, never more than ₹1,000 a booking.</p>
+        @if (fees()?.foundingOpen) {
+          <p class="hero__note hero__note--strong">Founding vendors: the first 50 to list pay 0% on their own customers and 5% on new ones until {{ foundingLastDay() }}.</p>
+        }
       </div>
     </section>
 
@@ -36,8 +42,8 @@ import { AnalyticsService } from '../../core/services/analytics.service';
         <ul class="benefits">
           <li class="benefit">
             <app-icon name="wallet" [size]="22"></app-icon>
-            <h3>Paid upfront</h3>
-            <p>Customers pay the full amount or a 30% advance by UPI or card when they book. No more "I'll pay on the day".</p>
+            <h3>Paid before the job, not after</h3>
+            <p>Customers pay online when they book. Once you're verified, half of what they paid reaches you 7 days before the event (or as soon as they pay, if it's sooner). The rest arrives within 24 hours after the job. If we're late, there's no Festivo fee on that booking.</p>
           </li>
           <li class="benefit">
             <app-icon name="shield" [size]="22"></app-icon>
@@ -67,7 +73,7 @@ import { AnalyticsService } from '../../core/services/analytics.service';
           <li class="step"><span class="step__num">1</span><h3>List your service</h3><p>Add photos, a starting price and the areas you serve. Takes about 10 minutes.</p></li>
           <li class="step"><span class="step__num">2</span><h3>Confirm requests</h3><p>Customers send a request for their date. You confirm with your final quote, or decline.</p></li>
           <li class="step"><span class="step__num">3</span><h3>Customer pays</h3><p>They pay online. Festivo holds the money until the booking is completed.</p></li>
-          <li class="step"><span class="step__num">4</span><h3>Get paid out</h3><p>After the event, your share is paid to your UPI ID or bank account.</p></li>
+          <li class="step"><span class="step__num">4</span><h3>Get paid out</h3><p>Half before the event if you're verified, the rest within 24 hours after the job, to your UPI ID or bank account.</p></li>
         </ol>
       </div>
     </section>
@@ -79,7 +85,7 @@ import { AnalyticsService } from '../../core/services/analytics.service';
         </div>
         <details>
           <summary>What does it cost?</summary>
-          <p>Listing is free. When a customer pays online, Festivo keeps a 15% commission and the rest is paid out to you. Example: on a ₹2,000 booking you receive ₹1,700.</p>
+          <p>Listing is free and there's nothing to pay unless a booking is paid. On customers who book through your own Festivo link, Festivo keeps 3% (₹60 on a ₹2,000 cake). On new customers who found you on Festivo, 10% (₹200). Never more than ₹1,000 on one booking. Founding vendors pay 0% and 5% until the founding offer ends.</p>
         </details>
         <details>
           <summary>Can I keep using Instagram and WhatsApp?</summary>
@@ -95,7 +101,7 @@ import { AnalyticsService } from '../../core/services/analytics.service';
         </details>
         <details>
           <summary>When do I receive the money?</summary>
-          <p>After the booking is marked complete (by the customer, or automatically 3 days after the event date), the payout is released to the UPI ID or bank account in your profile.</p>
+          <p>Verified vendors get half of what the customer paid 7 days before the event, so you can buy materials. The rest is sent within 24 hours after the booking is complete: when the customer marks it done, or automatically 1 day after the event if you entered their arrival code (3 days if you didn't). If a payout is late, there's no Festivo fee on that booking.</p>
         </details>
       </div>
     </section>
@@ -153,6 +159,11 @@ import { AnalyticsService } from '../../core/services/analytics.service';
       margin: $spacing-4 0 0;
       font-size: $font-size-sm;
       color: $text-secondary;
+
+      &--strong {
+        color: $text-primary;
+        font-weight: $font-weight-semibold;
+      }
     }
 
     .section {
@@ -259,6 +270,13 @@ import { AnalyticsService } from '../../core/services/analytics.service';
 export class ForVendorsComponent {
   private auth = inject(AuthService);
   private analytics = inject(AnalyticsService);
+  fees = toSignal(inject(PaymentService).getConfig().pipe(map(c => c.bookingFees)));
+
+  // Founding terms end at midnight IST; show the last day they apply
+  foundingLastDay(): string {
+    const until = this.fees()?.foundingUntil;
+    return until ? new Date(new Date(until).getTime() - 1).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' }) : '';
+  }
 
   ctaLink(): string {
     return this.auth.isAuthenticated() ? '/services/create' : '/auth/register';

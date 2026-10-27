@@ -8,6 +8,10 @@ import { ServiceService } from '../../../../core/services/service.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { AttributionService } from '../../../../core/services/attribution.service';
 import { AnalyticsService } from '../../../../core/services/analytics.service';
+import { AuthService } from '../../../../core/services/auth.service';
+import { PaymentService } from '../../../../core/services/payment.service';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { map } from 'rxjs';
 import { Service, ServiceCategory } from '../../../../core/models/service.model';
 
 @Component({
@@ -36,6 +40,19 @@ import { Service, ServiceCategory } from '../../../../core/models/service.model'
           </app-button>
           </div>
         </div>
+
+        @if (fees(); as f) {
+          <div class="fee-banner">
+            @if (auth.currentUser()?.foundingVendor && f.foundingOpen) {
+              <p class="fee-banner__title">You're a founding vendor</p>
+              <p>Festivo keeps <strong>{{ f.foundingOwnPercent }}%</strong> on customers who book through your own link and <strong>{{ f.foundingNewPercent }}%</strong> on new customers who find you on Festivo, until {{ foundingLastDay(f.foundingUntil) }}. Never more than ₹{{ f.cap | number }} a booking.</p>
+            } @else {
+              <p class="fee-banner__title">Your fees</p>
+              <p>Festivo keeps <strong>{{ f.ownPercent }}%</strong> on customers who book through your own link and <strong>{{ f.newPercent }}%</strong> on new customers who find you on Festivo. Never more than ₹{{ f.cap | number }} a booking.</p>
+            }
+            <p>Use <strong>Share</strong> on a listing to send your link on Instagram or WhatsApp. Customers who first come through it count as yours.</p>
+          </div>
+        }
 
         @if (isLoading()) {
           <div class="loading-state">
@@ -226,6 +243,26 @@ import { Service, ServiceCategory } from '../../../../core/models/service.model'
 
     .header-content p {
       color: $text-secondary;
+    }
+
+    .fee-banner {
+      background: $bg-primary;
+      border-left: 4px solid $primary-500;
+      border-radius: $radius-lg;
+      padding: $spacing-4 $spacing-5;
+      margin-bottom: $spacing-6;
+      font-size: $font-size-sm;
+      color: $text-secondary;
+
+      p { margin: 0 0 $spacing-2; }
+      p:last-child { margin-bottom: 0; }
+      strong { color: $text-primary; }
+    }
+
+    .fee-banner__title {
+      font-weight: $font-weight-semibold;
+      color: $text-primary;
+      font-size: $font-size-base;
     }
 
     .services-stats {
@@ -562,6 +599,13 @@ export class MyServicesComponent implements OnInit {
   private toast = inject(ToastService);
   private attribution = inject(AttributionService);
   private analytics = inject(AnalyticsService);
+  auth = inject(AuthService);
+  fees = toSignal(inject(PaymentService).getConfig().pipe(map(c => c.bookingFees)));
+
+  // Founding terms end at midnight IST; show the last day they apply
+  foundingLastDay(until: string): string {
+    return new Date(new Date(until).getTime() - 1).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' });
+  }
 
   services = signal<Service[]>([]);
   isLoading = signal(true);
@@ -601,6 +645,8 @@ export class MyServicesComponent implements OnInit {
   ];
 
   ngOnInit(): void {
+    // Founding status is granted when the first service is listed
+    this.auth.loadCurrentUser();
     this.loadServices();
   }
 

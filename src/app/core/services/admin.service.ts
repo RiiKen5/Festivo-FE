@@ -20,6 +20,7 @@ export interface AdminStats {
   pendingVerification: number;
   flaggedReviews: number;
   openDisputes: number;
+  foundingVendors: number;
 }
 
 export interface GrowthSourceRow {
@@ -47,6 +48,10 @@ export interface GrowthMetrics {
 }
 
 export interface PayoutItem extends PaymentRecord {
+  // advance: half sent before the event; final: the rest after the job
+  part: 'advance' | 'final';
+  amountDue: number;
+  dueBy?: string;
   payee: { _id: string; name: string; email: string; phone?: string; penaltyDue?: number; noShowCount?: number; payoutDetails?: PayoutDetails };
 }
 
@@ -95,8 +100,8 @@ export class AdminService {
     return this.api.get<{ data: PayoutItem[] }>(`${this.endpoint}/payouts`, { status }).pipe(map(r => r.data));
   }
 
-  markPayoutPaid(paymentId: string, reference: string): Observable<unknown> {
-    return this.api.post(`${this.endpoint}/payouts/${paymentId}/mark-paid`, { reference });
+  markPayoutPaid(paymentId: string, reference: string, part: 'advance' | 'final'): Observable<{ data: { sent: number; penaltyDeducted: number; feeWaived: boolean } }> {
+    return this.api.post(`${this.endpoint}/payouts/${paymentId}/mark-paid`, { reference, part });
   }
 
   getDisputes(status: 'open' | 'resolved' = 'open'): Observable<DisputeItem[]> {

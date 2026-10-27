@@ -45,7 +45,7 @@ type Tab = 'overview' | 'growth' | 'payouts' | 'disputes' | 'verification' | 're
                 <div class="stat"><span class="label">Payouts due</span><span class="value">₹{{ s.payoutsDue.amount | number:'1.0-0' }}</span></div>
                 <div class="stat"><span class="label">Platform revenue (all time)</span><span class="value">₹{{ s.money.allTime.platformRevenue | number:'1.0-0' }}</span></div>
                 <div class="stat"><span class="label">Users</span><span class="value">{{ s.users.total | number }}</span><span class="sub">+{{ s.users.last30Days }} in 30d</span></div>
-                <div class="stat"><span class="label">Active vendors</span><span class="value">{{ s.vendors | number }}</span></div>
+                <div class="stat"><span class="label">Active vendors</span><span class="value">{{ s.vendors | number }}</span><span class="sub">{{ s.foundingVendors }} founding vendors</span></div>
                 <div class="stat"><span class="label">Events</span><span class="value">{{ s.events | number }}</span></div>
                 <div class="stat"><span class="label">Completed bookings</span><span class="value">{{ (s.bookings['completed'] || 0) | number }}</span><span class="sub">{{ s.bookings['pending'] || 0 }} pending · {{ s.bookings['confirmed'] || 0 }} confirmed</span></div>
               </div>
@@ -103,21 +103,25 @@ type Tab = 'overview' | 'growth' | 'payouts' | 'disputes' | 'verification' | 're
           }
 
           @case ('payouts') {
-            <p class="muted">Send each payout by UPI or bank transfer, then record the UTR/reference here. The payee is notified.</p>
+            <p class="muted">Send each payout by UPI or bank transfer, then record the UTR/reference here. The payee is notified. Payout promise: anything marked sent after its deadline carries no Festivo fee, and the extra is added automatically.</p>
             @if (payouts().length === 0) {
               <p class="empty">Nothing to pay out right now.</p>
             }
-            @for (p of payouts(); track p._id) {
+            @for (p of payouts(); track p._id + p.part) {
               <div class="row-card">
                 <div class="row-main">
-                  <strong>₹{{ p.payeeAmount | number:'1.0-2' }}</strong> to {{ p.payee.name }}
+                  <strong>₹{{ p.amountDue | number:'1.0-2' }}</strong> to {{ p.payee.name }}
+                  <span class="pill">{{ p.kind === 'ticket' ? 'Tickets' : p.part === 'advance' ? 'Advance (half, before the event)' : 'Final payout' }}</span>
+                  @if (p.dueBy) {
+                    <div [class.warning]="isLate(p)" class="muted">{{ isLate(p) ? 'Late: was due' : 'Send by' }} {{ p.dueBy | date:'d MMM, h:mm a' }}{{ isLate(p) ? '. No Festivo fee on this payment.' : '' }}</div>
+                  }
                   <div class="muted">
                     {{ p.kind === 'ticket' ? 'Ticket sales' : 'Booking' }} · {{ p.event?.title }} ·
                     paid ₹{{ p.amount | number:'1.0-2' }}, fee ₹{{ p.platformFee | number:'1.0-2' }}
                     @if (p.refundedAmount) { , refunded ₹{{ p.refundedAmount | number:'1.0-2' }} }
                   </div>
                   @if (p.payee.penaltyDue) {
-                    <div class="warning">Deduct a ₹{{ p.payee.penaltyDue | number:'1.0-2' }} no-show penalty: send ₹{{ (p.payeeAmount - (p.payee.penaltyDue > p.payeeAmount ? p.payeeAmount : p.payee.penaltyDue)) | number:'1.0-2' }}. It's recorded when you mark this paid.</div>
+                    <div class="warning">The vendor owes Festivo ₹{{ p.payee.penaltyDue | number:'1.0-2' }} (penalty or money already sent and refunded). Send ₹{{ (p.amountDue - (p.payee.penaltyDue > p.amountDue ? p.amountDue : p.payee.penaltyDue)) | number:'1.0-2' }}{{ isLate(p) ? ' plus the waived fee' : '' }}. It's recorded when you mark this sent.</div>
                   }
                   <div class="payee-details">
                     @if (p.payee.payoutDetails; as d) {
@@ -132,8 +136,8 @@ type Tab = 'overview' | 'growth' | 'payouts' | 'disputes' | 'verification' | 're
                   </div>
                 </div>
                 <div class="row-actions">
-                  <input class="form-input" placeholder="UTR / reference" [(ngModel)]="references[p._id]">
-                  <app-button size="sm" [disabled]="!references[p._id]" (onClick)="markPaid(p)">Mark paid</app-button>
+                  <input class="form-input" placeholder="UTR / reference" [(ngModel)]="references[p._id + p.part]" [attr.aria-label]="'Transfer reference for ' + p.payee.name">
+                  <app-button size="sm" [disabled]="!references[p._id + p.part]" (onClick)="markPaid(p)">Mark sent</app-button>
                 </div>
               </div>
             }
@@ -387,6 +391,16 @@ type Tab = 'overview' | 'growth' | 'payouts' | 'disputes' | 'verification' | 're
       img { width: 64px; height: 64px; object-fit: cover; border-radius: $radius-default; }
     }
 
+    .pill {
+      display: inline-block;
+      margin-left: $spacing-2;
+      padding: 2px $spacing-2;
+      border-radius: $radius-full;
+      background: $bg-secondary;
+      font-size: $font-size-xs;
+      color: $text-secondary;
+    }
+
     .muted { color: $text-secondary; font-size: $font-size-sm; }
     .warning { color: $warning-dark; }
     .empty { color: $text-secondary; padding: $spacing-8 0; text-align: center; }
@@ -431,12 +445,18 @@ export class AdminComponent implements OnInit {
     this.admin.getStats().subscribe(s => this.stats.set(s));
   }
 
+  isLate(p: PayoutItem): boolean {
+    return p.kind === 'booking' && !!p.dueBy && new Date(p.dueBy).getTime() < Date.now();
+  }
+
   markPaid(payout: PayoutItem): void {
-    const reference = this.references[payout._id]?.trim();
+    const key = payout._id + payout.part;
+    const reference = this.references[key]?.trim();
     if (!reference) return;
-    this.admin.markPayoutPaid(payout._id, reference).subscribe(() => {
-      this.payouts.update(list => list.filter(p => p._id !== payout._id));
-      this.toast.success('Payout recorded', `${payout.payee.name} has been notified.`);
+    this.admin.markPayoutPaid(payout._id, reference, payout.part).subscribe(res => {
+      this.payouts.update(list => list.filter(p => p._id + p.part !== key));
+      const { sent, feeWaived } = res.data;
+      this.toast.success('Payout recorded', `₹${sent.toLocaleString('en-IN')} to ${payout.payee.name}${feeWaived ? ' (late, so no Festivo fee)' : ''}. They have been notified.`);
       this.loadStats();
     });
   }

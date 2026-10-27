@@ -1,5 +1,7 @@
 import { Acquisition } from '../services/attribution.service';
 export interface User {
+  // Founding Vendor Plan: lower fees until the founding terms end
+  foundingVendor?: boolean;
   _id: string;
   email: string;
   phone?: string;

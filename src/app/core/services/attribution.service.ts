@@ -13,6 +13,8 @@ export interface Acquisition {
 }
 
 const KEY = 'festivo_first_touch';
+const VENDOR_KEY = 'festivo_vendor_touch';
+const VENDOR_TOUCH_DAYS = 90;
 
 /**
  * Remembers how a visitor first reached Festivo (UTM tags, ?ref=, the
@@ -54,6 +56,28 @@ export class AttributionService {
       this.memory = null;
     }
     return this.memory;
+  }
+
+  /**
+   * Remember how this visitor first reached a vendor: through the vendor's
+   * own shared link, or by finding them on Festivo. First visit wins, for 90
+   * days. It sets Festivo's fee on the vendor (lower on their own customers).
+   */
+  noteVendorVisit(vendorId: string): void {
+    const all = this.vendorVisits();
+    const known = all[vendorId];
+    if (known && Date.now() - known.at < VENDOR_TOUCH_DAYS * 86400000) return;
+    const viaLink = new URLSearchParams(window.location.search).get('utm_source') === 'vendor_share';
+    all[vendorId] = { viaLink, at: Date.now() };
+    try { localStorage.setItem(VENDOR_KEY, JSON.stringify(all)); } catch { /* storage blocked */ }
+  }
+
+  cameViaVendorLink(vendorId: string | undefined): boolean {
+    return !!vendorId && this.vendorVisits()[vendorId]?.viaLink === true;
+  }
+
+  private vendorVisits(): Record<string, { viaLink: boolean; at: number }> {
+    try { return JSON.parse(localStorage.getItem(VENDOR_KEY) || '{}'); } catch { return {}; }
   }
 
   /** A link to a Festivo page tagged so signups from it can be counted. */

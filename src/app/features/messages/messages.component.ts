@@ -1,4 +1,5 @@
 import { AvailabilityService, dayKey } from '../../core/services/availability.service';
+import { AttributionService } from '../../core/services/attribution.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { Component, inject, signal, computed, OnInit, OnDestroy, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -378,6 +379,7 @@ export class MessagesComponent implements OnInit, OnDestroy {
   @ViewChild('composer') private composer?: ElementRef<HTMLTextAreaElement>;
 
   private auth = inject(AuthService);
+  private attribution = inject(AttributionService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private messageService = inject(MessageService);
@@ -823,7 +825,8 @@ export class MessagesComponent implements OnInit, OnDestroy {
       serviceId: this.request.serviceId,
       eventDate: this.request.eventDate,
       priceAgreed: Number(this.request.price) || 0,
-      notes: this.request.notes.trim() || undefined
+      notes: this.request.notes.trim() || undefined,
+      viaVendorLink: this.attribution.cameViaVendorLink(this.otherUser()?._id)
     }).subscribe({
       next: () => {
         this.isSubmitting.set(false);

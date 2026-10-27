@@ -33,6 +33,10 @@ export interface Booking {
   cancelledBy?: User | string;
   cancelledAt?: Date;
   completedAt?: Date;
+  // vendor_link: the vendor's own customer; marketplace: Festivo brought them
+  source?: 'vendor_link' | 'marketplace';
+  feePercent?: number;
+  foundingTerms?: boolean;
   // Only the organizer receives this; they read it to the vendor on arrival
   arrivalCode?: string;
   arrivedAt?: Date;
@@ -111,6 +115,8 @@ export interface BookingCreateData {
   priceAgreed: number;
   notes?: string;
   requirements?: string;
+  // The organizer first came through the vendor's own shared link (lower fee for the vendor)
+  viaVendorLink?: boolean;
 }
 
 export interface BookingUpdateData {

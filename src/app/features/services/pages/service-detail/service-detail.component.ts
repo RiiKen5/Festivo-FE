@@ -1843,6 +1843,7 @@ export class ServiceDetailComponent implements OnInit {
       next: (response) => {
         this.service.set(response.data);
         this.isLoading.set(false);
+        if (!this.isOwnService()) this.attribution.noteVendorVisit(this.getProvider()?._id || '');
         // Check if favorited
         this.isFavorite.set(this.favoriteService.isFavorite(response.data._id, 'service'));
         // Load reviews after service is loaded
@@ -2003,7 +2004,8 @@ export class ServiceDetailComponent implements OnInit {
       eventDate: this.bookingForm.eventDate,
       priceAgreed: this.bookingForm.priceAgreed,
       notes: this.bookingForm.notes || undefined,
-      requirements: this.bookingForm.requirements || undefined
+      requirements: this.bookingForm.requirements || undefined,
+      viaVendorLink: this.attribution.cameViaVendorLink(this.getProvider()?._id)
     };
 
     this.bookingService.createBooking(bookingData).subscribe({

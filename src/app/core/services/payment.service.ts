@@ -6,8 +6,21 @@ import { AnalyticsService } from './analytics.service';
 export interface PaymentConfig {
   enabled: boolean;
   keyId: string | null;
-  bookingCommissionPercent: number;
   ticketFeePercent: number;
+  bookingFees: BookingFees;
+}
+
+// Founding Vendor Plan fees on vendor bookings
+export interface BookingFees {
+  ownPercent: number;
+  newPercent: number;
+  foundingOwnPercent: number;
+  foundingNewPercent: number;
+  cap: number;
+  foundingUntil: string;
+  foundingOpen: boolean;
+  earlyReleaseDays: number;
+  payoutPromiseHours: number;
 }
 
 export interface CheckoutDetails {
@@ -27,6 +40,8 @@ export interface PaymentRecord {
   refundedAmount: number;
   status: 'created' | 'paid' | 'failed' | 'refunded' | 'partially_refunded';
   payoutStatus: 'not_due' | 'pending' | 'paid' | 'not_applicable';
+  feeWaived?: boolean;
+  advance?: { amount: number; status: 'pending' | 'paid' | 'cancelled'; dueBy?: string; paidAt?: string };
   payoutReference?: string;
   paidAt?: string;
   event?: { _id: string; title: string; date: string };
