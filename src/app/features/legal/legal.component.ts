@@ -15,7 +15,7 @@ const BUSINESS = {
   lastUpdated: '27 October 2026'
 };
 
-type Page = 'terms' | 'privacy' | 'refunds' | 'contact';
+type Page = 'terms' | 'privacy' | 'refunds' | 'contact' | 'delete-account';
 
 @Component({
   selector: 'app-legal',
@@ -98,6 +98,7 @@ type Page = 'terms' | 'privacy' | 'refunds' | 'contact';
               <li><strong>Payout details:</strong> UPI ID or bank account, for vendors and organizers who receive money.</li>
               <li><strong>Technical data:</strong> IP address and basic logs, to keep the service secure.</li>
               <li><strong>RSVPs without an account:</strong> the name you give, how many people you're bringing and, if you choose, your mobile number. Only the event's organizers see them. If you give an email, we use it only to send your check-in code and a private link to your RSVP or ticket; organizers don't see it. These details are never shared with vendors or anyone else. Your browser keeps a private code so you can change your answer.</li>
+              <li><strong>Deleting your account:</strong> you can delete your account at any time from your profile. See <a routerLink="/delete-account">Delete your account</a> for what is erased and what is kept.</li>
               <li><strong>How you found us:</strong> the link or website that first brought you to Festivo (for example a campaign tag or a shared link) and the first page you visited, saved in your browser and with your account when you sign up. We also use Google Analytics, which sets cookies, to see which pages and features are used; it receives your account ID but not your name, email or phone number. You can block it with your browser's cookie or tracker settings.</li>
             </ul>
 
@@ -150,6 +151,33 @@ type Page = 'terms' | 'privacy' | 'refunds' | 'contact';
             <h2>Problems with a service</h2>
             <p>If a vendor didn't arrive, or didn't deliver what was agreed, use <strong>Report a problem</strong> on the booking before it is completed (within 3 days of the event, or 1 day if the vendor entered your arrival code). The vendor's payout is frozen and they have 24 hours to reply. If they don't reply, and didn't enter your arrival code, you are refunded in full for what you paid online, automatically. Otherwise Festivo reviews both sides and decides on a full refund, a partial refund or payment to the vendor. You can also email {{ b.supportEmail }}.</p>
             <p>Cash or direct payments made to the vendor outside Festivo can't be refunded by Festivo.</p>
+          }
+
+          @case ('delete-account') {
+            <h1>Delete your Festivo account</h1>
+            <p class="updated">Last updated {{ b.lastUpdated }}</p>
+
+            <h2>How to delete it</h2>
+            <ol>
+              <li>Log in to Festivo, in the app or at festivo.paathly.in.</li>
+              <li>Open <strong>Profile</strong>, then <strong>Security</strong>.</li>
+              <li>Under <strong>Delete account</strong>, type DELETE and confirm.</li>
+            </ol>
+            <p>Can't log in? Email {{ b.supportEmail }} from the address on your account and ask us to delete it. We do it within 7 days.</p>
+
+            <h2>What has to happen first</h2>
+            <p>You can delete your account once nothing is still open: no accepted bookings, no upcoming events you're hosting, no tickets for upcoming events, no money Festivo still owes you and nothing you owe Festivo. The page tells you exactly what's left.</p>
+
+            <h2>What is deleted</h2>
+            <ul>
+              <li>Your name, email, phone number, photo, bio and social links</li>
+              <li>Your UPI or bank payout details</li>
+              <li>Your sign-in (password and Google sign-in) and your notifications</li>
+              <li>Your listings are taken down and booking requests not yet accepted are cancelled</li>
+            </ul>
+
+            <h2>What we keep</h2>
+            <p>Records of past bookings, payments, refunds and payouts are kept for as long as accounting and tax law requires. Past messages and reviews stay for the other people in them. All of these show "Deleted user" instead of your name.</p>
           }
 
           @case ('contact') {

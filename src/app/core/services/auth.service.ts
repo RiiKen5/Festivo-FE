@@ -237,6 +237,21 @@ export class AuthService implements OnDestroy {
     );
   }
 
+  // What would stop this account being deleted right now (active bookings, money owed...)
+  getDeletionCheck(): Observable<{ data: { canDelete: boolean; blockers: string[] } }> {
+    return this.api.get('/users/me/deletion-check');
+  }
+
+  // Permanently delete the account, then sign out on this device
+  deleteAccount(): Observable<any> {
+    return this.api.delete('/users/me', { confirm: 'DELETE' }).pipe(
+      tap(() => {
+        this.clearAuth();
+        this.router.navigate(['/']);
+      })
+    );
+  }
+
   refreshToken(): Observable<TokenResponse> {
     const refreshToken = this.storage.getRefreshToken();
     return this.api.post<TokenResponse>('/auth/refresh-token', { refreshToken }).pipe(

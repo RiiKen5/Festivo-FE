@@ -68,6 +68,11 @@ export const routes: Routes = [
     data: { page: 'refunds' }
   },
   {
+    path: 'delete-account',
+    loadComponent: () => import('./features/legal/legal.component').then(m => m.LegalComponent),
+    data: { page: 'delete-account' }
+  },
+  {
     path: 'contact',
     loadComponent: () => import('./features/legal/legal.component').then(m => m.LegalComponent),
     data: { page: 'contact' }

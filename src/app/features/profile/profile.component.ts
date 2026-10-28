@@ -3,7 +3,7 @@ import { IconComponent } from '../../shared/components/icon/icon.component';
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { ButtonComponent } from '../../shared/components/button/button.component';
 import { InputComponent } from '../../shared/components/input/input.component';
 import { AuthService } from '../../core/services/auth.service';
@@ -12,7 +12,7 @@ import { ToastService } from '../../core/services/toast.service';
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CitySelectComponent, IconComponent, CommonModule, RouterModule, ReactiveFormsModule, ButtonComponent, InputComponent],
+  imports: [CitySelectComponent, IconComponent, CommonModule, RouterModule, ReactiveFormsModule, FormsModule, ButtonComponent, InputComponent],
   template: `
 
     <main class="profile-page">
@@ -228,6 +228,23 @@ import { ToastService } from '../../core/services/toast.service';
                         </app-button>
                       }
                     </div>
+                  </div>
+
+                  <div class="danger-zone">
+                    <h3>Delete account</h3>
+                    <p class="section-desc">This permanently erases your name, email, phone, photo and payout details, and takes your listings down. Bookings and payments stay in our records for accounts and tax, shown as "Deleted user". <a class="inline-link" routerLink="/delete-account">What is deleted</a></p>
+                    @if (deletionBlockers().length) {
+                      <p class="danger-note">Before you can delete your account:</p>
+                      <ul class="danger-list">
+                        @for (b of deletionBlockers(); track b) { <li>{{ b }}</li> }
+                      </ul>
+                    } @else {
+                      <div class="form-group">
+                        <label for="delete-confirm" class="danger-label">Type DELETE to confirm</label>
+                        <input id="delete-confirm" class="form-input" [(ngModel)]="deleteConfirm" autocomplete="off" placeholder="DELETE">
+                      </div>
+                      <app-button variant="danger" [disabled]="deleteConfirm !== 'DELETE'" [loading]="isDeleting()" (onClick)="deleteAccount()">Delete my account</app-button>
+                    }
                   </div>
                 </section>
               }
@@ -467,6 +484,20 @@ import { ToastService } from '../../core/services/toast.service';
       }
     }
 
+    .danger-zone {
+      margin-top: $spacing-8;
+      padding-top: $spacing-6;
+      border-top: 1px solid $border-light;
+
+      h3 { color: $error-dark; margin-bottom: $spacing-2; }
+    }
+
+    .danger-note { font-weight: $font-weight-semibold; margin-bottom: $spacing-2; }
+    .danger-list { margin: 0 0 $spacing-4; padding-left: $spacing-5; color: $text-secondary; }
+    .danger-label { display: block; font-weight: $font-weight-medium; margin-bottom: $spacing-2; }
+
+    .inline-link { text-decoration: underline; }
+
     .section-desc {
       color: $text-secondary;
       margin-bottom: $spacing-6;
@@ -633,6 +664,9 @@ export class ProfileComponent {
   isUploadingAvatar = signal(false);
   isTogglingTwoFactor = signal(false);
   isResendingVerification = signal(false);
+  isDeleting = signal(false);
+  deletionBlockers = signal<string[]>([]);
+  deleteConfirm = '';
   notificationSaveMessage = signal<string>('');
 
   profileForm: FormGroup = this.fb.group({
@@ -650,8 +684,24 @@ export class ProfileComponent {
     confirmPassword: ['', Validators.required]
   });
 
+  deleteAccount(): void {
+    if (this.deleteConfirm !== 'DELETE' || !confirm('Delete your Festivo account permanently? This cannot be undone.')) return;
+    this.isDeleting.set(true);
+    this.auth.deleteAccount().subscribe({
+      next: () => this.toast.success('Account deleted', 'Your account and personal details have been removed.'),
+      error: (err) => {
+        this.isDeleting.set(false);
+        const blockers = err?.error?.error?.details?.blockers;
+        if (blockers) this.deletionBlockers.set(blockers);
+      }
+    });
+  }
+
   setSection(section: 'profile' | 'security' | 'notifications'): void {
     this.activeSection.set(section);
+    if (section === 'security') {
+      this.auth.getDeletionCheck().subscribe({ next: res => this.deletionBlockers.set(res.data.blockers), error: () => {} });
+    }
   }
 
   getError(field: string): string {

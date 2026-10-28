@@ -1,4 +1,4 @@
-import { Injectable, effect, inject, signal } from '@angular/core';
+import { Injectable, effect, inject, signal, untracked } from '@angular/core';
 import { Subject } from 'rxjs';
 import { io, Socket } from 'socket.io-client';
 import { environment } from '../../../environments/environment';
@@ -36,8 +36,12 @@ export class RealtimeService {
   constructor() {
     effect(() => {
       const signedIn = this.auth.isAuthenticated() && !this.auth.isLoading();
-      if (signedIn && !this.socket) this.connect();
-      if (!signedIn && this.socket) this.disconnect();
+      // Connecting and disconnecting update other signals; keep those writes
+      // outside the effect's tracking (Angular refuses writes inside it)
+      untracked(() => {
+        if (signedIn && !this.socket) this.connect();
+        if (!signedIn && this.socket) this.disconnect();
+      });
     });
   }
 
