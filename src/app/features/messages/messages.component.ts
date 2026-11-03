@@ -5,7 +5,9 @@ import { Component, inject, signal, computed, OnInit, OnDestroy, ElementRef, Vie
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute, Router, NavigationEnd } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { Subscription, filter } from 'rxjs';
+import { Subscription, filter, map } from 'rxjs';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { PaymentService } from '../../core/services/payment.service';
 import { ButtonComponent } from '../../shared/components/button/button.component';
 import { ModalComponent } from '../../shared/components/modal/modal.component';
 import { VoiceNoteComponent } from './voice-note.component';
@@ -264,7 +266,7 @@ interface DayGroup { label: string; messages: Message[]; }
         <div class="form">
           <label>Your final price (₹)
             <input type="number" class="form-input" [(ngModel)]="quotePrice" min="0">
-            <span class="hint">They proposed ₹{{ quoteFor()?.priceAgreed | number }}. After you accept, they can pay online and Festivo holds the money until the job is done.</span>
+            <span class="hint">They proposed ₹{{ quoteFor()?.priceAgreed | number }}. {{ paymentsEnabled() ? 'After you accept, they can pay online and Festivo holds the money until the job is done.' : 'After you accept, they pay you directly.' }}</span>
           </label>
         </div>
         <div modal-footer>
@@ -386,6 +388,7 @@ export class MessagesComponent implements OnInit, OnDestroy {
   private userService = inject(UserService);
   private toast = inject(ToastService);
   private realtime = inject(RealtimeService);
+  paymentsEnabled = toSignal(inject(PaymentService).getConfig().pipe(map(c => c.enabled)), { initialValue: false });
   private bookingService = inject(BookingService);
   private serviceService = inject(ServiceService);
   private eventService = inject(EventService);
@@ -851,7 +854,7 @@ export class MessagesComponent implements OnInit, OnDestroy {
       next: () => {
         this.isSubmitting.set(false);
         this.quoteFor.set(null);
-        this.toast.success('Booking accepted', 'They can now pay online.');
+        this.toast.success('Booking accepted', this.paymentsEnabled() ? 'They can now pay online.' : 'They will pay you directly.');
         this.loadBookings(this.selectedUserId()!);
       },
       // The error popup (if any) is shown by the app's error handler

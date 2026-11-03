@@ -21,8 +21,13 @@ import { InputComponent } from '../../../../shared/components/input/input.compon
 
           @if (!resetSuccess()) {
             <div class="auth-header">
-              <h1 class="auth-title">Set new password</h1>
-              <p class="auth-subtitle">Your new password must be different from previous passwords.</p>
+              @if (welcome) {
+                <h1 class="auth-title">Welcome to Festivo</h1>
+                <p class="auth-subtitle">Your page is ready. Choose a password to open it. You'll sign in with the email you gave us and this password.</p>
+              } @else {
+                <h1 class="auth-title">Set new password</h1>
+                <p class="auth-subtitle">Your new password must be different from previous passwords.</p>
+              }
             </div>
 
             <form [formGroup]="form" (ngSubmit)="onSubmit()" class="auth-form">
@@ -63,17 +68,22 @@ import { InputComponent } from '../../../../shared/components/input/input.compon
                 [disabled]="form.invalid"
                 fullWidth
               >
-                Reset Password
+                {{ welcome ? 'Set password' : 'Reset Password' }}
               </app-button>
             </form>
           } @else {
             <div class="auth-success">
               <div class="auth-success-icon" aria-hidden="true"><app-icon name="check-circle" [size]="32"></app-icon></div>
-              <h1 class="auth-title">Password reset successful</h1>
-              <p class="auth-subtitle">
-                Your password has been successfully reset.<br>
-                You can now sign in with your new password.
-              </p>
+              @if (welcome) {
+                <h1 class="auth-title">You're all set</h1>
+                <p class="auth-subtitle">Sign in to see your page, your booking requests and your QR card.</p>
+              } @else {
+                <h1 class="auth-title">Password reset successful</h1>
+                <p class="auth-subtitle">
+                  Your password has been successfully reset.<br>
+                  You can now sign in with your new password.
+                </p>
+              }
               <app-button routerLink="/auth/login" fullWidth>
                 Continue to Login
               </app-button>
@@ -232,6 +242,8 @@ export class ResetPasswordComponent implements OnInit {
   isLoading = signal(false);
   resetSuccess = signal(false);
   private token = '';
+  // A vendor opening the link an admin sent when listing them
+  welcome = false;
 
   form: FormGroup = this.fb.group({
     password: ['', [Validators.required, Validators.minLength(8)]],
@@ -240,6 +252,7 @@ export class ResetPasswordComponent implements OnInit {
 
   ngOnInit(): void {
     this.token = this.route.snapshot.queryParams['token'];
+    this.welcome = this.route.snapshot.queryParams['welcome'] === '1';
     if (!this.token) {
       this.toast.error('Invalid Link', 'This password reset link is invalid or expired.');
       this.router.navigate(['/auth/forgot-password']);
@@ -286,11 +299,13 @@ export class ResetPasswordComponent implements OnInit {
       next: () => {
         this.isLoading.set(false);
         this.resetSuccess.set(true);
-        this.toast.success('Password Reset', 'Your password has been reset successfully.');
+        if (!this.welcome) this.toast.success('Password Reset', 'Your password has been reset successfully.');
       },
       error: (error) => {
         this.isLoading.set(false);
-        const message = error.error?.message || 'Failed to reset password. The link may have expired.';
+        const message = this.welcome && error.status === 400
+          ? 'This link has expired or was replaced. Ask Festivo for a new one.'
+          : error.error?.message || 'Failed to reset password. The link may have expired.';
         this.toast.error('Reset Failed', message);
       }
     });

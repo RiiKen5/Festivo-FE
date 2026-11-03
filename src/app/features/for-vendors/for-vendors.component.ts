@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
 import { RouterModule } from '@angular/router';
@@ -23,6 +23,12 @@ import { PaymentService } from '../../core/services/payment.service';
           Send customers your Festivo link instead of chasing advances on WhatsApp. They book and pay online,
           Festivo holds the money, and it is paid out to you once the job is done.
         </p>
+        @if (config() && !config()!.enabled) {
+          <p class="launch-note" role="note">
+            <strong>Launch period:</strong> online payment isn't switched on yet. Until it is, customers pay you directly
+            and Festivo charges nothing. The payments and payouts described below start when it is, and we'll tell you before it does.
+          </p>
+        }
         <div class="hero__actions">
           <app-button [routerLink]="ctaLink()" [queryParams]="ctaParams()" size="lg" (onClick)="cta('hero')">List your service, free</app-button>
           <app-button routerLink="/services" variant="secondary" size="lg">See vendors on Festivo</app-button>
@@ -155,6 +161,16 @@ import { PaymentService } from '../../core/services/payment.service';
       margin-top: $spacing-8;
     }
 
+    .launch-note {
+      margin: 0 0 $spacing-5;
+      padding: $spacing-3 $spacing-4;
+      max-width: 640px;
+      border-radius: $radius-md;
+      background: $warning-light;
+      color: $text-primary;
+      font-size: $font-size-sm;
+    }
+
     .hero__note {
       margin: $spacing-4 0 0;
       font-size: $font-size-sm;
@@ -270,7 +286,8 @@ import { PaymentService } from '../../core/services/payment.service';
 export class ForVendorsComponent {
   private auth = inject(AuthService);
   private analytics = inject(AnalyticsService);
-  fees = toSignal(inject(PaymentService).getConfig().pipe(map(c => c.bookingFees)));
+  config = toSignal(inject(PaymentService).getConfig());
+  fees = computed(() => this.config()?.bookingFees);
 
   // Founding terms end at midnight IST; show the last day they apply
   foundingLastDay(): string {

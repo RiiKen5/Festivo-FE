@@ -1,4 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { map } from 'rxjs';
+import { PaymentService } from '../../core/services/payment.service';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { ButtonComponent } from '../../shared/components/button/button.component';
@@ -79,8 +82,13 @@ import { Service } from '../../core/models/service.model';
           </li>
           <li class="step">
             <span class="step__num">2</span>
-            <h3>Pay securely</h3>
-            <p>Pay the full amount or a 30% advance by UPI or card. Festivo holds it for you.</p>
+            @if (paymentsEnabled()) {
+              <h3>Pay securely</h3>
+              <p>Pay the full amount or a 30% advance by UPI or card. Festivo holds it for you.</p>
+            } @else {
+              <h3>Pay the vendor</h3>
+              <p>Pay the vendor directly, the way you agree with them. Online payment through Festivo is coming soon.</p>
+            }
           </li>
           <li class="step">
             <span class="step__num">3</span>
@@ -513,6 +521,7 @@ export class HomeComponent implements OnInit {
   private eventService = inject(EventService);
   private serviceService = inject(ServiceService);
   auth = inject(AuthService);
+  paymentsEnabled = toSignal(inject(PaymentService).getConfig().pipe(map(c => c.enabled)), { initialValue: false });
 
   upcomingEvents = signal<Event[]>([]);
   topServices = signal<Service[]>([]);

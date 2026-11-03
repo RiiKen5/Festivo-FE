@@ -13,11 +13,12 @@ import { PaymentService } from '../../../../core/services/payment.service';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
 import { Service, ServiceCategory } from '../../../../core/models/service.model';
+import { ShopCardComponent } from './shop-card.component';
 
 @Component({
   selector: 'app-my-services',
   standalone: true,
-  imports: [IconComponent, CommonModule, RouterModule, ButtonComponent, ModalComponent],
+  imports: [IconComponent, CommonModule, RouterModule, ButtonComponent, ModalComponent, ShopCardComponent],
   template: `
 
     <main class="my-services-page">
@@ -173,6 +174,7 @@ import { Service, ServiceCategory } from '../../../../core/models/service.model'
                         <app-icon name="share" [size]="16"></app-icon>
                         Share
                       </app-button>
+                      <app-button variant="secondary" size="sm" (onClick)="cardFor.set(service)">QR card</app-button>
                       <app-button
                         variant="secondary"
                         size="sm"
@@ -201,6 +203,7 @@ import { Service, ServiceCategory } from '../../../../core/models/service.model'
           </div>
         }
       </div>
+    <app-shop-card [isOpen]="!!cardFor()" [service]="cardFor()" [link]="cardFor() ? cardLink(cardFor()!) : ''" (closed)="cardFor.set(null)"></app-shop-card>
     </main>
 
     <!-- Delete Confirmation Modal -->
@@ -612,6 +615,11 @@ export class MyServicesComponent implements OnInit {
   showDeleteModal = signal(false);
   serviceToDelete = signal<Service | null>(null);
   isDeleting = signal(false);
+  cardFor = signal<Service | null>(null);
+
+  cardLink(service: Service): string {
+    return this.attribution.tagged(`/services/${service.slug || service._id}`, 'vendor_share', 'qr');
+  }
 
   // The vendor's own booking link, tagged so customers it brings are counted
   async share(service: Service): Promise<void> {

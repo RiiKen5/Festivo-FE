@@ -84,6 +84,46 @@ export interface VendorRow {
   firstListed: string;
   foundingVendor?: boolean;
   noShowCount?: number;
+  // Listed by an admin; claimedAt is when the vendor set their own password
+  onboardedBy?: string;
+  claimedAt?: string;
+}
+
+// A vendor's intake form answers, entered by an admin
+export interface VendorIntake {
+  name: string;
+  email: string;
+  phone: string;
+  city: string;
+  service: {
+    serviceName: string;
+    category: string;
+    description: string;
+    basePrice: number;
+    priceUnit: string;
+    serviceAreas: string[];
+    coverImage?: string;
+    portfolioImages: string[];
+  };
+}
+
+export interface ListedVendor {
+  vendor: { _id: string; name: string; phone?: string };
+  service: { _id: string; slug: string; serviceName: string };
+  claimUrl: string;
+}
+
+// A booking request the vendor hasn't answered yet
+export interface PendingRequest {
+  _id: string;
+  eventDate: string;
+  priceAgreed?: number;
+  createdAt: string;
+  vendorNudgedAt?: string;
+  service?: { serviceName: string; slug: string };
+  vendor?: { _id: string; name: string; phone?: string };
+  organizer?: { name: string };
+  event?: { title: string };
 }
 
 export interface VendorList {
@@ -137,6 +177,22 @@ export class AdminService {
 
   setFoundingVendor(userId: string, founding: boolean): Observable<unknown> {
     return this.api.post(`${this.endpoint}/vendors/${userId}/founding`, { founding });
+  }
+
+  createVendor(intake: VendorIntake): Observable<ListedVendor> {
+    return this.api.post<{ data: ListedVendor }>(`${this.endpoint}/vendors`, intake).pipe(map(r => r.data));
+  }
+
+  newClaimLink(userId: string): Observable<string> {
+    return this.api.post<{ data: { claimUrl: string } }>(`${this.endpoint}/vendors/${userId}/claim-link`, {}).pipe(map(r => r.data.claimUrl));
+  }
+
+  getRequests(): Observable<PendingRequest[]> {
+    return this.api.get<{ data: PendingRequest[] }>(`${this.endpoint}/requests`).pipe(map(r => r.data));
+  }
+
+  markNudged(bookingId: string): Observable<unknown> {
+    return this.api.post(`${this.endpoint}/requests/${bookingId}/nudged`, {});
   }
 
   getUnverifiedServices(): Observable<any[]> {

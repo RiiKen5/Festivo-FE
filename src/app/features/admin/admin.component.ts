@@ -5,14 +5,18 @@ import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ButtonComponent } from '../../shared/components/button/button.component';
 import { ToastService } from '../../core/services/toast.service';
-import { AdminService, AdminStats, DisputeDecision, DisputeItem, GrowthMetrics, PayoutItem, VendorList, VendorRow } from '../../core/services/admin.service';
+import { AdminService, AdminStats, DisputeDecision, DisputeItem, GrowthMetrics, PayoutItem, PendingRequest, VendorIntake, VendorList, VendorRow } from '../../core/services/admin.service';
+import { ImageUploadComponent } from '../../shared/components/image-upload/image-upload.component';
 
-type Tab = 'overview' | 'growth' | 'payouts' | 'disputes' | 'vendors' | 'verification' | 'reviews';
+type Tab = 'overview' | 'growth' | 'requests' | 'payouts' | 'disputes' | 'vendors' | 'verification' | 'reviews';
+
+// A link to send a vendor on WhatsApp, shown after listing them or making a new one
+interface ClaimLink { name: string; phone?: string; serviceName?: string; slug?: string; url: string; }
 
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, ButtonComponent],
+  imports: [CommonModule, RouterModule, FormsModule, ButtonComponent, ImageUploadComponent],
   template: `
 
     <main class="admin-page">
@@ -22,6 +26,9 @@ type Tab = 'overview' | 'growth' | 'payouts' | 'disputes' | 'vendors' | 'verific
         <nav class="tabs">
           <button [class.active]="tab() === 'overview'" (click)="select('overview')">Overview</button>
           <button [class.active]="tab() === 'growth'" (click)="select('growth')">Growth</button>
+          <button [class.active]="tab() === 'requests'" (click)="select('requests')">
+            Requests @if (stats()?.bookings?.['pending']) { <span class="count">{{ stats()?.bookings?.['pending'] }}</span> }
+          </button>
           <button [class.active]="tab() === 'payouts'" (click)="select('payouts')">
             Payouts @if (stats()?.payoutsDue?.count) { <span class="count">{{ stats()?.payoutsDue?.count }}</span> }
           </button>
@@ -201,7 +208,99 @@ type Tab = 'overview' | 'growth' | 'payouts' | 'disputes' | 'vendors' | 'verific
             }
           }
 
+          @case ('requests') {
+            <p class="muted">Booking requests vendors haven't answered yet, oldest first. Message vendors who don't check email so customers aren't left waiting.</p>
+            @if (requests() === null) {
+              <p class="muted">Loading…</p>
+            } @else if (requests()!.length === 0) {
+              <p class="empty">No unanswered requests.</p>
+            }
+            @for (r of requests() || []; track r._id) {
+              <div class="row-card">
+                <div class="row-main">
+                  <strong>{{ r.service?.serviceName }}</strong> · {{ r.vendor?.name }}
+                  <div class="muted">
+                    From {{ r.organizer?.name }} for {{ r.eventDate | date:'EEE d MMM':'+0530' }}
+                    · asked {{ r.createdAt | date:'d MMM, h:mm a':'+0530' }}
+                  </div>
+                  @if (r.vendorNudgedAt) {
+                    <div class="muted">Messaged {{ r.vendorNudgedAt | date:'d MMM, h:mm a':'+0530' }}</div>
+                  }
+                </div>
+                <div class="row-actions">
+                  @if (r.vendor?.phone) {
+                    <a class="wa-link" [href]="requestWhatsApp(r)" target="_blank" rel="noopener" (click)="nudged(r)">WhatsApp {{ r.vendor?.name }}</a>
+                  } @else {
+                    <span class="muted">No phone number</span>
+                  }
+                  <a class="muted" [routerLink]="['/bookings', r._id]">Open</a>
+                </div>
+              </div>
+            }
+          }
+
           @case ('vendors') {
+            @if (claim(); as c) {
+              <div class="row-card claim-card" role="status">
+                <div class="row-main">
+                  <strong>Send {{ c.name }} their link</strong>
+                  <div class="muted">They open it to set a password and take over {{ c.serviceName ? 'their page' : 'their account' }}. It works for 14 days; make a new one if it runs out.</div>
+                  <div class="claim-url">{{ c.url }}</div>
+                </div>
+                <div class="row-actions">
+                  @if (c.phone) {
+                    <a class="wa-link" [href]="claimWhatsApp(c)" target="_blank" rel="noopener">Send on WhatsApp</a>
+                  }
+                  <app-button size="sm" variant="secondary" (onClick)="copy(c.url)">Copy link</app-button>
+                  @if (c.slug) {
+                    <a class="muted" [routerLink]="['/services', c.slug]">View page</a>
+                  }
+                  <app-button size="sm" variant="ghost" (onClick)="claim.set(null)">Done</app-button>
+                </div>
+              </div>
+            }
+
+            @if (showIntake()) {
+              <form class="row-card intake" (ngSubmit)="listVendor()" #intakeForm="ngForm">
+                <h2>Add a vendor</h2>
+                <p class="muted full">Copy their intake form answers. Check the email with them on the call: booking requests go there, and their link marks it as checked.</p>
+                <label>Name <input class="form-input" name="name" [(ngModel)]="intake.name" required></label>
+                <label>Email <input class="form-input" type="email" name="email" [(ngModel)]="intake.email" required email></label>
+                <label>WhatsApp number <input class="form-input" type="tel" name="phone" [(ngModel)]="intake.phone" required placeholder="98765 43210"></label>
+                <label>City <input class="form-input" name="city" [(ngModel)]="intake.city" required></label>
+                <label>Service name <input class="form-input" name="serviceName" [(ngModel)]="intake.service.serviceName" required minlength="3" placeholder="Meera's Theme Cakes"></label>
+                <label>Type
+                  <select class="form-input" name="category" [(ngModel)]="intake.service.category">
+                    @for (c of categories; track c.value) { <option [value]="c.value">{{ c.label }}</option> }
+                  </select>
+                </label>
+                <label class="full">What they make or do
+                  <textarea class="form-input" name="description" rows="4" [(ngModel)]="intake.service.description" required minlength="10"></textarea>
+                </label>
+                <label>Starting price (₹) <input class="form-input" type="number" min="0" name="basePrice" [(ngModel)]="intake.service.basePrice" required></label>
+                <label>Priced per
+                  <select class="form-input" name="priceUnit" [(ngModel)]="intake.service.priceUnit">
+                    <option value="per_event">Event</option>
+                    <option value="per_hour">Hour</option>
+                    <option value="per_day">Day</option>
+                    <option value="per_person">Person</option>
+                  </select>
+                </label>
+                <label class="full">Areas they serve <input class="form-input" name="areas" [(ngModel)]="areas" placeholder="HSR Layout, Koramangala, BTM"></label>
+                <div class="full photos">
+                  <app-image-upload label="Upload cover photo" (uploaded)="intake.service.coverImage = $event"></app-image-upload>
+                  <app-image-upload label="Upload work photos" [multiple]="true" (uploaded)="intake.service.portfolioImages.push($event)"></app-image-upload>
+                  <span class="muted">{{ intake.service.coverImage ? 'Cover added · ' : '' }}{{ intake.service.portfolioImages.length }} work photo(s)</span>
+                </div>
+                <div class="full row-actions">
+                  <app-button type="submit" [loading]="listing()" [disabled]="!intakeForm.form.valid">List vendor</app-button>
+                  <app-button variant="ghost" (onClick)="showIntake.set(false)">Cancel</app-button>
+                </div>
+              </form>
+            } @else {
+              <app-button (onClick)="startIntake()">Add a vendor</app-button>
+            }
+
             @if (vendorList(); as v) {
               <p class="muted">
                 Founding vendors: <strong>{{ v.founding.taken }} of {{ v.founding.limit }}</strong>
@@ -218,10 +317,14 @@ type Tab = 'overview' | 'growth' | 'payouts' | 'disputes' | 'vendors' | 'verific
                     @if (u.foundingVendor) { <span class="pill">Founding</span> }
                     @if (u.verified) { <span class="pill">Verified</span> }
                     @if (u.noShowCount) { <span class="pill">{{ u.noShowCount }} no-show(s)</span> }
+                    @if (u.onboardedBy && !u.claimedAt) { <span class="pill pill--warn">Not claimed yet</span> }
                     <div class="muted">{{ u.names.join(', ') }} · {{ u.city }} · listed {{ u.firstListed | date:'d MMM y' }}</div>
                     <div class="muted">{{ u.email }}{{ u.phone ? ' · ' + u.phone : '' }}</div>
                   </div>
                   <div class="row-actions">
+                    @if (u.onboardedBy && !u.claimedAt) {
+                      <app-button size="sm" variant="secondary" (onClick)="newLink(u)">New link</app-button>
+                    }
                     @if (u.foundingVendor) {
                       <app-button size="sm" variant="ghost" (onClick)="setFounding(u, false)">Remove founding</app-button>
                     } @else {
@@ -436,6 +539,39 @@ type Tab = 'overview' | 'growth' | 'payouts' | 'disputes' | 'vendors' | 'verific
       color: $text-secondary;
     }
 
+    .intake {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: $spacing-3 $spacing-4;
+      align-items: start;
+
+      h2 { grid-column: 1 / -1; margin: 0; font-size: $font-size-lg; }
+      label { display: flex; flex-direction: column; gap: $spacing-1; font-size: $font-size-sm; font-weight: $font-weight-medium; }
+      .full { grid-column: 1 / -1; }
+      .muted.full { margin: 0; font-weight: $font-weight-regular; }
+    }
+
+    .photos { display: flex; flex-wrap: wrap; gap: $spacing-3; align-items: center; }
+
+    .claim-card { background: $success-light; }
+    .claim-url { margin-top: $spacing-2; font-size: $font-size-xs; overflow-wrap: anywhere; color: $text-secondary; }
+
+    .wa-link {
+      display: inline-flex;
+      align-items: center;
+      padding: $spacing-2 $spacing-3;
+      border-radius: $radius-md;
+      background: #128c4a;
+      color: #fff;
+      font-size: $font-size-sm;
+      font-weight: $font-weight-semibold;
+      text-decoration: none;
+
+      &:hover { background: #0e7a40; }
+    }
+
+    .pill--warn { background: $warning-light; color: $warning-dark; }
+
     .muted { color: $text-secondary; font-size: $font-size-sm; }
     .warning { color: $warning-dark; }
     .empty { color: $text-secondary; padding: $spacing-8 0; text-align: center; }
@@ -455,6 +591,21 @@ export class AdminComponent implements OnInit {
   vendorList = signal<VendorList | null>(null);
   private decisions: Record<string, DisputeDecision> = {};
   growth = signal<GrowthMetrics | null>(null);
+  requests = signal<PendingRequest[] | null>(null);
+  claim = signal<ClaimLink | null>(null);
+  showIntake = signal(false);
+  listing = signal(false);
+  intake: VendorIntake = this.blankIntake();
+  areas = '';
+  readonly categories = [
+    { value: 'food', label: 'Food (cakes, desserts, catering)' },
+    { value: 'decor', label: 'Decor' },
+    { value: 'photography', label: 'Photography' },
+    { value: 'music', label: 'Music / DJ' },
+    { value: 'entertainment', label: 'Entertainment' },
+    { value: 'venue', label: 'Venue' },
+    { value: 'other', label: 'Other' }
+  ];
   growthDays = signal(30);
   category = categoryLabel;
 
@@ -465,6 +616,7 @@ export class AdminComponent implements OnInit {
   select(tab: Tab): void {
     this.tab.set(tab);
     if (tab === 'growth') this.loadGrowth(this.growthDays());
+    if (tab === 'requests') this.loadRequests();
     if (tab === 'payouts') this.admin.getPayouts().subscribe(p => this.payouts.set(p));
     if (tab === 'disputes') this.admin.getDisputes().subscribe(d => this.disputes.set(d));
     if (tab === 'vendors') this.loadVendors();
@@ -500,6 +652,79 @@ export class AdminComponent implements OnInit {
 
   private loadVendors(): void {
     this.admin.getVendors().subscribe(v => this.vendorList.set(v));
+  }
+
+  private blankIntake(): VendorIntake {
+    return {
+      name: '', email: '', phone: '', city: 'Bengaluru',
+      service: { serviceName: '', category: 'food', description: '', basePrice: 0, priceUnit: 'per_event', serviceAreas: [], portfolioImages: [] }
+    };
+  }
+
+  startIntake(): void {
+    this.intake = this.blankIntake();
+    this.areas = '';
+    this.showIntake.set(true);
+  }
+
+  listVendor(): void {
+    const intake = this.intake;
+    intake.service.serviceAreas = this.areas.split(',').map(a => a.trim()).filter(Boolean);
+    this.listing.set(true);
+    this.admin.createVendor(intake).subscribe({
+      next: res => {
+        this.listing.set(false);
+        this.showIntake.set(false);
+        this.claim.set({ name: res.vendor.name, phone: res.vendor.phone, serviceName: res.service.serviceName, slug: res.service.slug, url: res.claimUrl });
+        this.toast.success('Vendor listed', `${res.service.serviceName} is live. Send ${res.vendor.name} their link.`);
+        this.loadVendors();
+        this.loadStats();
+      },
+      error: () => this.listing.set(false)
+    });
+  }
+
+  newLink(vendor: VendorRow): void {
+    this.admin.newClaimLink(vendor._id).subscribe(url => {
+      this.claim.set({ name: vendor.name, phone: vendor.phone, url });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+
+  async copy(text: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(text);
+      this.toast.success('Link copied');
+    } catch {
+      this.toast.info('Link', text);
+    }
+  }
+
+  private whatsApp(phone: string, text: string): string {
+    return `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`;
+  }
+
+  claimWhatsApp(c: ClaimLink): string {
+    return this.whatsApp(c.phone || '', c.serviceName
+      ? `Hi ${c.name}, your Festivo page "${c.serviceName}" is ready. Open this link to set your password and see it (it works for 14 days): ${c.url}`
+      : `Hi ${c.name}, here is your new Festivo link to set your password (it works for 14 days): ${c.url}`);
+  }
+
+  requestWhatsApp(r: PendingRequest): string {
+    const date = new Date(r.eventDate).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' });
+    return this.whatsApp(r.vendor?.phone || '',
+      `Hi ${r.vendor?.name}, you have a new booking request on Festivo from ${r.organizer?.name} for ${r.service?.serviceName} on ${date}. Please accept or decline it here: ${window.location.origin}/bookings/${r._id}`);
+  }
+
+  nudged(r: PendingRequest): void {
+    this.admin.markNudged(r._id).subscribe(() => {
+      this.requests.update(list => (list || []).map(x => x._id === r._id ? { ...x, vendorNudgedAt: new Date().toISOString() } : x));
+    });
+  }
+
+  private loadRequests(): void {
+    this.requests.set(null);
+    this.admin.getRequests().subscribe(r => this.requests.set(r));
   }
 
   setFounding(vendor: VendorRow, founding: boolean): void {

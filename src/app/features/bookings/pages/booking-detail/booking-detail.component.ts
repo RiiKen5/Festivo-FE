@@ -318,7 +318,7 @@ import { User } from '../../../../core/models/user.model';
                 } @else if (isVendor() && getBalance() <= 0 && booking()?.status === 'confirmed') {
                   <p class="action-hint">Paid in full. Festivo releases the money to you after the organizer marks the booking complete.</p>
                 } @else if (isVendor() && booking()?.status === 'confirmed') {
-                  <p class="action-hint">Confirmed. The organizer can now pay online.</p>
+                  <p class="action-hint">{{ paymentsEnabled() ? 'Confirmed. The organizer can now pay online.' : 'Confirmed. The organizer pays you directly. Record it here when you receive it.' }}</p>
                 }
 
                 @if (isVendor()) {
@@ -1468,7 +1468,9 @@ export class BookingDetailComponent implements OnInit {
       if (vendor) {
         return { title: b.pricePaid ? 'Advance received' : 'Accepted · waiting for payment', text: b.pricePaid
           ? `₹${b.pricePaid.toLocaleString('en-IN')} paid, ₹${due.toLocaleString('en-IN')} still due. Festivo pays you after the job.`
-          : `${other} can now pay online. You'll be notified when they do.`, tone: 'wait' };
+          : this.paymentsEnabled()
+            ? `${other} can now pay online. You'll be notified when they do.`
+            : `${other} pays you directly. When you receive it, use "Record a payment you received".`, tone: 'wait' };
       }
       if (!this.paymentsEnabled()) {
         return { title: `${other} accepted at ₹${b.priceAgreed.toLocaleString('en-IN')}`, text: `Online payment isn't switched on yet. Pay ${other} directly and ask them to record it here.`, tone: 'act' };
@@ -1501,7 +1503,7 @@ export class BookingDetailComponent implements OnInit {
         this.reload();
         this.actionLoading.set(false);
         this.showConfirmModal.set(false);
-        this.toast.success('Booking accepted', 'The organizer can now pay online.');
+        this.toast.success('Booking accepted', this.paymentsEnabled() ? 'The organizer can now pay online.' : 'The organizer will pay you directly.');
       },
       error: () => {
         this.actionLoading.set(false);
