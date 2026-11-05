@@ -20,6 +20,7 @@ import { AttributionService } from '../../../../core/services/attribution.servic
 import { AnalyticsService } from '../../../../core/services/analytics.service';
 import { EventPlannerComponent } from '../../components/event-planner.component';
 import { InvitationCardComponent } from '../../components/invitation-card.component';
+import { EventOffersComponent } from '../../components/event-offers.component';
 import { Event } from '../../../../core/models/event.model';
 import { User } from '../../../../core/models/user.model';
 import { Rsvp, RsvpStatus, GuestRsvp } from '../../../../core/models/rsvp.model';
@@ -28,7 +29,7 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
 @Component({
   selector: 'app-event-detail',
   standalone: true,
-  imports: [EventPlannerComponent, InvitationCardComponent, CommonModule, RouterModule, FormsModule, ButtonComponent, ModalComponent, IconComponent, EmptyStateComponent],
+  imports: [EventPlannerComponent, InvitationCardComponent, EventOffersComponent, CommonModule, RouterModule, FormsModule, ButtonComponent, ModalComponent, IconComponent, EmptyStateComponent],
   template: `
 
     @if (isLoading()) {
@@ -84,6 +85,7 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
                                      (edit)="openEditTaskModal($any($event))" (invite)="openCard()"></app-event-planner>
                   <app-invitation-card [isOpen]="showCard()" [event]="event()" [hostName]="getOrganizer()?.name || ''"
                                        [link]="cardLink()" (closed)="showCard.set(false)"></app-invitation-card>
+                  <app-event-offers [eventId]="event()!._id" [city]="event()!.city" [upcoming]="isEventOpen() && !hasEventPassed()"></app-event-offers>
                 }
                 <section class="event-section">
                   <h2 class="section-title">About this event</h2>
@@ -1483,6 +1485,10 @@ export class EventDetailComponent implements OnInit {
           const organizerId = typeof organizer === 'object' ? (organizer as User)._id : organizer;
           if (organizerId === this.auth.currentUser()?._id) {
             this.loadManageData(response.data._id);
+            // From a "New Offer" notification
+            if (this.route.snapshot.queryParamMap.get('tab') === 'offers') {
+              setTimeout(() => document.getElementById('offers')?.scrollIntoView({ behavior: 'smooth' }), 400);
+            }
           }
         }
       },
@@ -1564,6 +1570,12 @@ export class EventDetailComponent implements OnInit {
 
   isEventOpen(): boolean {
     return !['cancelled', 'completed'].includes(this.event()?.status || '');
+  }
+
+  // Before the event's day ends
+  hasEventPassed(): boolean {
+    const date = this.event()?.date;
+    return !!date && new Date(date).setHours(23, 59, 59, 999) < Date.now();
   }
 
   hasEventStarted(): boolean {

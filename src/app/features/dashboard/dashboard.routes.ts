@@ -17,6 +17,11 @@ export const DASHBOARD_ROUTES: Routes = [
     canActivate: [vendorGuard]
   },
   {
+    path: 'find-events',
+    loadComponent: () => import('./pages/find-events/find-events.component').then(m => m.FindEventsComponent),
+    canActivate: [vendorGuard]
+  },
+  {
     path: 'calendar',
     loadComponent: () => import('./pages/calendar/vendor-calendar.component').then(m => m.VendorCalendarComponent),
     canActivate: [vendorGuard]

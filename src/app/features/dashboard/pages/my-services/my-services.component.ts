@@ -29,6 +29,10 @@ import { ShopCardComponent } from './shop-card.component';
             <p>Manage your service listings</p>
           </div>
           <div class="header-actions">
+          <app-button variant="secondary" routerLink="/dashboard/find-events">
+            <app-icon name="search" [size]="18"></app-icon>
+            Find events
+          </app-button>
           <app-button variant="secondary" routerLink="/dashboard/calendar">
             <app-icon name="calendar" [size]="18"></app-icon>
             Calendar
