@@ -29,6 +29,9 @@ const PRICE_UNIT = { per_event: 'per event', per_hour: 'per hour', per_day: 'per
 
 const escape = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const absolute = (url) => (/^https?:\/\//.test(url) ? url : SITE + url);
+// Render serves dir/index.html only at "/dir/" ("/dir" falls through to the
+// app shell), so the crawlable, canonical form of every page ends in a slash
+const pageUrl = (path) => SITE + (path.endsWith('/') ? path : path + '/');
 const jsonLd = (data) => `<script type="application/ld+json" data-seo="page">${JSON.stringify(data).replace(/</g, '\\u003c')}</script>`;
 
 // Same as snippet() in core/services/seo.service.ts
@@ -44,7 +47,7 @@ const istLabel = (date) => new Date(date).toLocaleDateString('en-IN', { day: 'nu
 
 const breadcrumbs = (items) => ({
   '@type': 'BreadcrumbList',
-  itemListElement: items.map(([name, path], i) => ({ '@type': 'ListItem', position: i + 1, name, item: SITE + path }))
+  itemListElement: items.map(([name, path], i) => ({ '@type': 'ListItem', position: i + 1, name, item: pageUrl(path) }))
 });
 
 async function fetchPages() {
@@ -79,7 +82,7 @@ function servicePage(s) {
         name: s.name,
         description: s.description,
         serviceType: category,
-        url: SITE + path,
+        url: pageUrl(path),
         ...(image && { image }),
         areaServed: [...new Set([s.city, ...s.areas])].map(name => ({ '@type': 'City', name })),
         provider: {
@@ -89,7 +92,7 @@ function servicePage(s) {
         },
         offers: {
           '@type': 'Offer',
-          url: SITE + path,
+          url: pageUrl(path),
           priceSpecification: {
             '@type': 'UnitPriceSpecification',
             price: s.price,
@@ -128,7 +131,7 @@ function eventPage(e) {
         ...(e.endDate && { endDate: istDate(e.endDate) }),
         eventStatus: 'https://schema.org/EventScheduled',
         eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
-        url: SITE + path,
+        url: pageUrl(path),
         ...(image && { image: [image] }),
         location: {
           '@type': 'Place',
@@ -136,7 +139,7 @@ function eventPage(e) {
           address: { '@type': 'PostalAddress', streetAddress: e.address, addressLocality: e.city, addressCountry: 'IN' }
         },
         ...(e.organizer && { organizer: { '@type': 'Person', name: e.organizer } }),
-        offers: { '@type': 'Offer', url: SITE + path, price: e.price, priceCurrency: 'INR' }
+        offers: { '@type': 'Offer', url: pageUrl(path), price: e.price, priceCurrency: 'INR' }
       },
       breadcrumbs([['Home', '/'], ['Events', '/events'], [e.title, path]])
     ]
@@ -145,7 +148,7 @@ function eventPage(e) {
 
 // Swap the default tags from src/index.html for the page's own
 function render(template, page) {
-  const url = SITE + page.path;
+  const url = pageUrl(page.path);
   const image = absolute(page.image || site.defaultImage);
   const robots = page.noindex ? 'noindex' : 'index, follow, max-image-preview:large';
   const tags = [
@@ -203,7 +206,7 @@ const indexable = [site.pages.find(p => p.path === '/'), ...pages].filter(p => !
 const sitemap = [
   '<?xml version="1.0" encoding="UTF-8"?>',
   '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-  ...indexable.map(p => `  <url><loc>${escape(SITE + p.path)}</loc>${p.lastmod ? `<lastmod>${new Date(p.lastmod).toISOString()}</lastmod>` : ''}</url>`),
+  ...indexable.map(p => `  <url><loc>${escape(pageUrl(p.path))}</loc>${p.lastmod ? `<lastmod>${new Date(p.lastmod).toISOString()}</lastmod>` : ''}</url>`),
   '</urlset>',
   ''
 ].join('\n');

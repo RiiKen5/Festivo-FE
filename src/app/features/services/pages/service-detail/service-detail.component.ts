@@ -2034,7 +2034,8 @@ export class ServiceDetailComponent implements OnInit {
     const service = this.service();
     const source = this.isOwnService() ? 'vendor_share' : 'listing_share';
     this.analytics.track('listing_shared', { serviceId: service?._id, channel: medium, own: this.isOwnService() });
-    return this.attribution.tagged(`/services/${service?.slug || service?._id}`, source, medium);
+    // Trailing slash: the pre-rendered page with this vendor's preview
+    return this.attribution.tagged(`/services/${service?.slug || service?._id}/`, source, medium);
   }
 
   shareOnWhatsApp(): void {

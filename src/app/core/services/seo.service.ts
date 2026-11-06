@@ -19,6 +19,9 @@ export interface PageSeo {
 }
 
 export const SITE_URL = site.siteUrl;
+// Render serves a pre-rendered page (dir/index.html) only at "/dir/", so the
+// canonical URL of every page, and the links people share, end in a slash
+export const pageUrl = (path: string) => SITE_URL + (path.endsWith('/') ? path : path + '/');
 const PAGES = new Map(site.pages.map(p => [p.path, p]));
 // Vendor and event pages set their own tags once the listing has loaded
 const DETAIL_PAGE = /^\/(services|events)\/(?!create$)[^/]+$/;
@@ -86,7 +89,7 @@ export class SeoService {
   }
 
   set(page: PageSeo): void {
-    const url = page.path ? SITE_URL + page.path : null;
+    const url = page.path ? pageUrl(page.path) : null;
     const image = absolute(page.image || site.defaultImage);
 
     this.title.setTitle(page.title);

@@ -1769,11 +1769,12 @@ export class EventDetailComponent implements OnInit {
   // Invite and share links carry UTM tags so signups from guests can be counted
   private inviteUrl(medium = 'copy'): string {
     const event = this.event();
-    return this.attribution.tagged(`/events/${event?.slug}?invite=${event?.inviteCode}`, 'invite', medium);
+    return this.attribution.tagged(`/events/${event?.slug}/?invite=${event?.inviteCode}`, 'invite', medium);
   }
 
   private shareUrl(medium: string): string {
-    return this.attribution.tagged(`/events/${this.event()?.slug}`, 'event_share', medium);
+    // Trailing slash: the pre-rendered page with this event's preview
+    return this.attribution.tagged(`/events/${this.event()?.slug}/`, 'event_share', medium);
   }
 
   showCard = signal(false);

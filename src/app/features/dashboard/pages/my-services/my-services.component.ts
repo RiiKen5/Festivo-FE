@@ -622,12 +622,12 @@ export class MyServicesComponent implements OnInit {
   cardFor = signal<Service | null>(null);
 
   cardLink(service: Service): string {
-    return this.attribution.tagged(`/services/${service.slug || service._id}`, 'vendor_share', 'qr');
+    return this.attribution.tagged(`/services/${service.slug || service._id}/`, 'vendor_share', 'qr');
   }
 
   // The vendor's own booking link, tagged so customers it brings are counted
   async share(service: Service): Promise<void> {
-    const url = this.attribution.tagged(`/services/${service.slug || service._id}`, 'vendor_share', 'link');
+    const url = this.attribution.tagged(`/services/${service.slug || service._id}/`, 'vendor_share', 'link');
     this.analytics.track('listing_shared', { serviceId: service._id, channel: 'my_services', own: true });
     if (navigator.share) {
       try {

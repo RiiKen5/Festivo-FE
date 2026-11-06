@@ -19,10 +19,8 @@ const head = (html) => ({
   ogImage: attr(html, /<meta property="?og:image"? content="([^"]*)"/),
   jsonLd: [...html.matchAll(/<script type="?application\/ld\+json"?[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1])
 });
-const fileFor = (url) => {
-  const path = url.slice(SITE.length) || '/';
-  return path === '/' ? join(DIST, 'index.html') : join(DIST, path, 'index.html');
-};
+// Render serves dir/index.html only at "/dir/", so sitemap URLs end in a slash
+const fileFor = (url) => join(DIST, url.slice(SITE.length), 'index.html');
 
 // robots.txt
 const robots = await readFile(join(DIST, 'robots.txt'), 'utf8').catch(() => fail('robots.txt missing') || '');
@@ -47,7 +45,7 @@ const titles = new Map();
 const descriptions = new Map();
 for (const url of urls) {
   if (!url.startsWith(SITE + '/')) { fail(`sitemap URL on another host: ${url}`); continue; }
-  if (/[?#]/.test(url) || (url !== SITE + '/' && url.endsWith('/'))) fail(`sitemap URL is not canonical: ${url}`);
+  if (/[?#]/.test(url) || !url.endsWith('/')) fail(`sitemap URL is not canonical (needs a trailing slash): ${url}`);
   const path = url.slice(SITE.length);
   if (blocked(path)) fail(`sitemap URL is blocked by robots.txt: ${url}`);
   const file = fileFor(url);
@@ -75,7 +73,7 @@ for (const url of urls) {
 
 // Pages marked noindex must not be in the sitemap
 for (const page of site.pages.filter(p => p.noindex)) {
-  if (urls.includes(SITE + page.path)) fail(`${page.path} is noindex but listed in the sitemap`);
+  if (urls.includes(SITE + page.path + '/') || urls.includes(SITE + page.path)) fail(`${page.path} is noindex but listed in the sitemap`);
 }
 
 // No development hosts anywhere in what we publish

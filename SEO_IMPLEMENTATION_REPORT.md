@@ -152,12 +152,12 @@ Sitemap: https://festivo.paathly.in/sitemap.xml
 | Page | Title | Robots | Canonical |
 |---|---|---|---|
 | Home | Festivo · Book local vendors for birthdays, parties and events | index | `/` (set in browser) |
-| Vendors | Event vendors near you: cakes, decor, photographers and DJs · Festivo | index | `/services` (filters and search point here) |
+| Vendors | Event vendors near you: cakes, decor, photographers and DJs · Festivo | index | `/services/` (filters and search point here) |
 | Events | Public events near you · Festivo | index | `/events` |
 | For vendors | Get event bookings for your business · Festivo for vendors | index | `/for-vendors` |
 | Legal and contact | Terms of Service / Privacy Policy / Cancellation and Refund Policy / Contact Festivo | index | own URL |
-| Vendor page | `{name} · {category} in {city} · Festivo` | index | `/services/{slug}` |
-| Public event | `{title} · {date}, {city} · Festivo` | index | `/events/{slug}` |
+| Vendor page | `{name} · {category} in {city} · Festivo` | index | `/services/{slug}/` |
+| Public event | `{title} · {date}, {city} · Festivo` | index | `/events/{slug}/` |
 | Private event | as above | **noindex** | none |
 | Delete account | Delete your Festivo account | **noindex** | none |
 | Account, dashboard, admin, auth, unknown | Festivo / Page not found · Festivo | **noindex** | none |
@@ -262,9 +262,11 @@ The measurement script is not committed (it hits the live site). Repeat with Pag
 ## 11. Remaining technical issues (cannot be fixed in code here)
 
 1. **Soft 404s.** Render's static hosting returns HTTP 200 for unknown URLs. The app marks them noindex, and Google treats noindexed "not found" pages correctly, but a real 404 status needs a server, or edge rules Render does not offer.
-2. **Trailing slashes.**
-   - Render serves `/terms` and `/terms/` from the same file and cannot be configured to redirect.
-   - Mitigation: every page's canonical is the no-slash URL, and the sitemap uses only those.
+2. **Trailing slashes (found on the live site after the first deploy).**
+   - Render serves `dir/index.html` only at `/dir/`; `/dir` falls through to the app shell. Render has no clean-URL setting ([Render community](https://community.render.com/t/remove-html-file-endings/3618)).
+   - So the canonical form of every page is the **trailing-slash** URL (`/terms/`, `/services/<slug>/`). Canonical tags, `og:url`, structured-data URLs and the sitemap all use it.
+   - The links people share use it too: the vendor booking link, the QR card, and event share and invite links. That way WhatsApp and Facebook fetch the pre-rendered page with the right preview.
+   - Old links without the slash still open the app normally; the app points search engines to the slash version.
 3. **The Render default host** (`*.onrender.com`) serves the same site.
    - Mitigation: canonical tags point to `festivo.paathly.in`.
    - Do not link to the onrender address anywhere.
