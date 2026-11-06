@@ -6,7 +6,7 @@ import { ButtonComponent } from '../../shared/components/button/button.component
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { AuthService } from '../../core/services/auth.service';
 import { AnalyticsService } from '../../core/services/analytics.service';
-import { PaymentService } from '../../core/services/payment.service';
+import { PaymentConfig, PaymentService } from '../../core/services/payment.service';
 
 // Landing page for vendor outreach (home bakers, decorators, photographers).
 // Every claim here matches config/policies.js and the Terms; keep them in sync.
@@ -23,7 +23,8 @@ import { PaymentService } from '../../core/services/payment.service';
           Send customers your Festivo link instead of chasing advances on WhatsApp. They book and pay online,
           Festivo holds the money, and it is paid out to you once the job is done.
         </p>
-        @if (config() && !config()!.enabled) {
+        <!-- Shown until we know payments are on, so the buttons below don't jump when the API answers -->
+        @if (!config()?.enabled) {
           <p class="launch-note" role="note">
             <strong>Launch period:</strong> online payment isn't switched on yet. Until it is, customers pay you directly
             and Festivo charges nothing. The payments and payouts described below start when it is, and we'll tell you before it does.
@@ -286,7 +287,8 @@ import { PaymentService } from '../../core/services/payment.service';
 export class ForVendorsComponent {
   private auth = inject(AuthService);
   private analytics = inject(AnalyticsService);
-  config = toSignal(inject(PaymentService).getConfig());
+  private payments = inject(PaymentService);
+  config = toSignal<PaymentConfig | undefined, PaymentConfig | undefined>(this.payments.getConfig(), { initialValue: this.payments.lastConfig() });
   fees = computed(() => this.config()?.bookingFees);
 
   // Founding terms end at midnight IST; show the last day they apply

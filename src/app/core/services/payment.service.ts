@@ -1,7 +1,9 @@
 import { Injectable } from '@angular/core';
-import { Observable, firstValueFrom, map, shareReplay } from 'rxjs';
+import { Observable, firstValueFrom, map, shareReplay, tap } from 'rxjs';
 import { ApiService } from './api.service';
 import { AnalyticsService } from './analytics.service';
+
+const CONFIG_KEY = 'payments-config';
 
 export interface PaymentConfig {
   enabled: boolean;
@@ -85,9 +87,22 @@ export class PaymentService {
   getConfig(): Observable<PaymentConfig> {
     this.config$ ??= this.api.get<{ data: PaymentConfig }>(`${this.endpoint}/config`).pipe(
       map(response => response.data),
+      tap(config => {
+        try { localStorage.setItem(CONFIG_KEY, JSON.stringify(config)); } catch { /* private mode */ }
+      }),
       shareReplay(1)
     );
     return this.config$;
+  }
+
+  // The config from this device's last visit, so pages can render the right
+  // text at first paint instead of shifting when the API answers
+  lastConfig(): PaymentConfig | undefined {
+    try {
+      return JSON.parse(localStorage.getItem(CONFIG_KEY) || 'null') ?? undefined;
+    } catch {
+      return undefined;
+    }
   }
 
   createBookingOrder(bookingId: string, amount?: number): Observable<CheckoutDetails> {

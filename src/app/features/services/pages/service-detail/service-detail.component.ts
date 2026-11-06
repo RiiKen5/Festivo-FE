@@ -17,6 +17,7 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { AttributionService } from '../../../../core/services/attribution.service';
 import { AnalyticsService } from '../../../../core/services/analytics.service';
+import { SeoService, serviceSeo } from '../../../../core/services/seo.service';
 import { Service } from '../../../../core/models/service.model';
 import { Review } from '../../../../core/models/review.model';
 import { User } from '../../../../core/models/user.model';
@@ -58,15 +59,15 @@ import { BookingCreateData } from '../../../../core/models/booking.model';
                   [class.active]="!selectedImage() || selectedImage() === service()?.coverImage"
                   (click)="selectImage(service()?.coverImage)"
                 >
-                  <img [src]="service()?.coverImage" alt="Cover">
+                  <img [src]="service()?.coverImage" [alt]="'Show cover photo of ' + service()?.serviceName" loading="lazy">
                 </button>
-                @for (img of service()?.portfolioImages; track img) {
+                @for (img of service()?.portfolioImages; track img; let i = $index) {
                   <button
                     class="thumbnail"
                     [class.active]="selectedImage() === img"
                     (click)="selectImage(img)"
                   >
-                    <img [src]="img" alt="Portfolio">
+                    <img [src]="img" [alt]="'Show work photo ' + (i + 1)" loading="lazy">
                   </button>
                 }
               </div>
@@ -1761,6 +1762,7 @@ export class ServiceDetailComponent implements OnInit {
   private availabilityService = inject(AvailabilityService);
   private attribution = inject(AttributionService);
   private analytics = inject(AnalyticsService);
+  private seo = inject(SeoService);
   auth = inject(AuthService);
 
   // Service
@@ -1843,6 +1845,7 @@ export class ServiceDetailComponent implements OnInit {
       next: (response) => {
         this.service.set(response.data);
         this.isLoading.set(false);
+        this.seo.set(serviceSeo(response.data));
         if (!this.isOwnService()) this.attribution.noteVendorVisit(this.getProvider()?._id || '');
         // Check if favorited
         this.isFavorite.set(this.favoriteService.isFavorite(response.data._id, 'service'));
@@ -1854,6 +1857,7 @@ export class ServiceDetailComponent implements OnInit {
       },
       error: () => {
         this.isLoading.set(false);
+        this.seo.notFound();
       }
     });
   }

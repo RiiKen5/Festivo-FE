@@ -1,8 +1,9 @@
 import { IconComponent } from '../../shared/components/icon/icon.component';
-import { Component } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { ButtonComponent } from '../../shared/components/button/button.component';
+import { SeoService } from '../../core/services/seo.service';
 
 @Component({
   selector: 'app-not-found',
@@ -76,4 +77,10 @@ import { ButtonComponent } from '../../shared/components/button/button.component
     }
   `]
 })
-export class NotFoundComponent {}
+export class NotFoundComponent implements OnInit {
+  private seo = inject(SeoService);
+
+  ngOnInit(): void {
+    this.seo.notFound();
+  }
+}

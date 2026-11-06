@@ -4,7 +4,8 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "build": "ng build",
+    "build": "ng build && node scripts/seo-build.mjs && node scripts/seo-check.mjs",
+    "seo:check": "node scripts/seo-check.mjs",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },

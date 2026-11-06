@@ -7,6 +7,10 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 20
+      # Optional: IndexNow key (same value as on the backend); the build
+      # publishes it at /<key>.txt so Bing can verify our pings
+      - key: INDEXNOW_KEY
+        sync: false
     routes:
       - type: rewrite
         source: /*

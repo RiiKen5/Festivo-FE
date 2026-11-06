@@ -18,6 +18,7 @@ import { ToastService } from '../../../../core/services/toast.service';
 import { PaymentService, CheckoutDetails } from '../../../../core/services/payment.service';
 import { AttributionService } from '../../../../core/services/attribution.service';
 import { AnalyticsService } from '../../../../core/services/analytics.service';
+import { SeoService, eventSeo } from '../../../../core/services/seo.service';
 import { EventPlannerComponent } from '../../components/event-planner.component';
 import { InvitationCardComponent } from '../../components/invitation-card.component';
 import { EventOffersComponent } from '../../components/event-offers.component';
@@ -1394,6 +1395,7 @@ export class EventDetailComponent implements OnInit {
   private payments = inject(PaymentService);
   private attribution = inject(AttributionService);
   private analytics = inject(AnalyticsService);
+  private seo = inject(SeoService);
   auth = inject(AuthService);
 
   // From a private invite link (?invite=...)
@@ -1468,6 +1470,7 @@ export class EventDetailComponent implements OnInit {
       next: (response) => {
         this.event.set(response.data);
         this.isLoading.set(false);
+        this.seo.set(eventSeo(response.data));
 
         // Check if favorited
         this.isFavorite.set(this.favoriteService.isFavorite(response.data._id, 'event'));
@@ -1494,6 +1497,7 @@ export class EventDetailComponent implements OnInit {
       },
       error: () => {
         this.isLoading.set(false);
+        this.seo.notFound();
       }
     });
   }

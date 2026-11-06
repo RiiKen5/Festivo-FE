@@ -9,6 +9,7 @@ import { AnalyticsService } from './core/services/analytics.service';
 import { RealtimeService } from './core/services/realtime.service';
 import { AuthService } from './core/services/auth.service';
 import { ToastService } from './core/services/toast.service';
+import { SeoService } from './core/services/seo.service';
 import { User } from './core/models/user.model';
 
 // App shell: one header and footer for every screen except the full-screen
@@ -31,8 +32,10 @@ import { User } from './core/models/user.model';
     <app-toast></app-toast>
   `,
   styles: [`
+    /* A full screen even before the page's code has loaded, so the footer
+       never shows mid-screen and then jumps away (layout shift, CLS) */
     .app-main {
-      min-height: 60vh;
+      min-height: 100vh;
       outline: none;
     }
   `]
@@ -45,6 +48,7 @@ export class AppComponent {
   constructor() {
     inject(AttributionService).capture();
     this.analytics.init();
+    inject(SeoService).init();
     this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe(e => {
       this.url.set((e as NavigationEnd).urlAfterRedirects);
       this.analytics.page((e as NavigationEnd).urlAfterRedirects.split('?')[0]);
