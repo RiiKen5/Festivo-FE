@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <!-- Old address: send visitors and crawlers to the same page on the new
+       one (Render static sites cannot redirect by hostname) -->
+  <script>if (location.hostname === 'festivo.paathly.in') location.replace('https://yaay.paathly.in' + location.pathname + location.search + location.hash);</script>
   <title>Yaay · Book local vendors for birthdays, parties and events</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
