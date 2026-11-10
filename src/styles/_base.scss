@@ -247,28 +247,32 @@ table {
 // ============================================
 // SCROLLBAR
 // ============================================
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: $neutral-100;
-}
-
-::-webkit-scrollbar-thumb {
-  background: $neutral-300;
-  border-radius: $radius-full;
-
-  &:hover {
-    background: $neutral-400;
+// Styled bars only with a mouse. On touch screens the phone's own bars
+// (thin, fading) are used; a styled bar would stay visible as a grey line.
+@media (hover: hover) and (pointer: fine) {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
   }
-}
 
-// Firefox
-* {
-  scrollbar-width: thin;
-  scrollbar-color: $neutral-300 $neutral-100;
+  ::-webkit-scrollbar-track {
+    background: $neutral-100;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: $neutral-300;
+    border-radius: $radius-full;
+
+    &:hover {
+      background: $neutral-400;
+    }
+  }
+
+  // Firefox
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: $neutral-300 $neutral-100;
+  }
 }
 
 // ============================================

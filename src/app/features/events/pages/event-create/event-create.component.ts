@@ -525,13 +525,16 @@ import { CustomValidators } from '../../../../shared/validators/custom-validator
 
     .form-actions {
       display: flex;
+      flex-wrap: wrap;
       justify-content: space-between;
       align-items: center;
+      gap: $spacing-3;
       padding-top: $spacing-6;
     }
 
     .action-buttons {
       display: flex;
+      flex-wrap: wrap;
       gap: $spacing-3;
     }
   `]

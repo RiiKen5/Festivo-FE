@@ -128,9 +128,9 @@ const ONE_A_DAY = ['decor', 'photography', 'music', 'entertainment', 'venue'];
     .cal-page { padding: $spacing-8 0; background: $bg-secondary; min-height: calc(100vh - #{$navbar-height}); }
     .container { max-width: 1100px; margin: 0 auto; padding: 0 $spacing-4; }
     .head { margin-bottom: $spacing-6; h1 { font-size: $font-size-2xl; } p { margin: $spacing-1 0 0; color: $text-secondary; max-width: 60ch; } }
-    .layout { display: grid; gap: $spacing-5; @include lg { grid-template-columns: minmax(0, 1fr) 320px; align-items: start; } }
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: $spacing-5; @include lg { grid-template-columns: minmax(0, 1fr) 320px; align-items: start; } }
 
-    .month { @include card; padding: $spacing-4; }
+    .month { @include card; padding: $spacing-3; min-width: 0; @include sm { padding: $spacing-4; } }
     .month__nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: $spacing-3;
       h2 { font-size: $font-size-lg; } }
     .nav-btn { display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid $border-light; border-radius: $radius-default;

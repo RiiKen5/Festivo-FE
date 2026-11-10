@@ -412,12 +412,14 @@ import { Booking } from '../../../../core/models/booking.model';
 
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: $spacing-4;
-      margin-bottom: $spacing-8;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: $spacing-3;
+      margin-bottom: $spacing-6;
 
       @include md {
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: $spacing-4;
+        margin-bottom: $spacing-8;
       }
     }
 
@@ -425,7 +427,24 @@ import { Booking } from '../../../../core/models/booking.model';
       @include card;
       display: flex;
       align-items: center;
-      gap: $spacing-4;
+      gap: $spacing-3;
+      min-width: 0;
+      padding: $spacing-3;
+
+      @include md {
+        gap: $spacing-4;
+        padding: $card-padding;
+      }
+
+      .stat-icon {
+        width: 40px;
+        height: 40px;
+
+        @include md {
+          width: 48px;
+          height: 48px;
+        }
+      }
     }
 
     .stat-icon {
@@ -442,6 +461,7 @@ import { Booking } from '../../../../core/models/booking.model';
     .stat-content {
       display: flex;
       flex-direction: column;
+      min-width: 0;
     }
 
     .stat-value {
@@ -452,6 +472,7 @@ import { Booking } from '../../../../core/models/booking.model';
     .stat-label {
       font-size: $font-size-sm;
       color: $text-secondary;
+      line-height: 1.3;
     }
 
     .dashboard-tabs {
@@ -459,11 +480,12 @@ import { Booking } from '../../../../core/models/booking.model';
       gap: $spacing-2;
       margin-bottom: $spacing-6;
       border-bottom: 1px solid $border-light;
-      overflow-x: auto;
     }
 
+    // Phones: the three tabs share the width instead of scrolling
     .tab-btn {
-      padding: $spacing-3 $spacing-4;
+      flex: 1;
+      padding: $spacing-3 $spacing-2;
       font-weight: $font-weight-medium;
       color: $text-secondary;
       border-bottom: 2px solid transparent;
@@ -472,6 +494,11 @@ import { Booking } from '../../../../core/models/booking.model';
       cursor: pointer;
       white-space: nowrap;
       transition: all $transition-fast;
+
+      @include md {
+        flex: none;
+        padding: $spacing-3 $spacing-4;
+      }
 
       &:hover {
         color: $text-primary;
@@ -489,16 +516,21 @@ import { Booking } from '../../../../core/models/booking.model';
 
     .overview-grid {
       display: grid;
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
       gap: $spacing-6;
 
       @include lg {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     }
 
     .dashboard-section {
       @include card;
+      min-width: 0;
+
+      @include max-md {
+        padding: $spacing-4;
+      }
 
       &.full-width {
         grid-column: 1 / -1;
@@ -837,10 +869,6 @@ import { Booking } from '../../../../core/models/booking.model';
       height: 100%;
     }
 
-    .bookings-table {
-      overflow-x: auto;
-    }
-
     .table-header,
     .table-row {
       display: grid;
@@ -848,6 +876,25 @@ import { Booking } from '../../../../core/models/booking.model';
       gap: $spacing-4;
       padding: $spacing-3 $spacing-4;
       align-items: center;
+    }
+
+    // Phones: each booking is a small card (service and amount on top,
+    // date, status and payment below) instead of a table to scroll
+    @include max-md {
+      .table-header { display: none; }
+
+      .table-row {
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: $spacing-2 $spacing-3;
+        padding: $spacing-3 0;
+
+        .cell-service { grid-column: 1; grid-row: 1; }
+        .cell-amount { grid-column: 2; grid-row: 1; text-align: right; }
+        > span:nth-child(2) { grid-column: 1 / -1; color: $text-secondary; }
+        > span:nth-child(3), .payment-status { justify-self: start; }
+        > span:nth-child(3) { grid-column: 1; }
+        .payment-status { grid-column: 2; justify-self: end; }
+      }
     }
 
     .table-header {

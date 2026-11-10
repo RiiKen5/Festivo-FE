@@ -561,7 +561,12 @@ import { ShopCardComponent } from './shop-card.component';
 
     .action-buttons {
       display: flex;
+      flex-wrap: wrap;
       gap: $spacing-2;
+
+      @include md {
+        justify-content: flex-end;
+      }
     }
 
     .modal-backdrop {
