@@ -22,80 +22,39 @@ import { Booking } from '../../../../core/models/booking.model';
     <main class="dashboard">
       <div class="container">
         <!-- Header -->
-        <header class="dashboard-header">
-          <div class="welcome-section">
-            <h1>Welcome back, {{ auth.currentUser()?.name?.split(' ')?.[0] || 'User' }}!</h1>
-            <p>Here's what's happening with your events</p>
+        <header class="dash-head">
+          <div>
+            <h1>Hi, {{ auth.currentUser()?.name?.split(' ')?.[0] || 'there' }}</h1>
+            <p>{{ summary() }}</p>
           </div>
-          <div class="header-actions">
-            <app-button routerLink="/events/create">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="12" y1="5" x2="12" y2="19"/>
-                <line x1="5" y1="12" x2="19" y2="12"/>
-              </svg>
-              Create Event
-            </app-button>
-          </div>
+          <app-button routerLink="/events/create" icon="plus">New event</app-button>
         </header>
 
-        <!-- Stats Grid -->
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-icon stat-icon--primary">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                <line x1="16" y1="2" x2="16" y2="6"/>
-                <line x1="8" y1="2" x2="8" y2="6"/>
-                <line x1="3" y1="10" x2="21" y2="10"/>
-              </svg>
-            </div>
-            <div class="stat-content">
-              <span class="stat-value">{{ myEvents().length }}</span>
-              <span class="stat-label">My Events</span>
-            </div>
-          </div>
-
-          <div class="stat-card">
-            <div class="stat-icon stat-icon--success">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
-                <polyline points="22 4 12 14.01 9 11.01"/>
-              </svg>
-            </div>
-            <div class="stat-content">
-              <span class="stat-value">{{ completedBookings() }}</span>
-              <span class="stat-label">Completed</span>
-            </div>
-          </div>
-
-          <div class="stat-card">
-            <div class="stat-icon stat-icon--warning">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"/>
-                <polyline points="12 6 12 12 16 14"/>
-              </svg>
-            </div>
-            <div class="stat-content">
-              <span class="stat-value">{{ pendingBookings() }}</span>
-              <span class="stat-label">Pending</span>
-            </div>
-          </div>
-
-          <div class="stat-card">
-            <div class="stat-icon stat-icon--info">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-                <circle cx="9" cy="7" r="4"/>
-                <path d="M23 21v-2a4 4 0 00-3-3.87"/>
-                <path d="M16 3.13a4 4 0 010 7.75"/>
-              </svg>
-            </div>
-            <div class="stat-content">
-              <span class="stat-value">{{ auth.currentUser()?.eventsAttended || 0 }}</span>
-              <span class="stat-label">Attended</span>
-            </div>
-          </div>
-        </div>
+        @if (!isLoadingEvents()) {
+          @if (upcomingEvents()[0]; as ev) {
+            <a class="next" [routerLink]="['/events', ev.slug]" [attr.data-type]="ev.eventType">
+              <span class="next__art" aria-hidden="true"><app-icon [name]="typeIcon(ev.eventType)" [size]="30"></app-icon></span>
+              <span class="next__body">
+                <span class="next__kicker">Next up · {{ countdown(ev.date) }}</span>
+                <span class="next__title">{{ ev.title }}</span>
+                <span class="next__meta">{{ formatDate(ev.date) }} · {{ ev.time }} · {{ ev.locationName || ev.city }}</span>
+              </span>
+              <span class="next__cta">Open plan <app-icon name="arrow-right" [size]="16"></app-icon></span>
+            </a>
+          } @else if (!myEvents().length) {
+            <section class="start">
+              <h2>What are you planning?</h2>
+              <p>Pick an occasion. We'll set up a checklist and suggest vendors near you.</p>
+              <div class="start__grid">
+                @for (o of occasions; track o.value) {
+                  <a class="start__item" [attr.data-type]="o.value" routerLink="/events/create" [queryParams]="{ type: o.value }">
+                    <app-icon [name]="o.icon" [size]="22"></app-icon>{{ o.label }}
+                  </a>
+                }
+              </div>
+            </section>
+          }
+        }
 
         <!-- Navigation Tabs -->
         @if (vendorRequests().length || awaitingPayment().length) {
@@ -137,40 +96,31 @@ import { Booking } from '../../../../core/models/booking.model';
             @case ('overview') {
               <div class="overview-grid">
                 <!-- Upcoming Events -->
+                @if (upcomingEvents().length > 1) {
                 <section class="dashboard-section">
                   <div class="section-header">
-                    <h2>Upcoming Events</h2>
-                    <a routerLink="/dashboard/events" class="section-link">View all →</a>
+                    <h2>Also coming up</h2>
+                    <a routerLink="/dashboard/events" class="section-link">All events →</a>
                   </div>
-                  @if (isLoadingEvents()) {
-                    <div class="loading-placeholder">Loading events...</div>
-                  } @else if (upcomingEvents().length === 0) {
-                    <div class="empty-card">
-                      <span class="empty-icon" aria-hidden="true"><app-icon name="calendar" [size]="28"></app-icon></span>
-                      <h3>No upcoming events</h3>
-                      <p>Create your first event to get started</p>
-                      <app-button routerLink="/events/create" size="sm">Create Event</app-button>
-                    </div>
-                  } @else {
-                    <div class="events-list">
-                      @for (event of upcomingEvents().slice(0, 3); track event._id) {
-                        <div class="event-item" [routerLink]="['/events', event.slug]">
-                          <div class="event-date">
-                            <span class="date-day">{{ getDay(event.date) }}</span>
-                            <span class="date-month">{{ getMonth(event.date) }}</span>
-                          </div>
-                          <div class="event-info">
-                            <h3>{{ event.title }}</h3>
-                            <p>{{ event.time }} • {{ event.locationName || event.city }}</p>
-                          </div>
-                          <div class="event-badge" [class]="'badge--' + event.status">
-                            {{ eventStatus(event.status) }}
-                          </div>
+                  <div class="events-list">
+                    @for (event of upcomingEvents().slice(1, 4); track event._id) {
+                      <a class="event-item" [routerLink]="['/events', event.slug]">
+                        <div class="event-date">
+                          <span class="date-day">{{ getDay(event.date) }}</span>
+                          <span class="date-month">{{ getMonth(event.date) }}</span>
                         </div>
-                      }
-                    </div>
-                  }
+                        <div class="event-info">
+                          <h3>{{ event.title }}</h3>
+                          <p>{{ event.time }} • {{ event.locationName || event.city }}</p>
+                        </div>
+                        <div class="event-badge" [class]="'badge--' + event.status">
+                          {{ eventStatus(event.status) }}
+                        </div>
+                      </a>
+                    }
+                  </div>
                 </section>
+                }
 
                 <!-- Tickets & RSVPs -->
                 @if (myRsvps().length) {
@@ -209,9 +159,9 @@ import { Booking } from '../../../../core/models/booking.model';
                   } @else if (recentBookings().length === 0) {
                     <div class="empty-card">
                       <span class="empty-icon" aria-hidden="true"><app-icon name="clipboard" [size]="28"></app-icon></span>
-                      <h3>No bookings yet</h3>
-                      <p>Book services for your events</p>
-                      <app-button routerLink="/services" size="sm" variant="secondary">Browse Services</app-button>
+                      <h3>No vendors booked yet</h3>
+                      <p>Cakes, decor, photography and more, from people near you.</p>
+                      <app-button routerLink="/services" size="sm" variant="secondary">Find vendors</app-button>
                     </div>
                   } @else {
                     <div class="bookings-list">
@@ -229,34 +179,6 @@ import { Booking } from '../../../../core/models/booking.model';
                   }
                 </section>
 
-                <!-- Quick Actions -->
-                <section class="dashboard-section">
-                  <div class="section-header">
-                    <h2>Quick Actions</h2>
-                  </div>
-                  <div class="actions-grid">
-                    <a routerLink="/events/create" class="action-card">
-                      <span class="action-icon" aria-hidden="true"><app-icon name="party" [size]="22"></app-icon></span>
-                      <span class="action-label">Create Event</span>
-                    </a>
-                    <a routerLink="/services" class="action-card">
-                      <span class="action-icon" aria-hidden="true"><app-icon name="search" [size]="22"></app-icon></span>
-                      <span class="action-label">Find Services</span>
-                    </a>
-                    <a routerLink="/messages" class="action-card">
-                      <span class="action-icon" aria-hidden="true"><app-icon name="message" [size]="22"></app-icon></span>
-                      <span class="action-label">Messages</span>
-                    </a>
-                    <a routerLink="/dashboard/earnings" class="action-card">
-                      <span class="action-icon" aria-hidden="true"><app-icon name="wallet" [size]="22"></app-icon></span>
-                      <span class="action-label">Earnings &amp; Payouts</span>
-                    </a>
-                    <a routerLink="/profile" class="action-card">
-                      <span class="action-icon" aria-hidden="true"><app-icon name="user" [size]="22"></app-icon></span>
-                      <span class="action-label">Edit Profile</span>
-                    </a>
-                  </div>
-                </section>
               </div>
             }
 
@@ -474,6 +396,140 @@ import { Booking } from '../../../../core/models/booking.model';
       color: $text-secondary;
       line-height: 1.3;
     }
+
+    .dash-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: $spacing-4;
+      flex-wrap: wrap;
+      margin-bottom: $spacing-6;
+
+      h1 {
+        font-family: $font-family-display;
+        font-size: clamp(1.75rem, 5vw, 2.5rem);
+        font-weight: 600;
+        letter-spacing: -0.025em;
+      }
+
+      p { margin: $spacing-1 0 0; color: $text-secondary; }
+    }
+
+    // The next event, front and centre
+    .next {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: center;
+      gap: $spacing-4;
+      margin-bottom: $spacing-6;
+      padding: $spacing-5;
+      border-radius: 20px;
+      color: #fff;
+      background: linear-gradient(135deg, #bb5782, #6b2b46);
+      box-shadow: 0 24px 48px -28px rgba(85, 36, 58, 0.6);
+      transition: transform 0.25s cubic-bezier(.2, .8, .2, 1);
+
+      @include md { grid-template-columns: auto minmax(0, 1fr) auto; padding: $spacing-6 $spacing-8; gap: $spacing-6; }
+
+      &:hover { color: #fff; transform: translateY(-2px); }
+
+      &[data-type=birthday] { background: linear-gradient(135deg, #f59e0b, #db2777); }
+      &[data-type=house_party] { background: linear-gradient(135deg, #8b5cf6, #db2777); }
+      &[data-type=wedding] { background: linear-gradient(135deg, #e11d48, #9f1239); }
+      &[data-type=corporate] { background: linear-gradient(135deg, #475569, #0f172a); }
+      &[data-type=farewell] { background: linear-gradient(135deg, #14b8a6, #0f766e); }
+      &[data-type=meetup] { background: linear-gradient(135deg, #0ea5e9, #6366f1); }
+    }
+
+    .next__art {
+      display: grid;
+      place-items: center;
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.2);
+
+      @include md { width: 72px; height: 72px; border-radius: 20px; }
+    }
+
+    .next__body { display: flex; flex-direction: column; min-width: 0; }
+
+    .next__kicker {
+      font-size: $font-size-xs;
+      font-weight: $font-weight-semibold;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      opacity: 0.85;
+    }
+
+    .next__title {
+      margin: 2px 0 4px;
+      font-family: $font-family-display;
+      font-size: clamp(1.35rem, 4vw, 1.875rem);
+      font-weight: 600;
+      line-height: 1.15;
+      overflow-wrap: anywhere;
+    }
+
+    .next__meta { font-size: $font-size-sm; opacity: 0.9; }
+
+    .next__cta {
+      grid-column: 1 / -1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: $spacing-1;
+      height: 40px;
+      padding: 0 $spacing-5;
+      border-radius: $radius-full;
+      background: #fff;
+      color: $text-primary;
+      font-size: $font-size-sm;
+      font-weight: $font-weight-semibold;
+
+      @include md { grid-column: auto; }
+    }
+
+    // First visit: pick an occasion
+    .start {
+      @include card;
+      margin-bottom: $spacing-6;
+
+      h2 { font-family: $font-family-display; font-size: 1.5rem; font-weight: 600; }
+      p { margin: $spacing-1 0 $spacing-5; color: $text-secondary; }
+    }
+
+    .start__grid {
+      display: grid;
+      gap: $spacing-3;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+
+      @include sm { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      @include lg { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    }
+
+    .start__item {
+      display: flex;
+      align-items: center;
+      gap: $spacing-2;
+      padding: $spacing-4;
+      border-radius: 16px;
+      color: #fff;
+      font-weight: $font-weight-semibold;
+      background: linear-gradient(135deg, #bb5782, #6b2b46);
+      transition: transform 0.2s;
+
+      &:hover { color: #fff; transform: translateY(-2px); }
+
+      &[data-type=birthday] { background: linear-gradient(135deg, #f59e0b, #db2777); }
+      &[data-type=house_party] { background: linear-gradient(135deg, #8b5cf6, #db2777); }
+      &[data-type=wedding] { background: linear-gradient(135deg, #e11d48, #9f1239); }
+      &[data-type=corporate] { background: linear-gradient(135deg, #475569, #0f172a); }
+      &[data-type=farewell] { background: linear-gradient(135deg, #14b8a6, #0f766e); }
+      &[data-type=meetup] { background: linear-gradient(135deg, #0ea5e9, #6366f1); }
+    }
+
+    a.event-item { color: inherit; }
 
     .dashboard-tabs {
       display: flex;
@@ -968,6 +1024,35 @@ export class DashboardHomeComponent implements OnInit {
 
   paymentStatus(status: string): string {
     return paymentStatusLabel(status);
+  }
+
+  occasions = [
+    { value: 'birthday', label: 'Birthday', icon: 'cake' },
+    { value: 'house_party', label: 'House party', icon: 'home' },
+    { value: 'wedding', label: 'Wedding', icon: 'heart' },
+    { value: 'corporate', label: 'Corporate', icon: 'briefcase' },
+    { value: 'farewell', label: 'Farewell', icon: 'gift' },
+    { value: 'meetup', label: 'Meetup', icon: 'users' }
+  ];
+
+  typeIcon(type: string): string {
+    return this.occasions.find(o => o.value === type)?.icon || 'party';
+  }
+
+  /** "today", "tomorrow", "in 12 days" */
+  countdown(date: string | Date): string {
+    const day = (d: Date) => Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+    const days = Math.round((day(new Date(date)) - day(new Date())) / 864e5);
+    return days <= 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`;
+  }
+
+  /** One line under the greeting: what needs the user, else what's planned */
+  summary(): string {
+    const asks = this.vendorRequests().length + this.awaitingPayment().length;
+    if (asks) return `${asks} ${asks === 1 ? 'thing needs' : 'things need'} your attention.`;
+    const n = this.upcomingEvents().length;
+    if (n) return `You have ${n} upcoming ${n === 1 ? 'event' : 'events'}.`;
+    return 'Nothing planned yet. Let\'s change that.';
   }
 
   activeTab = signal<'overview' | 'events' | 'bookings'>('overview');

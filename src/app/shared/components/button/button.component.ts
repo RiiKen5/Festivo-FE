@@ -1,5 +1,6 @@
 import { Component, Input, Output, EventEmitter, HostBinding, booleanAttribute } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { IconComponent } from '../icon/icon.component';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'success';
 export type ButtonSize = 'sm' | 'md' | 'lg';
@@ -7,7 +8,7 @@ export type ButtonSize = 'sm' | 'md' | 'lg';
 @Component({
   selector: 'app-button',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, IconComponent],
   template: `
     <button
       [type]="type"
@@ -20,13 +21,13 @@ export type ButtonSize = 'sm' | 'md' | 'lg';
         <span class="btn__spinner"></span>
       }
       @if (icon && iconPosition === 'left' && !loading) {
-        <span class="btn__icon btn__icon--left">{{ icon }}</span>
+        <app-icon class="btn__icon btn__icon--left" [name]="icon" [size]="18"></app-icon>
       }
       <span class="btn__text">
         <ng-content></ng-content>
       </span>
       @if (icon && iconPosition === 'right' && !loading) {
-        <span class="btn__icon btn__icon--right">{{ icon }}</span>
+        <app-icon class="btn__icon btn__icon--right" [name]="icon" [size]="18"></app-icon>
       }
     </button>
   `,

@@ -1,6 +1,7 @@
 import { CitySelectComponent } from '../../../../shared/components/city-select/city-select.component';
 import { ImageUploadComponent } from '../../../../shared/components/image-upload/image-upload.component';
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { IconComponent } from '../../../../shared/components/icon/icon.component';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
@@ -13,299 +14,241 @@ import { PaymentService } from '../../../../core/services/payment.service';
 import { EventType, VibeScore } from '../../../../core/models/event.model';
 import { CustomValidators } from '../../../../shared/validators/custom-validators';
 
+interface Step { title: string; lead: string; fields: string[]; }
+
+// One question per screen. Only what an event needs is asked up front;
+// the rest is optional on the last step and can be added later.
+const STEPS: Step[] = [
+  { title: 'What are you celebrating?', lead: 'Pick the occasion and give it a name.', fields: ['eventType', 'title'] },
+  { title: 'When and where?', lead: 'Vendors use this to check they are free and nearby.', fields: ['date', 'time', 'endDate', 'locationName', 'city', 'address'] },
+  { title: "Who's coming?", lead: 'A rough guest count is fine. You can change it later.', fields: ['expectedGuests', 'maxAttendees', 'budget', 'entryFee'] },
+  { title: 'Make it yours', lead: 'All optional. Add a photo and a few words for your guests.', fields: ['description'] }
+];
+
+const TYPE_DEFAULTS: Record<EventType, { placeholder: string; public: boolean }> = {
+  birthday: { placeholder: 'e.g. Riya turns 5', public: false },
+  house_party: { placeholder: 'e.g. Saturday night at ours', public: false },
+  meetup: { placeholder: 'e.g. Pune founders meetup', public: true },
+  wedding: { placeholder: "e.g. Aditi & Karan's wedding", public: false },
+  corporate: { placeholder: 'e.g. Team offsite 2026', public: false },
+  farewell: { placeholder: 'e.g. Farewell for Asha', public: false },
+  other: { placeholder: 'e.g. Diwali get-together', public: false }
+};
+
 @Component({
   selector: 'app-event-create',
   standalone: true,
   imports: [CitySelectComponent, IconComponent, CommonModule, RouterModule, ReactiveFormsModule, ButtonComponent, InputComponent, ImageUploadComponent],
   template: `
-
-    <main class="create-event">
-      <div class="container">
-        <div class="create-header">
-          <h1>{{ isEditMode() ? 'Edit Event' : 'Create New Event' }}</h1>
-          <p>{{ isEditMode() ? 'Update your event details' : 'Fill in the details to create your event' }}</p>
+    <main class="wizard">
+      <header class="wizard__top">
+        <div class="wizard__bar container">
+          <a class="wizard__close" [routerLink]="isEditMode() ? ['/events', slug] : '/dashboard'" aria-label="Close without saving">
+            <app-icon name="x" [size]="20"></app-icon>
+          </a>
+          <p class="wizard__count">{{ isEditMode() ? 'Edit event' : 'New event' }} · Step {{ step() + 1 }} of {{ steps.length }}</p>
+          <span class="wizard__spacer"></span>
         </div>
+        <div class="progress" role="progressbar" aria-label="Progress" [attr.aria-valuenow]="step() + 1" aria-valuemin="1" [attr.aria-valuemax]="steps.length">
+          <span class="progress__fill" [style.width.%]="(step() + 1) / steps.length * 100"></span>
+        </div>
+      </header>
 
-        <form [formGroup]="form" (ngSubmit)="onSubmit()" class="create-form">
-          <!-- Step 1: Basic Info -->
-          <section class="form-section">
-            <h2 class="section-title">
-              <span class="step-number">1</span>
-              Basic Information
-            </h2>
+      <div class="wizard__body container">
+        <form [formGroup]="form" (ngSubmit)="primary()" class="wizard__form" novalidate>
+          @if (isEditMode()) {
+            <nav class="jump" aria-label="Sections">
+              @for (s of steps; track s.title; let i = $index) {
+                <button type="button" class="jump__item" [class.jump__item--on]="step() === i" [attr.aria-current]="step() === i ? 'step' : null" (click)="go(i)">{{ s.title }}</button>
+              }
+            </nav>
+          }
 
-            <div class="form-grid">
-              <div class="form-group form-group--full">
+          <h1 class="wizard__title">{{ current().title }}</h1>
+          <p class="wizard__lead">{{ current().lead }}</p>
+
+          @switch (step()) {
+            @case (0) {
+              <section class="pane">
+                <div class="types" role="radiogroup" aria-label="Occasion">
+                  @for (type of eventTypes; track type.value) {
+                    <label class="type-option" [class.type-option--selected]="form.get('eventType')?.value === type.value">
+                      <input type="radio" formControlName="eventType" [value]="type.value" (change)="typeChanged()">
+                      <span class="type-option__icon" aria-hidden="true"><app-icon [name]="type.icon" [size]="22"></app-icon></span>
+                      <span class="type-option__label">{{ type.label }}</span>
+                    </label>
+                  }
+                </div>
                 <app-input
-                  label="Event Title"
-                  placeholder="Give your event a catchy name"
+                  label="Name your event"
+                  [placeholder]="titlePlaceholder()"
                   formControlName="title"
                   [error]="getError('title')"
                   required
                 ></app-input>
-              </div>
+              </section>
+            }
 
-              <div class="form-group">
-                <label class="form-label">Event Type</label>
-                <div class="type-grid">
-                  @for (type of eventTypes; track type.value) {
-                    <label
-                      class="type-option"
-                      [class.type-option--selected]="form.get('eventType')?.value === type.value"
-                    >
-                      <input type="radio" formControlName="eventType" [value]="type.value">
-                      <span class="type-icon" aria-hidden="true"><app-icon [name]="type.icon" [size]="20"></app-icon></span>
-                      <span class="type-label">{{ type.label }}</span>
-                    </label>
+            @case (1) {
+              <section class="pane">
+                <div class="row">
+                  <app-input type="date" label="Date" formControlName="date" [error]="getError('date')" required></app-input>
+                  <app-input type="time" label="Start time" formControlName="time" [error]="getError('time')" required></app-input>
+                </div>
+                @if (showEndDate() || form.get('endDate')?.value) {
+                  <app-input type="date" label="Ends on (for events over several days)" formControlName="endDate" [error]="getError('endDate')"></app-input>
+                } @else {
+                  <button type="button" class="add-link" (click)="showEndDate.set(true)"><app-icon name="plus" [size]="16"></app-icon>Runs over several days?</button>
+                }
+                <app-input label="Venue" placeholder="e.g. Home, The Flour Works" formControlName="locationName" [error]="getError('locationName')" required></app-input>
+                <app-city-select label="City" placeholder="Search city" formControlName="city" [error]="getError('city')" hint="We'll suggest vendors in this city" required></app-city-select>
+                <app-input label="Address" placeholder="Street and area" formControlName="address" [error]="getError('address')" hint="Only shared with guests and vendors you book" required></app-input>
+              </section>
+            }
+
+            @case (2) {
+              <section class="pane">
+                <div>
+                  <app-input type="number" label="How many guests?" placeholder="e.g. 25" formControlName="expectedGuests" [error]="getError('expectedGuests')" required></app-input>
+                  <div class="quick" aria-label="Quick pick">
+                    @for (n of guestPresets; track n) {
+                      <button type="button" class="quick__btn" [class.quick__btn--on]="+form.get('expectedGuests')?.value === n" (click)="form.patchValue({ expectedGuests: n })">{{ n }}</button>
+                    }
+                  </div>
+                </div>
+
+                <fieldset class="choices">
+                  <legend>Who can see it?</legend>
+                  <button type="button" class="choice" [class.choice--on]="!form.get('isPublic')?.value" [attr.aria-pressed]="!form.get('isPublic')?.value" (click)="setPublic(false)">
+                    <app-icon name="link" [size]="20"></app-icon>
+                    <span><strong>Invite only</strong><small>Only people with your link can see and RSVP</small></span>
+                  </button>
+                  <button type="button" class="choice" [class.choice--on]="form.get('isPublic')?.value" [attr.aria-pressed]="!!form.get('isPublic')?.value" (click)="setPublic(true)">
+                    <app-icon name="users" [size]="20"></app-icon>
+                    <span><strong>Public</strong><small>Listed on Yaay so anyone nearby can join</small></span>
+                  </button>
+                </fieldset>
+
+                <fieldset class="choices">
+                  <legend>Entry</legend>
+                  <button type="button" class="choice" [class.choice--on]="!form.get('isPaid')?.value" [attr.aria-pressed]="!form.get('isPaid')?.value" (click)="form.patchValue({ isPaid: false })">
+                    <app-icon name="gift" [size]="20"></app-icon>
+                    <span><strong>Free</strong><small>Guests just RSVP</small></span>
+                  </button>
+                  <button type="button" class="choice" [class.choice--on]="form.get('isPaid')?.value" [attr.aria-pressed]="!!form.get('isPaid')?.value" (click)="form.patchValue({ isPaid: true })">
+                    <app-icon name="ticket" [size]="20"></app-icon>
+                    <span><strong>Sell tickets</strong><small>Guests pay online, you're paid after the event</small></span>
+                  </button>
+                </fieldset>
+
+                @if (form.get('isPaid')?.value) {
+                  <div class="paid">
+                    <app-input type="number" label="Ticket price (₹)" placeholder="e.g. 499" formControlName="entryFee" [error]="getError('entryFee')"></app-input>
+                    <fieldset class="fee-payer">
+                      <legend>Yaay's {{ ticketFeePercent() }}% ticket fee</legend>
+                      <label class="radio">
+                        <input type="radio" formControlName="ticketFeePaidBy" value="host">
+                        <span>I pay it. Guests pay ₹{{ entryFee() | number }}, you get ₹{{ hostGetsIfHostPays() | number:'1.0-2' }} a ticket.</span>
+                      </label>
+                      <label class="radio">
+                        <input type="radio" formControlName="ticketFeePaidBy" value="guest">
+                        <span>Guests pay it. Guests pay ₹{{ guestPaysIfGuestPays() | number:'1.0-2' }}, you get the full ₹{{ entryFee() | number }}.</span>
+                      </label>
+                    </fieldset>
+                  </div>
+                }
+
+                @if (form.get('isPublic')?.value || form.get('isPaid')?.value) {
+                  <app-input type="number" label="Limit spots (optional)" placeholder="No limit" formControlName="maxAttendees" [error]="getError('maxAttendees')"></app-input>
+                }
+                <app-input type="number" label="Budget for vendors (optional, ₹)" placeholder="e.g. 20000" formControlName="budget" [error]="getError('budget')" hint="Only you see this. It helps us suggest vendors that fit."></app-input>
+              </section>
+            }
+
+            @case (3) {
+              <section class="pane">
+                <div class="cover">
+                  @if (form.get('coverPhoto')?.value) {
+                    <div class="cover__preview">
+                      <img [src]="form.get('coverPhoto')?.value" alt="Event cover">
+                      <button type="button" class="cover__remove" (click)="form.patchValue({ coverPhoto: '' })">Remove</button>
+                    </div>
+                  }
+                  <app-image-upload
+                    [label]="form.get('coverPhoto')?.value ? 'Replace photo' : 'Add a cover photo'"
+                    (uploaded)="form.patchValue({ coverPhoto: $event })"
+                  ></app-image-upload>
+                </div>
+                <div>
+                  <label class="form-label" for="ev-desc">A note for your guests</label>
+                  <textarea id="ev-desc" class="form-textarea" formControlName="description" rows="4" placeholder="What to expect, dress code, what to bring…"></textarea>
+                  @if (getError('description')) {
+                    <span class="form-error">{{ getError('description') }}</span>
                   }
                 </div>
-              </div>
+                <fieldset class="vibes">
+                  <legend class="form-label">The mood</legend>
+                  @for (vibe of vibeOptions; track vibe.value) {
+                    <label class="vibe" [class.vibe--on]="form.get('vibeScore')?.value === vibe.value">
+                      <input type="radio" formControlName="vibeScore" [value]="vibe.value">
+                      <app-icon [name]="vibe.icon" [size]="16"></app-icon>{{ vibe.label }}
+                    </label>
+                  }
+                </fieldset>
+              </section>
+            }
+          }
 
-              <div class="form-group form-group--full">
-                <label class="form-label">Description</label>
-                <textarea
-                  class="form-textarea"
-                  formControlName="description"
-                  placeholder="Tell people what your event is about..."
-                  rows="5"
-                ></textarea>
-                @if (getError('description')) {
-                  <span class="form-error">{{ getError('description') }}</span>
+          <div class="actions">
+            <div class="actions__inner container">
+              @if (step() > 0) {
+                <app-button variant="ghost" (onClick)="back()" icon="arrow-left">Back</app-button>
+              } @else {
+                <span></span>
+              }
+              <div class="actions__main">
+                @if (isEditMode()) {
+                  @if (!isLast()) {
+                    <app-button variant="secondary" (onClick)="next()">Next</app-button>
+                  }
+                  <app-button type="submit" [loading]="isSubmitting()">Save changes</app-button>
+                } @else {
+                  <app-button type="submit" [loading]="isSubmitting()" [icon]="isLast() ? undefined : 'arrow-right'" iconPosition="right">
+                    {{ isLast() ? 'Create event' : 'Continue' }}
+                  </app-button>
                 }
               </div>
-            </div>
-          </section>
-
-          <!-- Step 2: Date & Time -->
-          <section class="form-section">
-            <h2 class="section-title">
-              <span class="step-number">2</span>
-              Date & Time
-            </h2>
-
-            <div class="form-grid">
-              <div class="form-group">
-                <app-input
-                  type="date"
-                  label="Date"
-                  placeholder="YYYY-MM-DD"
-                  formControlName="date"
-                  [error]="getError('date')"
-                  required
-                ></app-input>
-              </div>
-
-              <div class="form-group">
-                <app-input
-                  type="time"
-                  label="Time"
-                  placeholder="HH:MM"
-                  formControlName="time"
-                  [error]="getError('time')"
-                  required
-                ></app-input>
-              </div>
-
-              <div class="form-group">
-                <app-input
-                  type="date"
-                  label="End Date (Optional)"
-                  placeholder="YYYY-MM-DD"
-                  formControlName="endDate"
-                ></app-input>
-              </div>
-            </div>
-          </section>
-
-          <!-- Step 3: Location -->
-          <section class="form-section">
-            <h2 class="section-title">
-              <span class="step-number">3</span>
-              Location
-            </h2>
-
-            <div class="form-grid">
-              <div class="form-group">
-                <app-input
-                  label="Venue Name"
-                  placeholder="e.g., My House, Sunset Lounge"
-                  formControlName="locationName"
-                  [error]="getError('locationName')"
-                  required
-                ></app-input>
-              </div>
-
-              <div class="form-group">
-                <app-city-select
-                  label="City"
-                  placeholder="Search city"
-                  formControlName="city"
-                  [error]="getError('city')"
-                  hint="We'll suggest vendors in this city"
-                  required
-                ></app-city-select>
-              </div>
-
-              <div class="form-group form-group--full">
-                <app-input
-                  label="Address"
-                  placeholder="Full address of the venue"
-                  formControlName="address"
-                  [error]="getError('address')"
-                  required
-                ></app-input>
-              </div>
-            </div>
-          </section>
-
-          <!-- Step 4: Capacity & Pricing -->
-          <section class="form-section">
-            <h2 class="section-title">
-              <span class="step-number">4</span>
-              Capacity & Pricing
-            </h2>
-
-            <div class="form-grid">
-              <div class="form-group">
-                <app-input
-                  type="number"
-                  label="Expected Guests"
-                  placeholder="e.g., 50"
-                  formControlName="expectedGuests"
-                  [error]="getError('expectedGuests')"
-                  required
-                ></app-input>
-              </div>
-
-              <div class="form-group">
-                <app-input
-                  type="number"
-                  label="Guest limit (optional)"
-                  placeholder="Leave empty for unlimited"
-                  formControlName="maxAttendees"
-                ></app-input>
-              </div>
-
-              <div class="form-group">
-                <app-input
-                  type="number"
-                  label="Budget (INR)"
-                  placeholder="e.g., 50000"
-                  formControlName="budget"
-                ></app-input>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label class="form-checkbox">
-                <input type="checkbox" formControlName="isPaid">
-                <span>This is a paid event</span>
-              </label>
-            </div>
-
-            @if (form.get('isPaid')?.value) {
-              <div class="form-group" style="max-width: 200px;">
-                <app-input
-                  type="number"
-                  label="Entry Fee (INR)"
-                  placeholder="e.g., 500"
-                  formControlName="entryFee"
-                ></app-input>
-              </div>
-              <fieldset class="form-group fee-payer">
-                <legend>Yaay's {{ ticketFeePercent() }}% ticket fee</legend>
-                <label class="form-checkbox">
-                  <input type="radio" formControlName="ticketFeePaidBy" value="host">
-                  <span>I pay it. Guests pay ₹{{ entryFee() | number }}, you get ₹{{ hostGetsIfHostPays() | number:'1.0-2' }} a ticket.</span>
-                </label>
-                <label class="form-checkbox">
-                  <input type="radio" formControlName="ticketFeePaidBy" value="guest">
-                  <span>Guests pay it. Guests pay ₹{{ guestPaysIfGuestPays() | number:'1.0-2' }}, you get the full ₹{{ entryFee() | number }}.</span>
-                </label>
-                <p class="cover-hint">Guests can buy without creating an account. Ticket money is paid to you after the event.</p>
-              </fieldset>
-            }
-          </section>
-
-          <!-- Cover Photo -->
-          <section class="form-section">
-            <h2 class="section-title">Cover Photo</h2>
-            <p class="cover-hint">Events with a photo get far more RSVPs.</p>
-            @if (form.get('coverPhoto')?.value) {
-              <div class="cover-preview">
-                <img [src]="form.get('coverPhoto')?.value" alt="Event cover">
-                <button type="button" class="cover-remove" (click)="form.patchValue({ coverPhoto: '' })">Remove</button>
-              </div>
-            }
-            <app-image-upload
-              [label]="form.get('coverPhoto')?.value ? 'Replace photo' : 'Upload cover photo'"
-              (uploaded)="form.patchValue({ coverPhoto: $event })"
-            ></app-image-upload>
-          </section>
-
-          <!-- Step 5: Settings -->
-          <section class="form-section">
-            <h2 class="section-title">
-              <span class="step-number">5</span>
-              Event Settings
-            </h2>
-
-            <div class="form-group">
-              <label class="form-label">What's the mood?</label>
-              <div class="vibe-grid">
-                @for (vibe of vibeOptions; track vibe.value) {
-                  <label
-                    class="vibe-option"
-                    [class.vibe-option--selected]="form.get('vibeScore')?.value === vibe.value"
-                  >
-                    <input type="radio" formControlName="vibeScore" [value]="vibe.value">
-                    <span class="vibe-icon" aria-hidden="true"><app-icon [name]="vibe.icon" [size]="20"></app-icon></span>
-                    <span class="vibe-label">{{ vibe.label }}</span>
-                  </label>
-                }
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label class="form-checkbox">
-                <input type="checkbox" formControlName="isPublic">
-                <span>Make this event public (visible to everyone)</span>
-              </label>
-            </div>
-
-            <div class="form-group">
-              <app-input
-                label="Tags (comma separated)"
-                placeholder="e.g., music, outdoor, networking"
-                formControlName="tags"
-              ></app-input>
-            </div>
-          </section>
-
-          <!-- Actions -->
-          <div class="form-actions">
-            <app-button variant="ghost" type="button" routerLink="/dashboard/events">
-              Cancel
-            </app-button>
-            <div class="action-buttons">
-              <app-button
-                variant="secondary"
-                type="button"
-                (onClick)="saveDraft()"
-                [loading]="isSavingDraft()"
-              >
-                Save Draft
-              </app-button>
-              <app-button
-                type="submit"
-                [loading]="isSubmitting()"
-                [disabled]="form.invalid"
-              >
-                {{ isEditMode() ? 'Update Event' : 'Create Event' }}
-              </app-button>
             </div>
           </div>
         </form>
+
+        <!-- What guests will see, filled in as you go -->
+        <aside class="preview" aria-hidden="true">
+          <p class="preview__label">Preview</p>
+          <div class="invite">
+            <div class="invite__cover" [attr.data-type]="v().eventType">
+              @if (v().coverPhoto) {
+                <img [src]="v().coverPhoto" alt="">
+              } @else {
+                <app-icon [name]="typeIcon()" [size]="40"></app-icon>
+              }
+              <span class="invite__badge">{{ v().isPublic ? 'Public' : 'Invite only' }}</span>
+            </div>
+            <div class="invite__body">
+              <p class="invite__kind">{{ typeLabel() }}</p>
+              <h2 class="invite__title" [class.invite__title--empty]="!v().title">{{ v().title || 'Your event' }}</h2>
+              <p class="invite__line"><app-icon name="calendar" [size]="16"></app-icon>{{ whenText() || 'Date and time' }}</p>
+              <p class="invite__line"><app-icon name="map-pin" [size]="16"></app-icon>{{ whereText() || 'Venue' }}</p>
+              <div class="invite__foot">
+                <span>{{ v().expectedGuests ? v().expectedGuests + ' guests' : 'Guests' }}</span>
+                <strong>{{ v().isPaid && entryFee() ? '₹' + (entryFee() | number) : 'Free' }}</strong>
+              </div>
+            </div>
+          </div>
+          @if (!isEditMode()) {
+            <p class="preview__next">Next, we'll make you a checklist and suggest vendors in your city.</p>
+          }
+        </aside>
       </div>
     </main>
   `,
@@ -313,229 +256,453 @@ import { CustomValidators } from '../../../../shared/validators/custom-validator
     @use '../../../../../styles/variables' as *;
     @use '../../../../../styles/mixins' as *;
 
-    .create-event {
+    .wizard {
       min-height: calc(100vh - $navbar-height);
-      background: $bg-secondary;
-      padding: $spacing-8 0;
-    }
-
-    .create-header {
-      margin-bottom: $spacing-8;
-
-      h1 {
-        @include heading-2;
-        margin-bottom: $spacing-2;
-      }
-
-      p {
-        color: $text-secondary;
-      }
-    }
-
-    .create-form {
-      max-width: 800px;
-    }
-
-    .form-section {
       background: $bg-primary;
-      border-radius: $radius-lg;
-      padding: $spacing-6;
-      margin-bottom: $spacing-6;
+      padding-bottom: calc(96px + var(--bottom-nav, 0px));
     }
 
-    .section-title {
+    .wizard__top {
+      position: sticky;
+      top: $navbar-height;
+      z-index: 5;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(8px);
+    }
+
+    .wizard__bar {
       display: flex;
       align-items: center;
       gap: $spacing-3;
-      font-size: $font-size-lg;
-      font-weight: $font-weight-semibold;
-      margin-bottom: $spacing-6;
-      padding-bottom: $spacing-4;
-      border-bottom: 1px solid $border-light;
+      height: 52px;
     }
 
-    .fee-payer {
-      border: 0;
-      padding: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-
-      legend { font-weight: 600; margin-bottom: 0.5rem; }
-    }
-
-    .cover-hint {
+    .wizard__close {
+      display: inline-grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      border-radius: $radius-full;
       color: $text-secondary;
+      &:hover { background: $neutral-100; color: $text-primary; }
+    }
+
+    .wizard__count {
+      margin: 0;
+      flex: 1;
+      text-align: center;
       font-size: $font-size-sm;
-      margin-bottom: $spacing-3;
+      font-weight: $font-weight-medium;
+      color: $text-secondary;
     }
 
-    .cover-preview {
-      position: relative;
-      margin-bottom: $spacing-3;
+    .wizard__spacer { width: 36px; }
 
-      img {
-        width: 100%;
-        max-height: 260px;
-        object-fit: cover;
-        border-radius: $radius-lg;
+    .progress {
+      height: 3px;
+      background: $neutral-100;
+    }
+
+    .progress__fill {
+      display: block;
+      height: 100%;
+      background: $primary-600;
+      border-radius: 0 3px 3px 0;
+      transition: width 0.35s cubic-bezier(.2, .8, .2, 1);
+    }
+
+    .wizard__body {
+      display: grid;
+      gap: $spacing-12;
+      padding-top: $spacing-10;
+
+      @include lg {
+        grid-template-columns: minmax(0, 560px) 340px;
+        justify-content: center;
+        gap: $spacing-16;
+        padding-top: $spacing-12;
       }
     }
 
-    .cover-remove {
-      position: absolute;
-      top: $spacing-2;
-      right: $spacing-2;
-      border: none;
-      border-radius: $radius-full;
-      padding: $spacing-1 $spacing-3;
-      background: rgba(0, 0, 0, 0.6);
-      color: $text-inverse;
-      cursor: pointer;
+    .wizard__form { min-width: 0; }
+
+    .wizard__title {
+      font-family: $font-family-display;
+      font-size: 1.875rem;
+      font-weight: 600;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      color: $neutral-900;
+
+      @include md { font-size: 2.25rem; }
     }
 
-    .step-number {
-      @include flex-center;
-      width: 32px;
-      height: 32px;
-      background: $bg-gradient-primary;
-      color: $text-inverse;
+    .wizard__lead {
+      margin: $spacing-2 0 $spacing-8;
+      color: $text-secondary;
+    }
+
+    .pane {
+      display: grid;
+      gap: $spacing-6;
+      animation: pane-in 0.35s cubic-bezier(.2, .8, .2, 1);
+    }
+
+    @keyframes pane-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: none; }
+    }
+
+    .row {
+      display: grid;
+      gap: $spacing-4;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+
+    .jump {
+      display: flex;
+      flex-wrap: wrap;
+      gap: $spacing-2;
+      margin-bottom: $spacing-8;
+    }
+
+    .jump__item {
+      padding: 6px $spacing-3;
+      border: 1px solid $border-default;
       border-radius: $radius-full;
+      background: $bg-primary;
       font-size: $font-size-sm;
-      font-weight: $font-weight-bold;
+      color: $text-secondary;
+
+      &--on { border-color: $primary-600; background: $primary-50; color: $primary-800; }
     }
 
-    .form-grid {
+    // Occasion tiles
+    .types {
       display: grid;
-      grid-template-columns: 1fr;
-      gap: $spacing-5;
-
-      @include md {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
-
-    .form-group {
-      &--full {
-        grid-column: 1 / -1;
-      }
-    }
-
-    .form-label {
-      @include form-label;
-    }
-
-    .form-textarea {
-      @include input-base;
-      padding: $spacing-4;
-      resize: vertical;
-      min-height: 120px;
-    }
-
-    .form-error {
-      @include form-error;
-    }
-
-    .type-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
       gap: $spacing-3;
-
-      @include sm {
-        grid-template-columns: repeat(4, 1fr);
-      }
     }
 
     .type-option {
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: $spacing-4;
-      border: 2px solid $border-light;
-      border-radius: $radius-lg;
+      gap: $spacing-2;
+      padding: $spacing-4 $spacing-2;
+      border: 1.5px solid $border-light;
+      border-radius: $radius-xl;
       cursor: pointer;
-      transition: all $transition-fast;
       text-align: center;
+      transition: border-color $transition-fast, background-color $transition-fast, transform $transition-fast;
 
       input { @include visually-hidden; }
 
-      &:hover {
-        border-color: $primary-300;
-        background: $primary-50;
-      }
-
-      &:has(input:focus-visible) {
-        box-shadow: $focus-ring;
-      }
+      &:hover { border-color: $primary-300; }
+      &:active { transform: scale(0.97); }
+      &:has(input:focus-visible) { box-shadow: $focus-ring; }
 
       &--selected {
         border-color: $primary-600;
         background: $primary-50;
+
+        .type-option__icon { background: $primary-600; color: $text-inverse; }
       }
     }
 
-    .type-icon {
-      font-size: 1.5rem;
-      margin-bottom: $spacing-2;
+    .type-option__icon {
+      display: grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      border-radius: $radius-full;
+      background: $neutral-100;
+      color: $text-primary;
+      transition: background-color $transition-fast, color $transition-fast;
     }
 
-    .type-label {
-      font-size: $font-size-xs;
+    .type-option__label {
+      font-size: $font-size-sm;
       font-weight: $font-weight-medium;
     }
 
-    .vibe-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: $spacing-3;
+    .add-link {
+      display: inline-flex;
+      align-items: center;
+      gap: $spacing-1;
+      justify-self: start;
+      margin-top: -$spacing-3;
+      color: $primary-700;
+      font-size: $font-size-sm;
+      font-weight: $font-weight-medium;
+    }
 
-      @include sm {
-        grid-template-columns: repeat(4, 1fr);
+    .quick {
+      display: flex;
+      flex-wrap: wrap;
+      gap: $spacing-2;
+      margin-top: $spacing-2;
+    }
+
+    .quick__btn {
+      min-width: 52px;
+      height: 34px;
+      padding: 0 $spacing-3;
+      border: 1px solid $border-default;
+      border-radius: $radius-full;
+      font-size: $font-size-sm;
+      color: $text-secondary;
+
+      &--on { border-color: $primary-600; background: $primary-50; color: $primary-800; }
+    }
+
+    .choices {
+      display: grid;
+      gap: $spacing-3;
+      border: 0;
+      padding: 0;
+
+      @include sm { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+
+      legend {
+        @include form-label;
+        float: left;
+        width: 100%;
+        grid-column: 1 / -1;
       }
     }
 
-    .vibe-option {
-      @extend .type-option;
-    }
-
-    .vibe-icon {
-      @extend .type-icon;
-    }
-
-    .vibe-label {
-      @extend .type-label;
-    }
-
-    .form-checkbox {
+    .choice {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: $spacing-3;
+      padding: $spacing-4;
+      border: 1.5px solid $border-light;
+      border-radius: $radius-xl;
+      background: $bg-primary;
+      text-align: left;
+      color: $text-secondary;
+      transition: border-color $transition-fast, background-color $transition-fast;
+
+      &:hover { border-color: $primary-300; }
+
+      strong { display: block; color: $text-primary; font-size: $font-size-base; }
+      small { display: block; margin-top: 2px; font-size: $font-size-sm; line-height: 1.4; }
+
+      &--on {
+        border-color: $primary-600;
+        background: $primary-50;
+        color: $primary-700;
+      }
+    }
+
+    .paid {
+      display: grid;
+      gap: $spacing-4;
+      padding: $spacing-4;
+      border-radius: $radius-xl;
+      background: $neutral-50;
+    }
+
+    .fee-payer {
+      display: grid;
+      gap: $spacing-2;
+      border: 0;
+      padding: 0;
+
+      legend { @include form-label; }
+    }
+
+    .radio {
+      display: flex;
+      gap: $spacing-3;
+      align-items: flex-start;
+      font-size: $font-size-sm;
       cursor: pointer;
 
-      input {
-        width: 18px;
-        height: 18px;
-        accent-color: $primary-600;
-      }
-
-      span {
-        font-size: $font-size-sm;
-      }
+      input { margin-top: 3px; accent-color: $primary-600; }
     }
 
-    .form-actions {
+    .cover__preview {
+      position: relative;
+      margin-bottom: $spacing-3;
+
+      img { width: 100%; max-height: 240px; object-fit: cover; border-radius: $radius-xl; }
+    }
+
+    .cover__remove {
+      position: absolute;
+      top: $spacing-2;
+      right: $spacing-2;
+      padding: $spacing-1 $spacing-3;
+      border-radius: $radius-full;
+      background: rgba(0, 0, 0, 0.6);
+      color: $text-inverse;
+    }
+
+    .form-label { @include form-label; }
+    .form-error { @include form-error; display: block; }
+
+    .vibes {
       display: flex;
       flex-wrap: wrap;
-      justify-content: space-between;
+      gap: $spacing-2;
+      border: 0;
+      padding: 0;
+
+      legend { width: 100%; }
+    }
+
+    .vibe {
+      display: inline-flex;
       align-items: center;
-      gap: $spacing-3;
-      padding-top: $spacing-6;
+      gap: 6px;
+      height: 36px;
+      padding: 0 $spacing-3;
+      border: 1px solid $border-default;
+      border-radius: $radius-full;
+      font-size: $font-size-sm;
+      color: $text-secondary;
+      cursor: pointer;
+
+      input { @include visually-hidden; }
+      &:has(input:focus-visible) { box-shadow: $focus-ring; }
+      &--on { border-color: $primary-600; background: $primary-50; color: $primary-800; }
     }
 
-    .action-buttons {
+    // Bottom action bar, above the phone navigation
+    .actions {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: var(--bottom-nav, 0px);
+      z-index: 6;
+      border-top: 1px solid $border-light;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(8px);
+    }
+
+    .actions__inner {
       display: flex;
-      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
       gap: $spacing-3;
+      height: 72px;
+    }
+
+    .actions__main {
+      display: flex;
+      gap: $spacing-2;
+    }
+
+    // Live preview
+    .preview {
+      display: none;
+
+      @include lg {
+        display: block;
+        position: sticky;
+        top: calc(#{$navbar-height} + 88px);
+        align-self: start;
+      }
+    }
+
+    .preview__label {
+      margin: 0 0 $spacing-3;
+      font-size: $font-size-xs;
+      font-weight: $font-weight-semibold;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: $text-tertiary;
+    }
+
+    .preview__next {
+      margin: $spacing-4 0 0;
+      font-size: $font-size-sm;
+      color: $text-secondary;
+    }
+
+    .invite {
+      overflow: hidden;
+      border: 1px solid $border-light;
+      border-radius: $radius-2xl;
+      background: $bg-primary;
+      box-shadow: 0 24px 48px -24px rgba(85, 36, 58, 0.35);
+    }
+
+    .invite__cover {
+      position: relative;
+      display: grid;
+      place-items: center;
+      height: 170px;
+      color: rgba(255, 255, 255, 0.95);
+      background: linear-gradient(135deg, #bb5782, #6b2b46);
+
+      &[data-type=birthday] { background: linear-gradient(135deg, #f59e0b, #db2777); }
+      &[data-type=house_party] { background: linear-gradient(135deg, #8b5cf6, #db2777); }
+      &[data-type=meetup] { background: linear-gradient(135deg, #0ea5e9, #6366f1); }
+      &[data-type=wedding] { background: linear-gradient(135deg, #e11d48, #9f1239); }
+      &[data-type=corporate] { background: linear-gradient(135deg, #334155, #0f172a); }
+      &[data-type=farewell] { background: linear-gradient(135deg, #14b8a6, #0f766e); }
+
+      img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    }
+
+    .invite__badge {
+      position: absolute;
+      top: $spacing-3;
+      left: $spacing-3;
+      padding: 4px 10px;
+      border-radius: $radius-full;
+      background: rgba(255, 255, 255, 0.92);
+      color: $text-primary;
+      font-size: $font-size-xs;
+      font-weight: $font-weight-semibold;
+    }
+
+    .invite__body { padding: $spacing-5; }
+
+    .invite__kind {
+      margin: 0;
+      font-size: $font-size-xs;
+      font-weight: $font-weight-semibold;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: $primary-700;
+    }
+
+    .invite__title {
+      margin: $spacing-1 0 $spacing-4;
+      font-family: $font-family-display;
+      font-size: $font-size-2xl;
+      font-weight: 600;
+      line-height: 1.2;
+      overflow-wrap: anywhere;
+
+      &--empty { color: $neutral-500; }
+    }
+
+    .invite__line {
+      display: flex;
+      align-items: center;
+      gap: $spacing-2;
+      margin: 0 0 $spacing-2;
+      font-size: $font-size-sm;
+      color: $text-secondary;
+
+      app-icon { color: $text-tertiary; }
+    }
+
+    .invite__foot {
+      display: flex;
+      justify-content: space-between;
+      margin-top: $spacing-4;
+      padding-top: $spacing-4;
+      border-top: 1px solid $border-light;
+      font-size: $font-size-sm;
+      color: $text-secondary;
+
+      strong { color: $text-primary; }
     }
   `]
 })
@@ -548,28 +715,25 @@ export class EventCreateComponent implements OnInit {
   private payments = inject(PaymentService);
   ticketFeePercent = signal(5);
 
-  entryFee(): number {
-    return Number(this.form?.get('entryFee')?.value) || 0;
-  }
-
-  hostGetsIfHostPays(): number {
-    return Math.round(this.entryFee() * (100 - this.ticketFeePercent())) / 100;
-  }
-
-  guestPaysIfGuestPays(): number {
-    return Math.round(this.entryFee() * (100 + this.ticketFeePercent())) / 100;
-  }
+  steps = STEPS;
+  step = signal(0);
+  current = computed(() => this.steps[this.step()]);
+  isLast = computed(() => this.step() === this.steps.length - 1);
+  showEndDate = signal(false);
+  guestPresets = [10, 25, 50, 100, 200];
 
   isEditMode = signal(false);
   isSubmitting = signal(false);
-  isSavingDraft = signal(false);
   eventId = '';
+  slug = '';
+  // Visibility follows the occasion until the host picks it themselves
+  private publicChosen = false;
 
   eventTypes = [
     { value: 'birthday' as EventType, label: 'Birthday', icon: 'cake' },
-    { value: 'house_party' as EventType, label: 'House Party', icon: 'home' },
-    { value: 'meetup' as EventType, label: 'Meetup', icon: 'users' },
+    { value: 'house_party' as EventType, label: 'House party', icon: 'home' },
     { value: 'wedding' as EventType, label: 'Wedding', icon: 'heart' },
+    { value: 'meetup' as EventType, label: 'Meetup', icon: 'users' },
     { value: 'corporate' as EventType, label: 'Corporate', icon: 'briefcase' },
     { value: 'farewell' as EventType, label: 'Farewell', icon: 'gift' },
     { value: 'other' as EventType, label: 'Other', icon: 'party' }
@@ -583,9 +747,9 @@ export class EventCreateComponent implements OnInit {
   ];
 
   form: FormGroup = this.fb.group({
-    title: ['', [Validators.required, Validators.minLength(5), Validators.maxLength(100), CustomValidators.noScript()]],
-    eventType: ['house_party', Validators.required],
-    description: ['', [Validators.required, Validators.minLength(20), Validators.maxLength(2000), CustomValidators.noScript()]],
+    title: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(100), CustomValidators.noScript()]],
+    eventType: ['birthday', Validators.required],
+    description: ['', [Validators.maxLength(2000), CustomValidators.noScript()]],
     date: ['', [Validators.required, CustomValidators.dateFormat(), CustomValidators.futureDate()]],
     time: ['', [Validators.required, CustomValidators.timeFormat()]],
     endDate: ['', [CustomValidators.dateFormat()]],
@@ -599,7 +763,7 @@ export class EventCreateComponent implements OnInit {
     entryFee: [0, [CustomValidators.positiveNumber()]],
     ticketFeePaidBy: ['host'],
     vibeScore: ['party'],
-    isPublic: [true],
+    isPublic: [false],
     tags: ['', [Validators.maxLength(200)]],
     coverPhoto: ['']
   }, {
@@ -609,13 +773,47 @@ export class EventCreateComponent implements OnInit {
     ]
   });
 
+  v = toSignal(this.form.valueChanges, { initialValue: this.form.value });
+
+  titlePlaceholder = computed(() => TYPE_DEFAULTS[this.v().eventType as EventType]?.placeholder || 'Give it a name');
+  typeLabel = computed(() => this.eventTypes.find(t => t.value === this.v().eventType)?.label || 'Event');
+  typeIcon = computed(() => this.eventTypes.find(t => t.value === this.v().eventType)?.icon || 'party');
+  whenText = computed(() => {
+    const { date, time } = this.v();
+    if (!date) return '';
+    const d = new Date(date + 'T' + (time || '00:00'));
+    if (isNaN(d.getTime())) return '';
+    const day = d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+    return time ? `${day} · ${d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}` : day;
+  });
+  whereText = computed(() => [this.v().locationName, this.v().city].filter(Boolean).join(', '));
+
+  entryFee(): number {
+    return Number(this.form?.get('entryFee')?.value) || 0;
+  }
+
+  hostGetsIfHostPays(): number {
+    return Math.round(this.entryFee() * (100 - this.ticketFeePercent())) / 100;
+  }
+
+  guestPaysIfGuestPays(): number {
+    return Math.round(this.entryFee() * (100 + this.ticketFeePercent())) / 100;
+  }
+
   ngOnInit(): void {
     this.payments.getConfig().subscribe(config => this.ticketFeePercent.set(config.ticketFeePercent));
     const slug = this.route.snapshot.paramMap.get('slug');
     if (slug && this.route.snapshot.url.some(s => s.path === 'edit')) {
       this.isEditMode.set(true);
+      this.publicChosen = true;
+      this.slug = slug;
       this.loadEvent(slug);
+      return;
     }
+    // Links like /events/create?type=wedding start on that occasion
+    const type = this.route.snapshot.queryParamMap.get('type') as EventType | null;
+    if (type && this.eventTypes.some(t => t.value === type)) this.form.patchValue({ eventType: type });
+    this.typeChanged();
   }
 
   loadEvent(slug: string): void {
@@ -648,29 +846,70 @@ export class EventCreateComponent implements OnInit {
     });
   }
 
+  typeChanged(): void {
+    if (this.publicChosen) return;
+    const type = this.form.get('eventType')?.value as EventType;
+    this.form.patchValue({ isPublic: TYPE_DEFAULTS[type]?.public ?? false });
+  }
+
+  setPublic(value: boolean): void {
+    this.publicChosen = true;
+    this.form.patchValue({ isPublic: value });
+  }
+
+  /** Marks this step's fields touched; true when they are all valid. */
+  private stepValid(i = this.step()): boolean {
+    const controls = this.steps[i].fields.map(f => this.form.get(f)!).filter(Boolean);
+    controls.forEach(c => { c.markAsTouched(); c.updateValueAndValidity({ emitEvent: false }); });
+    return controls.every(c => c.valid);
+  }
+
+  next(): void {
+    if (!this.stepValid()) return;
+    this.go(this.step() + 1);
+  }
+
+  back(): void {
+    this.go(this.step() - 1);
+  }
+
+  go(i: number): void {
+    if (i < 0 || i >= this.steps.length) return;
+    this.step.set(i);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  /** Enter key and the main button: next step, or save on the last one. */
+  primary(): void {
+    if (this.isEditMode() || this.isLast()) this.onSubmit();
+    else this.next();
+  }
+
   getError(field: string): string {
     const control = this.form.get(field);
     if (control?.touched && control?.errors) {
       if (control.errors['required']) return 'This field is required';
-      if (control.errors['minlength']) return `Minimum ${control.errors['minlength'].requiredLength} characters required`;
+      if (control.errors['minlength']) return `At least ${control.errors['minlength'].requiredLength} characters`;
       if (control.errors['maxlength']) return `Maximum ${control.errors['maxlength'].requiredLength} characters allowed`;
-      if (control.errors['min']) return `Value must be at least ${control.errors['min'].min}`;
-      if (control.errors['max']) return `Value cannot exceed ${control.errors['max'].max}`;
-      if (control.errors['pastDate']) return 'Date cannot be in the past';
-      if (control.errors['dateRange']) return 'End date must be after start date';
+      if (control.errors['min']) return `Must be at least ${control.errors['min'].min}`;
+      if (control.errors['max']) return `Cannot be more than ${control.errors['max'].max}`;
+      if (control.errors['pastDate']) return 'Pick a date from today on';
+      if (control.errors['dateRange']) return 'End date must be after the start date';
       if (control.errors['invalidDateFormat']) return 'Use format YYYY-MM-DD';
       if (control.errors['invalidTime']) return 'Use format HH:MM (e.g., 14:30)';
       if (control.errors['positiveNumber']) return 'Must be a positive number';
-      if (control.errors['minPrice']) return `Minimum price is ₹${control.errors['minPrice'].min}`;
-      if (control.errors['maxPrice']) return `Maximum price is ₹${control.errors['maxPrice'].max}`;
-      if (control.errors['maxLessThanExpected']) return 'Max capacity must be greater than expected guests';
+      if (control.errors['minPrice']) return `Minimum is ₹${control.errors['minPrice'].min}`;
+      if (control.errors['maxPrice']) return `Maximum is ₹${control.errors['maxPrice'].max}`;
+      if (control.errors['maxLessThanExpected']) return 'Must be more than the number of guests';
       if (control.errors['scriptInjection']) return 'Invalid characters detected';
     }
     return '';
   }
 
   onSubmit(): void {
-    if (this.form.invalid) return;
+    // Send the host to the first step that still needs something
+    const bad = this.steps.findIndex((_, i) => !this.stepValid(i));
+    if (bad !== -1) { this.go(bad); return; }
 
     this.isSubmitting.set(true);
     const formData = this.prepareFormData();
@@ -693,27 +932,14 @@ export class EventCreateComponent implements OnInit {
     });
   }
 
-  saveDraft(): void {
-    this.isSavingDraft.set(true);
-    const formData = this.prepareFormData();
-
-    this.eventService.createEvent(formData).subscribe({
-      next: (response) => {
-        this.toast.success('Draft Saved!', 'Your event has been saved as a draft.');
-        this.router.navigate(['/dashboard/events']);
-      },
-      error: () => {
-        this.isSavingDraft.set(false);
-      }
-    });
-  }
-
   private prepareFormData(): any {
     const values = this.form.value;
+    const description = (values.description || '').trim() ||
+      `${this.typeLabel()} at ${values.locationName}, ${values.city}.`;
     return {
       title: values.title,
       eventType: values.eventType,
-      description: values.description,
+      description,
       date: values.date,
       time: values.time,
       endDate: values.endDate || undefined,
