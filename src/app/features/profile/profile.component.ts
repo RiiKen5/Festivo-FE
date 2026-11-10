@@ -143,7 +143,7 @@ import { ToastService } from '../../core/services/toast.service';
                         ></app-input>
                       </div>
                       <div class="form-group">
-                        <label class="form-label" for="profile-user-type">I use Festivo to</label>
+                        <label class="form-label" for="profile-user-type">I use Yaay to</label>
                         <select id="profile-user-type" class="form-select" formControlName="userType">
                           <option value="organizer">Event Organizer</option>
                           <option value="helper">Service Provider</option>
@@ -685,7 +685,7 @@ export class ProfileComponent {
   });
 
   deleteAccount(): void {
-    if (this.deleteConfirm !== 'DELETE' || !confirm('Delete your Festivo account permanently? This cannot be undone.')) return;
+    if (this.deleteConfirm !== 'DELETE' || !confirm('Delete your Yaay account permanently? This cannot be undone.')) return;
     this.isDeleting.set(true);
     this.auth.deleteAccount().subscribe({
       next: () => this.toast.success('Account deleted', 'Your account and personal details have been removed.'),

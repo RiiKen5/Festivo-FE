@@ -14,7 +14,7 @@ type VerificationStatus = 'verifying' | 'success' | 'error' | 'no-token';
   template: `
     <div class="verify-email-page">
       <div class="verify-card">
-        <a routerLink="/" class="verify-logo" aria-label="Festivo home"><app-logo [size]="34"></app-logo></a>
+        <a routerLink="/" class="verify-logo" aria-label="Yaay home"><app-logo [size]="34"></app-logo></a>
         @switch (status()) {
           @case ('verifying') {
             <div class="status-icon status-icon--loading">

@@ -111,7 +111,7 @@ interface ClaimLink { name: string; phone?: string; serviceName?: string; slug?:
           }
 
           @case ('payouts') {
-            <p class="muted">Send each payout by UPI or bank transfer, then record the UTR/reference here. The payee is notified. Payout promise: anything marked sent after its deadline carries no Festivo fee, and the extra is added automatically.</p>
+            <p class="muted">Send each payout by UPI or bank transfer, then record the UTR/reference here. The payee is notified. Payout promise: anything marked sent after its deadline carries no Yaay fee, and the extra is added automatically.</p>
             @if (payouts().length === 0) {
               <p class="empty">Nothing to pay out right now.</p>
             }
@@ -121,7 +121,7 @@ interface ClaimLink { name: string; phone?: string; serviceName?: string; slug?:
                   <strong>₹{{ p.amountDue | number:'1.0-2' }}</strong> to {{ p.payee.name }}
                   <span class="pill">{{ p.kind === 'ticket' ? 'Tickets' : p.part === 'advance' ? 'Advance (half, before the event)' : 'Final payout' }}</span>
                   @if (p.dueBy) {
-                    <div [class.warning]="isLate(p)" class="muted">{{ isLate(p) ? 'Late: was due' : 'Send by' }} {{ p.dueBy | date:'d MMM, h:mm a' }}{{ isLate(p) ? '. No Festivo fee on this payment.' : '' }}</div>
+                    <div [class.warning]="isLate(p)" class="muted">{{ isLate(p) ? 'Late: was due' : 'Send by' }} {{ p.dueBy | date:'d MMM, h:mm a' }}{{ isLate(p) ? '. No Yaay fee on this payment.' : '' }}</div>
                   }
                   <div class="muted">
                     {{ p.kind === 'ticket' ? 'Ticket sales' : 'Booking' }} · {{ p.event?.title }} ·
@@ -129,7 +129,7 @@ interface ClaimLink { name: string; phone?: string; serviceName?: string; slug?:
                     @if (p.refundedAmount) { , refunded ₹{{ p.refundedAmount | number:'1.0-2' }} }
                   </div>
                   @if (p.payee.penaltyDue) {
-                    <div class="warning">The vendor owes Festivo ₹{{ p.payee.penaltyDue | number:'1.0-2' }} (penalty or money already sent and refunded). Send ₹{{ (p.amountDue - (p.payee.penaltyDue > p.amountDue ? p.amountDue : p.payee.penaltyDue)) | number:'1.0-2' }}{{ isLate(p) ? ' plus the waived fee' : '' }}. It's recorded when you mark this sent.</div>
+                    <div class="warning">The vendor owes Yaay ₹{{ p.payee.penaltyDue | number:'1.0-2' }} (penalty or money already sent and refunded). Send ₹{{ (p.amountDue - (p.payee.penaltyDue > p.amountDue ? p.amountDue : p.payee.penaltyDue)) | number:'1.0-2' }}{{ isLate(p) ? ' plus the waived fee' : '' }}. It's recorded when you mark this sent.</div>
                   }
                   <div class="payee-details">
                     @if (p.payee.payoutDetails; as d) {
@@ -645,7 +645,7 @@ export class AdminComponent implements OnInit {
     this.admin.markPayoutPaid(payout._id, reference, payout.part).subscribe(res => {
       this.payouts.update(list => list.filter(p => p._id + p.part !== key));
       const { sent, feeWaived } = res.data;
-      this.toast.success('Payout recorded', `₹${sent.toLocaleString('en-IN')} to ${payout.payee.name}${feeWaived ? ' (late, so no Festivo fee)' : ''}. They have been notified.`);
+      this.toast.success('Payout recorded', `₹${sent.toLocaleString('en-IN')} to ${payout.payee.name}${feeWaived ? ' (late, so no Yaay fee)' : ''}. They have been notified.`);
       this.loadStats();
     });
   }
@@ -706,14 +706,14 @@ export class AdminComponent implements OnInit {
 
   claimWhatsApp(c: ClaimLink): string {
     return this.whatsApp(c.phone || '', c.serviceName
-      ? `Hi ${c.name}, your Festivo page "${c.serviceName}" is ready. Open this link to set your password and see it (it works for 14 days): ${c.url}`
-      : `Hi ${c.name}, here is your new Festivo link to set your password (it works for 14 days): ${c.url}`);
+      ? `Hi ${c.name}, your Yaay page "${c.serviceName}" is ready. Open this link to set your password and see it (it works for 14 days): ${c.url}`
+      : `Hi ${c.name}, here is your new Yaay link to set your password (it works for 14 days): ${c.url}`);
   }
 
   requestWhatsApp(r: PendingRequest): string {
     const date = new Date(r.eventDate).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' });
     return this.whatsApp(r.vendor?.phone || '',
-      `Hi ${r.vendor?.name}, you have a new booking request on Festivo from ${r.organizer?.name} for ${r.service?.serviceName} on ${date}. Please accept or decline it here: ${window.location.origin}/bookings/${r._id}`);
+      `Hi ${r.vendor?.name}, you have a new booking request on Yaay from ${r.organizer?.name} for ${r.service?.serviceName} on ${date}. Please accept or decline it here: ${window.location.origin}/bookings/${r._id}`);
   }
 
   nudged(r: PendingRequest): void {

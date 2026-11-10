@@ -17,7 +17,7 @@ import { LogoComponent } from '../logo/logo.component';
   template: `
     <header class="navbar">
       <div class="navbar__container">
-        <a routerLink="/" class="navbar__logo" aria-label="Festivo home">
+        <a routerLink="/" class="navbar__logo" aria-label="Yaay home">
           <app-logo [size]="30"></app-logo>
         </a>
 

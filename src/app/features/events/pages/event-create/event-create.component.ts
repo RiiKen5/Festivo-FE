@@ -213,7 +213,7 @@ import { CustomValidators } from '../../../../shared/validators/custom-validator
                 ></app-input>
               </div>
               <fieldset class="form-group fee-payer">
-                <legend>Festivo's {{ ticketFeePercent() }}% ticket fee</legend>
+                <legend>Yaay's {{ ticketFeePercent() }}% ticket fee</legend>
                 <label class="form-checkbox">
                   <input type="radio" formControlName="ticketFeePaidBy" value="host">
                   <span>I pay it. Guests pay ₹{{ entryFee() | number }}, you get ₹{{ hostGetsIfHostPays() | number:'1.0-2' }} a ticket.</span>

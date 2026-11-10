@@ -50,10 +50,10 @@ import { ShopCardComponent } from './shop-card.component';
           <div class="fee-banner">
             @if (auth.currentUser()?.foundingVendor && f.foundingOpen) {
               <p class="fee-banner__title">You're a founding vendor</p>
-              <p>Festivo keeps <strong>{{ f.foundingOwnPercent }}%</strong> on customers who book through your own link and <strong>{{ f.foundingNewPercent }}%</strong> on new customers who find you on Festivo, until {{ foundingLastDay(f.foundingUntil) }}. Never more than ₹{{ f.cap | number }} a booking.</p>
+              <p>Yaay keeps <strong>{{ f.foundingOwnPercent }}%</strong> on customers who book through your own link and <strong>{{ f.foundingNewPercent }}%</strong> on new customers who find you on Yaay, until {{ foundingLastDay(f.foundingUntil) }}. Never more than ₹{{ f.cap | number }} a booking.</p>
             } @else {
               <p class="fee-banner__title">Your fees</p>
-              <p>Festivo keeps <strong>{{ f.ownPercent }}%</strong> on customers who book through your own link and <strong>{{ f.newPercent }}%</strong> on new customers who find you on Festivo. Never more than ₹{{ f.cap | number }} a booking.</p>
+              <p>Yaay keeps <strong>{{ f.ownPercent }}%</strong> on customers who book through your own link and <strong>{{ f.newPercent }}%</strong> on new customers who find you on Yaay. Never more than ₹{{ f.cap | number }} a booking.</p>
             }
             <p>Use <strong>Share</strong> on a listing to send your link on Instagram or WhatsApp. Customers who first come through it count as yours.</p>
           </div>
@@ -104,7 +104,7 @@ import { ShopCardComponent } from './shop-card.component';
             <app-icon name="share" [size]="18"></app-icon>
             <p>
               <strong>Get paid before the event.</strong>
-              Put your Festivo link in your Instagram bio and send it with your quotes on WhatsApp.
+              Put your Yaay link in your Instagram bio and send it with your quotes on WhatsApp.
               Customers book and pay here, and the money is released to you after the job.
             </p>
           </div>
@@ -212,7 +212,7 @@ import { ShopCardComponent } from './shop-card.component';
 
     <!-- Delete Confirmation Modal -->
     <app-modal [isOpen]="showDeleteModal()" title="Delete service" size="sm" [showFooter]="true" (onClose)="showDeleteModal.set(false)">
-      <p class="modal-text">Remove "{{ serviceToDelete()?.serviceName }}" from Festivo? It will be hidden from search and can't be booked. Your existing bookings aren't affected.</p>
+      <p class="modal-text">Remove "{{ serviceToDelete()?.serviceName }}" from Yaay? It will be hidden from search and can't be booked. Your existing bookings aren't affected.</p>
       <div modal-footer>
         <app-button variant="secondary" (onClick)="showDeleteModal.set(false)">Keep service</app-button>
         <app-button variant="danger" [loading]="isDeleting()" (onClick)="deleteService()">Delete service</app-button>
@@ -631,7 +631,7 @@ export class MyServicesComponent implements OnInit {
     this.analytics.track('listing_shared', { serviceId: service._id, channel: 'my_services', own: true });
     if (navigator.share) {
       try {
-        await navigator.share({ title: service.serviceName, text: `Book ${service.serviceName} on Festivo`, url });
+        await navigator.share({ title: service.serviceName, text: `Book ${service.serviceName} on Yaay`, url });
         return;
       } catch (err: any) {
         if (err?.name === 'AbortError') return;

@@ -21,7 +21,7 @@ declare const google: any;
       <div class="auth-container">
         <div class="auth-card">
           <div class="auth-header">
-            <a routerLink="/" class="auth-logo" aria-label="Festivo home"><app-logo [size]="34"></app-logo></a>
+            <a routerLink="/" class="auth-logo" aria-label="Yaay home"><app-logo [size]="34"></app-logo></a>
             <h1 class="auth-title">Welcome back</h1>
             <p class="auth-subtitle">Sign in to continue planning amazing events</p>
           </div>

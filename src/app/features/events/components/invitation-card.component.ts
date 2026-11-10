@@ -3,7 +3,7 @@ import { ModalComponent } from '../../../shared/components/modal/modal.component
 import { ButtonComponent } from '../../../shared/components/button/button.component';
 import { ToastService } from '../../../core/services/toast.service';
 import { AnalyticsService } from '../../../core/services/analytics.service';
-import { Event as FestivoEvent } from '../../../core/models/event.model';
+import { Event as YaayEvent } from '../../../core/models/event.model';
 
 interface Theme { id: string; name: string; bg: [string, string]; ink: string; soft: string; accent: string; }
 
@@ -78,7 +78,7 @@ const H = 1350;
 })
 export class InvitationCardComponent implements OnChanges {
   @Input() isOpen = false;
-  @Input() event: FestivoEvent | null = null;
+  @Input() event: YaayEvent | null = null;
   @Input() hostName = '';
   /** Where the QR code points: the invite link for private events. */
   @Input() link = '';
@@ -228,7 +228,7 @@ export class InvitationCardComponent implements OnChanges {
 
     ctx.fillStyle = t.soft;
     ctx.font = '400 24px Inter';
-    ctx.fillText('festivo.paathly.in', W / 2, H - 70);
+    ctx.fillText('yaay.paathly.in', W / 2, H - 70);
 
     canvas.toBlob(b => {
       if (!b) return;

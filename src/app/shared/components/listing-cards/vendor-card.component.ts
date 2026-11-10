@@ -22,7 +22,7 @@ import { categoryLabel, priceUnitLabel, plural } from './listing-format';
         <h3 class="card__title">
           {{ service.serviceName }}
           @if (service.isVerified) {
-            <span class="card__verified" title="Verified by Festivo">
+            <span class="card__verified" title="Verified by Yaay">
               <app-icon name="shield-check" [size]="16"></app-icon>
               <span class="visually-hidden">Verified</span>
             </span>
@@ -40,7 +40,7 @@ import { categoryLabel, priceUnitLabel, plural } from './listing-format';
               <span class="card__muted">({{ reviews }})</span>
             </span>
           } @else {
-            <span class="card__new">New on Festivo</span>
+            <span class="card__new">New on Yaay</span>
           }
           <span class="card__price">
             ₹{{ service.basePrice | number }}

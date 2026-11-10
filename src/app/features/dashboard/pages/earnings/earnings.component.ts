@@ -22,7 +22,7 @@ import {
         <a routerLink="/dashboard" class="back-link">← Dashboard</a>
         <h1>Earnings &amp; Payouts</h1>
         <p class="subtitle">
-          Money paid online for your services and event tickets. Festivo holds each payment until the
+          Money paid online for your services and event tickets. Yaay holds each payment until the
           booking is completed (or your event takes place), then pays you out minus the platform fee.
         </p>
 
@@ -81,7 +81,7 @@ import {
           @if (isLoading()) {
             <p class="muted">Loading…</p>
           } @else if (records().length === 0) {
-            <p class="muted">No online payments yet. Once organizers pay you through Festivo they will appear here.</p>
+            <p class="muted">No online payments yet. Once organizers pay you through Yaay they will appear here.</p>
           } @else {
             <div class="table-wrap">
               <table>

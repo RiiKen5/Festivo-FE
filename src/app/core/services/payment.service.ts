@@ -147,7 +147,7 @@ export class PaymentService {
         order_id: details.orderId,
         amount: Math.round(details.amount * 100),
         currency: details.currency,
-        name: 'Festivo',
+        name: 'Yaay',
         description,
         prefill,
         theme: { color: '#6366f1' },

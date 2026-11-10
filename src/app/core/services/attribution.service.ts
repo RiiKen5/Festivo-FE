@@ -17,7 +17,7 @@ const VENDOR_KEY = 'festivo_vendor_touch';
 const VENDOR_TOUCH_DAYS = 90;
 
 /**
- * Remembers how a visitor first reached Festivo (UTM tags, ?ref=, the
+ * Remembers how a visitor first reached Yaay (UTM tags, ?ref=, the
  * referring site and landing page) so it can be attached to their signup.
  * First touch wins: later visits never overwrite it.
  */
@@ -60,8 +60,8 @@ export class AttributionService {
 
   /**
    * Remember how this visitor first reached a vendor: through the vendor's
-   * own shared link, or by finding them on Festivo. First visit wins, for 90
-   * days. It sets Festivo's fee on the vendor (lower on their own customers).
+   * own shared link, or by finding them on Yaay. First visit wins, for 90
+   * days. It sets Yaay's fee on the vendor (lower on their own customers).
    */
   noteVendorVisit(vendorId: string): void {
     const all = this.vendorVisits();
@@ -80,7 +80,7 @@ export class AttributionService {
     try { return JSON.parse(localStorage.getItem(VENDOR_KEY) || '{}'); } catch { return {}; }
   }
 
-  /** A link to a Festivo page tagged so signups from it can be counted. */
+  /** A link to a Yaay page tagged so signups from it can be counted. */
   tagged(url: string, source: string, medium: string, campaign?: string): string {
     const u = new URL(url, window.location.origin);
     u.searchParams.set('utm_source', source);

@@ -1,6 +1,6 @@
 import { Component, Input } from '@angular/core';
 
-// Compact brand mark for UI chrome: the serif "F" monogram from the Festivo
+// Compact brand mark for UI chrome: the serif "Y" monogram from the Yaay
 // logo, plus the wordmark. The full lockup (assets/images/logo.svg) is too
 // detailed to read at navbar size.
 @Component({
@@ -11,10 +11,10 @@ import { Component, Input } from '@angular/core';
       <svg class="logo__mark" [attr.width]="size" [attr.height]="size" viewBox="0 0 40 40" aria-hidden="true">
         <circle cx="20" cy="20" r="19" fill="currentColor"/>
         <circle cx="20" cy="20" r="15.5" fill="none" stroke="#fff" stroke-opacity="0.45" stroke-dasharray="1.2 2.4"/>
-        <text x="20" y="27.5" text-anchor="middle" font-family="Fraunces, Georgia, serif" font-weight="600" font-size="21" fill="#fff">F</text>
+        <text x="20" y="27.5" text-anchor="middle" font-family="Fraunces, Georgia, serif" font-weight="600" font-size="21" fill="#fff">Y</text>
       </svg>
       @if (wordmark) {
-        <span class="logo__word">Festivo</span>
+        <span class="logo__word">Yaay</span>
       }
     </span>
   `,

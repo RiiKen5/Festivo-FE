@@ -33,7 +33,7 @@ export interface Booking {
   cancelledBy?: User | string;
   cancelledAt?: Date;
   completedAt?: Date;
-  // vendor_link: the vendor's own customer; marketplace: Festivo brought them
+  // vendor_link: the vendor's own customer; marketplace: Yaay brought them
   source?: 'vendor_link' | 'marketplace';
   feePercent?: number;
   foundingTerms?: boolean;

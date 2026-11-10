@@ -78,7 +78,7 @@ export class ShopCardComponent implements OnChanges {
   }
 
   private get fileName(): string {
-    return `${this.service?.slug || 'festivo'}-qr.png`;
+    return `${this.service?.slug || 'yaay'}-qr.png`;
   }
 
   download(): void {
@@ -97,7 +97,7 @@ export class ShopCardComponent implements OnChanges {
     if (!blob) return;
     const file = new File([blob], this.fileName, { type: 'image/png' });
     try {
-      await navigator.share({ files: [file], title: this.service?.serviceName, text: `Book ${this.service?.serviceName} on Festivo: ${this.link}` });
+      await navigator.share({ files: [file], title: this.service?.serviceName, text: `Book ${this.service?.serviceName} on Yaay: ${this.link}` });
       this.analytics.track('listing_shared', { serviceId: this.service?._id, channel: 'qr_card_share', own: true });
     } catch (err: any) {
       if (err?.name !== 'AbortError') this.toast.error('Could not share', 'Download the card and send it instead.');
@@ -170,7 +170,7 @@ export class ShopCardComponent implements OnChanges {
 
     ctx.fillStyle = SOFT;
     ctx.font = '400 28px Inter';
-    ctx.fillText('festivo.paathly.in', W / 2, H - 80);
+    ctx.fillText('yaay.paathly.in', W / 2, H - 80);
 
     canvas.toBlob(b => {
       if (!b) return;

@@ -1,6 +1,6 @@
 # SEO implementation report
 
-_Festivo (festivo.paathly.in). Done on 6 November 2026. Nothing is live until both repos are pushed and Render redeploys._
+_Festivo (yaay.paathly.in). Done on 6 November 2026. Nothing is live until both repos are pushed and Render redeploys._
 
 ## 1. Initial audit
 
@@ -10,13 +10,13 @@ _Festivo (festivo.paathly.in). Done on 6 November 2026. Nothing is live until bo
 | Backend | Express + Mongoose on Render (`festivo-be.onrender.com`, free plan, sleeps when idle) |
 | Rendering | **Client-side only.** One `index.html` for every URL; Render rewrites `/*` to `/index.html`. No SSR or prerendering. |
 | Hosting | Render static site, `staticPublishPath: dist/frontend/browser`, auto-deploys from `main` |
-| Production domain | `https://festivo.paathly.in` (no www) |
+| Production domain | `https://yaay.paathly.in` (no www) |
 | Metadata | One fixed title, description and Open Graph block in `index.html` for every page; **no** per-page titles, no canonical tags, no robots meta, no Twitter title or description |
 | Sitemap | **None** |
 | robots.txt | Static file blocking the private areas; **no `Sitemap:` line** |
 | Structured data | **None** |
 | Images | All `<img>` tags had alt text; list cards already lazy-loaded; fonts and critical CSS inlined by the Angular build |
-| Social previews | Every shared link (a vendor's page on WhatsApp, an event invite) showed the same generic Festivo card |
+| Social previews | Every shared link (a vendor's page on WhatsApp, an event invite) showed the same generic Yaay card |
 
 **Public pages that should be indexed:**
 - `/`, `/services` (vendor list), `/events` (public events), `/for-vendors`;
@@ -108,7 +108,7 @@ Full Angular SSR would mean running the app on a Node server instead of a static
 
 ## 5. Sitemap
 
-`https://festivo.paathly.in/sitemap.xml`. It is regenerated on every build and contains:
+`https://yaay.paathly.in/sitemap.xml`. It is regenerated on every build and contains:
 - the 8 public static pages;
 - every active vendor page, with `lastmod` = when the listing last changed;
 - every public, published, not-cancelled event from yesterday onwards, with `lastmod`.
@@ -124,7 +124,7 @@ Static pages have no `lastmod`, because an invented date is worse than none. A s
 
 ## 6. robots.txt
 
-`https://festivo.paathly.in/robots.txt`:
+`https://yaay.paathly.in/robots.txt`:
 
 ```
 User-agent: *
@@ -141,7 +141,7 @@ Disallow: /events/*/edit
 Disallow: /services/create
 Disallow: /services/edit/
 
-Sitemap: https://festivo.paathly.in/sitemap.xml
+Sitemap: https://yaay.paathly.in/sitemap.xml
 ```
 
 - **Not blocked:** scripts, styles, `/assets` and `/icons` stay crawlable, so pages render for Googlebot.
@@ -151,16 +151,16 @@ Sitemap: https://festivo.paathly.in/sitemap.xml
 
 | Page | Title | Robots | Canonical |
 |---|---|---|---|
-| Home | Festivo · Book local vendors for birthdays, parties and events | index | `/` (set in browser) |
-| Vendors | Event vendors near you: cakes, decor, photographers and DJs · Festivo | index | `/services/` (filters and search point here) |
-| Events | Public events near you · Festivo | index | `/events` |
-| For vendors | Get event bookings for your business · Festivo for vendors | index | `/for-vendors` |
-| Legal and contact | Terms of Service / Privacy Policy / Cancellation and Refund Policy / Contact Festivo | index | own URL |
-| Vendor page | `{name} · {category} in {city} · Festivo` | index | `/services/{slug}/` |
-| Public event | `{title} · {date}, {city} · Festivo` | index | `/events/{slug}/` |
+| Home | Yaay · Book local vendors for birthdays, parties and events | index | `/` (set in browser) |
+| Vendors | Event vendors near you: cakes, decor, photographers and DJs · Yaay | index | `/services/` (filters and search point here) |
+| Events | Public events near you · Yaay | index | `/events` |
+| For vendors | Get event bookings for your business · Yaay for vendors | index | `/for-vendors` |
+| Legal and contact | Terms of Service / Privacy Policy / Cancellation and Refund Policy / Contact Yaay | index | own URL |
+| Vendor page | `{name} · {category} in {city} · Yaay` | index | `/services/{slug}/` |
+| Public event | `{title} · {date}, {city} · Yaay` | index | `/events/{slug}/` |
 | Private event | as above | **noindex** | none |
-| Delete account | Delete your Festivo account | **noindex** | none |
-| Account, dashboard, admin, auth, unknown | Festivo / Page not found · Festivo | **noindex** | none |
+| Delete account | Delete your Yaay account | **noindex** | none |
+| Account, dashboard, admin, auth, unknown | Yaay / Page not found · Yaay | **noindex** | none |
 
 **Descriptions:**
 - Static pages: written per page.
@@ -183,7 +183,7 @@ Only facts the page already shows. No invented reviews, prices or claims.
 
 | Where | Types |
 |---|---|
-| Every page | `Organization`: Festivo, its logo, email, phone and the registered Bengaluru address as on the Contact page, part of Paathly. `WebSite`. |
+| Every page | `Organization`: Yaay, its logo, email, phone and the registered Bengaluru address as on the Contact page, part of Paathly. `WebSite`. |
 | Vendor pages | `Service`: name, description, category, areas served, provider as `LocalBusiness` (city only), `Offer` with the real base price in INR and its unit. `AggregateRating` only when the listing has real reviews. `BreadcrumbList`: Home › Vendors › name. |
 | Public events | `Event`: name, description, start date and time in IST (`+05:30`), end date, `EventScheduled`, offline, venue and address as `Place`, organizer, ticket price in INR (0 if free), image. `BreadcrumbList`. |
 
@@ -196,7 +196,7 @@ Run Google's [Rich Results Test](https://search.google.com/test/rich-results) on
 **Suitable**, because listings appear and change daily, and IndexNow gets Bing (and Yandex, Seznam, Naver) to recrawl within minutes instead of days. Google does not use IndexNow; it relies on the sitemap.
 
 **How it works:**
-- The key is a value you choose. It is **public by design**: the protocol verifies it by fetching `https://festivo.paathly.in/<key>.txt`. It lives only in Render env vars, never in the repo or client code.
+- The key is a value you choose. It is **public by design**: the protocol verifies it by fetching `https://yaay.paathly.in/<key>.txt`. It lives only in Render env vars, never in the repo or client code.
 - The frontend build writes `/<key>.txt` when `INDEXNOW_KEY` is set.
 - The backend posts to `https://api.indexnow.org/indexnow`:
   - only the URLs of listings that changed, after the rebuild that publishes them;
@@ -268,13 +268,13 @@ The measurement script is not committed (it hits the live site). Repeat with Pag
    - The links people share use it too: the vendor booking link, the QR card, and event share and invite links. That way WhatsApp and Facebook fetch the pre-rendered page with the right preview.
    - Old links without the slash still open the app normally; the app points search engines to the slash version.
 3. **The Render default host** (`*.onrender.com`) serves the same site.
-   - Mitigation: canonical tags point to `festivo.paathly.in`.
+   - Mitigation: canonical tags point to `yaay.paathly.in`.
    - Do not link to the onrender address anywhere.
 4. **New listings between rebuilds** have correct tags in the browser (Google), but the generic preview card for WhatsApp and Facebook until the next rebuild, at most about 6 hours.
 5. **The free backend plan sleeps.** The hourly job only runs while the API is awake, so rebuild and IndexNow timing depends on traffic. A paid instance, which you were already considering, makes it reliable.
 6. **Bundle budget.** The initial JS is 528 kB raw. `main` is 29 kB gzipped; the rest is eagerly loaded shared chunks. It was already over the budget before this work. Worth a separate look at what the navbar and footer pull in eagerly.
 7. **Core Web Vitals** were not measured on real users: there is no field data yet for a site this new. The lab measurement in 10b found and fixed the layout shifts; `/services` LCP (3.4 s) depends on API speed.
-8. **The rename.** When Festivo gets its new name and domain, change `siteUrl` and `siteName` in `src/app/core/seo/site.json`, the defaults in `src/index.html` and `SITE_URL` on the backend. Then add 301 redirects from the old domain and use Search Console's Change of Address tool.
+8. **The rename.** When Yaay gets its new name and domain, change `siteUrl` and `siteName` in `src/app/core/seo/site.json`, the defaults in `src/index.html` and `SITE_URL` on the backend. Then add 301 redirects from the old domain and use Search Console's Change of Address tool.
 
 ## 12. Manual steps that need your accounts
 
@@ -283,22 +283,22 @@ The measurement script is not committed (it hits the live site). Repeat with Pag
 - [ ] `festivo-frontend` → Settings → **Deploy Hook** → copy the URL.
 - [ ] `festivo-backend` → Environment:
   - `FRONTEND_DEPLOY_HOOK_URL` = that URL (keep it secret: anyone with it can trigger builds);
-  - `SITE_URL` = `https://festivo.paathly.in`;
+  - `SITE_URL` = `https://yaay.paathly.in`;
   - `INDEXNOW_KEY` = a key you generate (32 hex characters, e.g. `openssl rand -hex 16`).
-- [ ] `festivo-frontend` → Environment → `INDEXNOW_KEY` = the **same** key. Then redeploy and open `https://festivo.paathly.in/<key>.txt` to confirm it shows the key.
-- [ ] After the deploy, open `https://festivo.paathly.in/sitemap.xml` and `/robots.txt`, and check that a vendor page's source (view-source) shows its own `<title>`.
+- [ ] `festivo-frontend` → Environment → `INDEXNOW_KEY` = the **same** key. Then redeploy and open `https://yaay.paathly.in/<key>.txt` to confirm it shows the key.
+- [ ] After the deploy, open `https://yaay.paathly.in/sitemap.xml` and `/robots.txt`, and check that a vendor page's source (view-source) shows its own `<title>`.
 
 **Google Search Console** ([search.google.com/search-console](https://search.google.com/search-console/))
 - [ ] Add a **Domain property** for `paathly.in`. That covers every subdomain, http and https, and the future renamed site if it stays on paathly.in.
 - [ ] Verify with the **DNS TXT record** Google gives you, added at your DNS provider for `paathly.in`. (A URL-prefix property with an HTML tag also works, but then send me the exact `google-site-verification` code to add; I won't make one up.)
-- [ ] Sitemaps → submit `https://festivo.paathly.in/sitemap.xml`.
+- [ ] Sitemaps → submit `https://yaay.paathly.in/sitemap.xml`.
 - [ ] URL Inspection on `/`, `/services`, `/for-vendors`, one vendor page and one public event. Check the indexed version: "View tested page" → screenshot and HTML show the content. Then "Request indexing".
 - [ ] Over the next 1 to 4 weeks, check **Pages** (indexing report: look for "Excluded by noindex", which should only be private pages, and "Soft 404") and **Performance** (queries, clicks, CTR).
 - [ ] Enhancements → **Events** appears once event pages are indexed. Fix anything it reports.
 
 **Bing Webmaster Tools** ([bing.com/webmasters](https://www.bing.com/webmasters/))
 - [ ] Add the site → **Import from Google Search Console**. This is the fastest route and verifies automatically. Alternatively verify with a DNS CNAME or an XML file; send me a file or meta code and I'll add it.
-- [ ] Sitemaps → submit `https://festivo.paathly.in/sitemap.xml`.
+- [ ] Sitemaps → submit `https://yaay.paathly.in/sitemap.xml`.
 - [ ] IndexNow → check that pings show up after the first listing change.
 - [ ] URL Inspection on a vendor page; Site Scan once for crawl errors.
 
@@ -329,8 +329,8 @@ The measurement script is not committed (it hits the live site). Repeat with Pag
 3. **Price-guide content, a handful of genuinely useful pages, not hundreds.**
    - Examples: "How much does birthday decoration at home cost in Bengaluru?", or "What to ask a home baker before ordering a custom cake", with the real price ranges from your competitor research.
    - These earn links and lead straight to vendor pages.
-4. **Vendor backlinks.** Each vendor's Instagram bio and Google Business Profile should link to their Festivo page; the QR card already does this offline.
-5. **Google Business Profile** for Festivo/Paathly in Bengaluru, using the same name, address and phone as the Contact page.
+4. **Vendor backlinks.** Each vendor's Instagram bio and Google Business Profile should link to their Yaay page; the QR card already does this offline.
+5. **Google Business Profile** for Yaay/Paathly in Bengaluru, using the same name, address and phone as the Contact page.
 6. **Measure Core Web Vitals in the field** once traffic exists: Search Console → Core Web Vitals, or PageSpeed Insights on live URLs.
 7. **If organic search becomes a main channel**, consider Angular SSR on a Node web service. It would give real 404 status codes and server-rendered content for every crawler. The current setup is a deliberate, low-risk first step.
 

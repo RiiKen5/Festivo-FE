@@ -48,7 +48,7 @@ import { BookingCreateData } from '../../../../core/models/booking.model';
               @if (service()?.isVerified) {
                 <div class="verified-badge">
                   <app-icon name="shield-check" [size]="16"></app-icon>
-                  Verified by Festivo
+                  Verified by Yaay
                 </div>
               }
             </div>
@@ -88,7 +88,7 @@ import { BookingCreateData } from '../../../../core/models/booking.model';
                       <span class="rating-count">({{ count(service()?.totalRatings, 'review') }})</span>
                     </div>
                   } @else {
-                    <span class="service-new">New on Festivo</span>
+                    <span class="service-new">New on Yaay</span>
                   }
                   @if (service()?.completedBookings) {
                     <span class="meta-divider" aria-hidden="true">·</span>
@@ -145,7 +145,7 @@ import { BookingCreateData } from '../../../../core/models/booking.model';
                         <span><app-icon name="star" [size]="14" class="rating-star"></app-icon> {{ getProvider()?.ratingAverage | number:'1.1-1' }} vendor rating</span>
                         <span aria-hidden="true">·</span>
                       }
-                      <span>{{ count(service()?.totalBookings, 'booking') }} on Festivo</span>
+                      <span>{{ count(service()?.totalBookings, 'booking') }} on Yaay</span>
                     </div>
                   </div>
                   @if (auth.isAuthenticated() && getProvider()?._id !== auth.currentUser()?._id) {

@@ -17,12 +17,12 @@ import { InputComponent } from '../../../../shared/components/input/input.compon
     <div class="auth-page">
       <div class="auth-container">
         <div class="auth-card">
-          <a routerLink="/" class="auth-logo" aria-label="Festivo home"><app-logo [size]="34"></app-logo></a>
+          <a routerLink="/" class="auth-logo" aria-label="Yaay home"><app-logo [size]="34"></app-logo></a>
 
           @if (!resetSuccess()) {
             <div class="auth-header">
               @if (welcome) {
-                <h1 class="auth-title">Welcome to Festivo</h1>
+                <h1 class="auth-title">Welcome to Yaay</h1>
                 <p class="auth-subtitle">Your page is ready. Choose a password to open it. You'll sign in with the email you gave us and this password.</p>
               } @else {
                 <h1 class="auth-title">Set new password</h1>
@@ -304,7 +304,7 @@ export class ResetPasswordComponent implements OnInit {
       error: (error) => {
         this.isLoading.set(false);
         const message = this.welcome && error.status === 400
-          ? 'This link has expired or was replaced. Ask Festivo for a new one.'
+          ? 'This link has expired or was replaced. Ask Yaay for a new one.'
           : error.error?.message || 'Failed to reset password. The link may have expired.';
         this.toast.error('Reset Failed', message);
       }

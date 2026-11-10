@@ -17,7 +17,7 @@ import { InputComponent } from '../../../../shared/components/input/input.compon
     <div class="auth-page">
       <div class="auth-container">
         <div class="auth-card">
-          <a routerLink="/" class="auth-logo" aria-label="Festivo home"><app-logo [size]="34"></app-logo></a>
+          <a routerLink="/" class="auth-logo" aria-label="Yaay home"><app-logo [size]="34"></app-logo></a>
 
           @if (!emailSent()) {
             <div class="auth-header">

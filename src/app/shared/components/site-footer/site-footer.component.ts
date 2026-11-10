@@ -19,7 +19,7 @@ import { LogoComponent } from '../logo/logo.component';
             <h2>Explore</h2>
             <a routerLink="/events">Events</a>
             <a routerLink="/services">Vendors</a>
-            <a routerLink="/for-vendors">Sell on Festivo</a>
+            <a routerLink="/for-vendors">Sell on Yaay</a>
             <a routerLink="/auth/register">Create an account</a>
           </div>
           <div>
@@ -34,7 +34,7 @@ import { LogoComponent } from '../logo/logo.component';
           </div>
         </nav>
       </div>
-      <div class="footer__bottom">© {{ year }} Festivo</div>
+      <div class="footer__bottom">© {{ year }} Yaay</div>
       </div>
     </footer>
   `,

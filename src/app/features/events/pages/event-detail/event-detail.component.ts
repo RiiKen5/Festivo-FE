@@ -588,7 +588,7 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
           </div>
 
           @if (!auth.isAuthenticated()) {
-            <p class="privacy-note"><app-icon name="shield" [size]="14"></app-icon> Only the host sees your name and number. Festivo never shares them with vendors or anyone else.</p>
+            <p class="privacy-note"><app-icon name="shield" [size]="14"></app-icon> Only the host sees your name and number. Yaay never shares them with vendors or anyone else.</p>
           }
 
           @if (isTicketed()) {
@@ -597,7 +597,7 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
               <span class="total-value">₹{{ ticketTotal(guestsCount) | number:'1.0-2' }}</span>
             </div>
             @if (event()?.ticketFeePaidBy === 'guest') {
-              <p class="form-hint">Includes Festivo's {{ ticketFeePercent() }}% booking fee.</p>
+              <p class="form-hint">Includes Yaay's {{ ticketFeePercent() }}% booking fee.</p>
             }
           }
         </div>
@@ -1679,7 +1679,7 @@ export class EventDetailComponent implements OnInit {
 
   organizerStat(): string {
     const count = this.getOrganizer()?.eventsOrganized || 0;
-    return count ? plural(count, 'event') + ' organized' : 'Organizer on Festivo';
+    return count ? plural(count, 'event') + ' organized' : 'Organizer on Yaay';
   }
 
   // Phones get the main action pinned to the bottom of the screen

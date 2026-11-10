@@ -25,7 +25,7 @@ import { Service } from '../../core/models/service.model';
           <p class="eyebrow">Designed by people. Organised by community.</p>
           <h1 class="hero__title">Plan the event. Book the people who make it happen.</h1>
           <p class="hero__lead">
-            Find local bakers, decorators, photographers and more. Pay through Festivo and your money is held
+            Find local bakers, decorators, photographers and more. Pay through Yaay and your money is held
             until the job is done.
           </p>
           <div class="hero__actions">
@@ -54,7 +54,7 @@ import { Service } from '../../core/models/service.model';
             <div class="preview__row"><span>Advance paid</span><strong>₹600</strong></div>
             <div class="preview__note">
               <app-icon name="shield-check" [size]="16"></app-icon>
-              Held by Festivo until you mark it delivered
+              Held by Yaay until you mark it delivered
             </div>
           </div>
           <div class="preview preview--small">
@@ -84,10 +84,10 @@ import { Service } from '../../core/models/service.model';
             <span class="step__num">2</span>
             @if (paymentsEnabled()) {
               <h3>Pay securely</h3>
-              <p>Pay the full amount or a 30% advance by UPI or card. Festivo holds it for you.</p>
+              <p>Pay the full amount or a 30% advance by UPI or card. Yaay holds it for you.</p>
             } @else {
               <h3>Pay the vendor</h3>
-              <p>Pay the vendor directly, the way you agree with them. Online payment through Festivo is coming soon.</p>
+              <p>Pay the vendor directly, the way you agree with them. Online payment through Yaay is coming soon.</p>
             }
           </li>
           <li class="step">
@@ -129,7 +129,7 @@ import { Service } from '../../core/models/service.model';
         <div class="container">
           <div class="section__head section__head--row">
             <div>
-              <h2>Vendors on Festivo</h2>
+              <h2>Vendors on Yaay</h2>
               <p>Cakes, decor, photography, music and more.</p>
             </div>
             <a routerLink="/services" class="section__link">Browse vendors <app-icon name="arrow-right" [size]="16"></app-icon></a>
@@ -157,7 +157,7 @@ import { Service } from '../../core/models/service.model';
             <h2>Get booked for events near you</h2>
             <p>List your service with photos and prices. Accept requests, send your quote and get paid to your UPI or bank account after each event.</p>
             <ul class="vendors__list">
-              <li><app-icon name="check" [size]="18"></app-icon>Free to list. A fee applies only to bookings paid through Festivo.</li>
+              <li><app-icon name="check" [size]="18"></app-icon>Free to list. A fee applies only to bookings paid through Yaay.</li>
               <li><app-icon name="check" [size]="18"></app-icon>Payment is collected before the event, so no last-minute ghosting.</li>
               <li><app-icon name="check" [size]="18"></app-icon>Reviews only come from real, completed bookings.</li>
             </ul>

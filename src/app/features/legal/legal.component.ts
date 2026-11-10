@@ -37,11 +37,11 @@ type Page = 'terms' | 'privacy' | 'refunds' | 'contact' | 'delete-account';
             <h1>Terms of Service</h1>
             <p class="updated">Last updated {{ b.lastUpdated }}</p>
 
-            <p>Festivo is operated by {{ b.legalName }} ({{ b.registration }}), {{ b.address }} ("Festivo", "we"). By creating an account or using Festivo you agree to these terms.</p>
+            <p>Yaay is operated by {{ b.legalName }} ({{ b.registration }}), {{ b.address }} ("Yaay", "we"). By creating an account or using Yaay you agree to these terms.</p>
 
-            <h2>1. What Festivo does</h2>
-            <p>Festivo is a marketplace where organizers plan events, book independent service providers ("vendors") such as bakers, decorators and photographers, and sell or share event tickets. Vendors are independent businesses, not Festivo employees. Each vendor is responsible for the services they provide.</p>
-            <p>Festivo is an intermediary: it connects organizers, vendors and guests and collects payments on their behalf. It is not a party to the agreement between an organizer and a vendor, and does not provide the services itself.</p>
+            <h2>1. What Yaay does</h2>
+            <p>Yaay is a marketplace where organizers plan events, book independent service providers ("vendors") such as bakers, decorators and photographers, and sell or share event tickets. Vendors are independent businesses, not Yaay employees. Each vendor is responsible for the services they provide.</p>
+            <p>Yaay is an intermediary: it connects organizers, vendors and guests and collects payments on their behalf. It is not a party to the agreement between an organizer and a vendor, and does not provide the services itself.</p>
 
             <h2>2. Accounts</h2>
             <p>You must give accurate information, keep your password private, and be at least 18 years old to book services, sell tickets or receive payouts. You are responsible for activity on your account. We may suspend accounts that break these terms or harm other users.</p>
@@ -49,46 +49,46 @@ type Page = 'terms' | 'privacy' | 'refunds' | 'contact' | 'delete-account';
             <h2>3. Bookings between organizers and vendors</h2>
             <ul>
               <li>An organizer sends a booking request; the vendor confirms it at their final price (their quote).</li>
-              <li>Organizers pay online through Festivo. We hold the payment and release it to the vendor after the booking is completed. If the organizer doesn't mark it complete, it completes automatically 3 days after the event date.</li>
-              <li>Vendors may also record cash or direct payments they receive. Festivo does not hold or guarantee those payments.</li>
+              <li>Organizers pay online through Yaay. We hold the payment and release it to the vendor after the booking is completed. If the organizer doesn't mark it complete, it completes automatically 3 days after the event date.</li>
+              <li>Vendors may also record cash or direct payments they receive. Yaay does not hold or guarantee those payments.</li>
               <li><strong>Arrival code.</strong> When a vendor accepts, the organizer gets a 4-digit code on their booking page. The vendor enters it when they arrive, which records that they came.</li>
               <li><strong>Reporting a problem.</strong> If a vendor doesn't arrive, or doesn't deliver what was agreed, the organizer can use "Report a problem" on the booking any time until it is completed (up to 3 days after the event, or 1 day if the vendor entered the arrival code). A no-show can be reported from the day of the event. Reporting freezes the vendor's payout.</li>
               <li><strong>Vendor reply.</strong> The vendor has 24 hours to reply with their side and evidence, such as photos. If they don't reply in time and did not enter the arrival code, the organizer is refunded in full automatically for what they paid online.</li>
-              <li><strong>Festivo's decision.</strong> If the vendor replies, or entered the arrival code, Festivo reviews the booking, messages and evidence and decides within 48 hours: a full refund, a partial refund, or payment to the vendor. We tell both sides why.</li>
-              <li><strong>No-shows.</strong> A verified no-show is shown on the vendor's profile and lowers their listings in search. Festivo may also deduct a penalty from the vendor's next payout, or suspend the account.</li>
+              <li><strong>Yaay's decision.</strong> If the vendor replies, or entered the arrival code, Yaay reviews the booking, messages and evidence and decides within 48 hours: a full refund, a partial refund, or payment to the vendor. We tell both sides why.</li>
+              <li><strong>No-shows.</strong> A verified no-show is shown on the vendor's profile and lowers their listings in search. Yaay may also deduct a penalty from the vendor's next payout, or suspend the account.</li>
               <li>Cancellations and refunds follow our <a routerLink="/refund-policy">Cancellation &amp; Refund Policy</a>.</li>
             </ul>
 
             <h2>4. Fees</h2>
-            <p>On vendor bookings paid online, Festivo charges the vendor 3% when the customer came through the vendor's own Festivo link, and 10% when the customer found the vendor on Festivo, never more than ₹1,000 a booking. A customer's first booking with a vendor sets the rate for their later bookings with that vendor. Founding vendors (the first 50 to list, while the founding offer is open, until 31 January 2027) pay 0% and 5%; the rate is fixed when each booking is made. Event organizers pay a fee of 5% on tickets sold. Fees are deducted before payout. There is nothing to pay unless a booking or ticket is paid. An organizer may choose to add the ticket fee to the price guests pay instead; the full price is shown before payment. Organizers and attendees pay the listed price; we do not add hidden charges.</p>
+            <p>On vendor bookings paid online, Yaay charges the vendor 3% when the customer came through the vendor's own Yaay link, and 10% when the customer found the vendor on Yaay, never more than ₹1,000 a booking. A customer's first booking with a vendor sets the rate for their later bookings with that vendor. Founding vendors (the first 50 to list, while the founding offer is open, until 31 January 2027) pay 0% and 5%; the rate is fixed when each booking is made. Event organizers pay a fee of 5% on tickets sold. Fees are deducted before payout. There is nothing to pay unless a booking or ticket is paid. An organizer may choose to add the ticket fee to the price guests pay instead; the full price is shown before payment. Organizers and attendees pay the listed price; we do not add hidden charges.</p>
 
             <h2>5. Payouts</h2>
-            <p>Vendors and organizers must add UPI or bank details to receive payouts. For verified vendors, half of the vendor's share of what the customer paid becomes due 7 days before the event (or when the customer pays, if later). The rest of a booking payout becomes due when the booking is completed. Booking payouts are sent within 24 hours of becoming due; if one is late, Festivo charges no fee on that payment. If money already sent to a vendor is later refunded to the customer (for example the vendor cancels, or a reported problem is settled in the customer's favour), the vendor owes it back and it is deducted from their future payouts. Ticket payouts are usually sent within 7 working days of the event. We may hold, freeze or reverse a payout while a reported problem or suspected fraud is open, and until it is settled.</p>
+            <p>Vendors and organizers must add UPI or bank details to receive payouts. For verified vendors, half of the vendor's share of what the customer paid becomes due 7 days before the event (or when the customer pays, if later). The rest of a booking payout becomes due when the booking is completed. Booking payouts are sent within 24 hours of becoming due; if one is late, Yaay charges no fee on that payment. If money already sent to a vendor is later refunded to the customer (for example the vendor cancels, or a reported problem is settled in the customer's favour), the vendor owes it back and it is deducted from their future payouts. Ticket payouts are usually sent within 7 working days of the event. We may hold, freeze or reverse a payout while a reported problem or suspected fraud is open, and until it is settled.</p>
 
             <h2>6. Events and tickets</h2>
             <p>Organizers are responsible for their events, including venue permissions, safety and any applicable licences. A ticket admits the number of people it was bought for. Guests can buy tickets without an account by giving their name and mobile number; the ticket is kept in the browser they bought it on, so they should save their check-in code. Private events are only visible to people with the organizer's invite link.</p>
 
             <h2>7. Content and reviews</h2>
-            <p>You own what you post, and give Festivo permission to display it on the platform. Reviews can only be left for completed bookings and must be honest. We remove content that is unlawful, abusive, misleading or that infringes others' rights.</p>
+            <p>You own what you post, and give Yaay permission to display it on the platform. Reviews can only be left for completed bookings and must be honest. We remove content that is unlawful, abusive, misleading or that infringes others' rights.</p>
 
             <h2>8. Prohibited use</h2>
-            <p>Do not use Festivo to take bookings or payments off-platform to avoid fees after meeting through Festivo, to post false listings, to harass others, or for anything unlawful.</p>
+            <p>Do not use Yaay to take bookings or payments off-platform to avoid fees after meeting through Yaay, to post false listings, to harass others, or for anything unlawful.</p>
 
             <h2>9. Liability</h2>
-            <p>Festivo provides the marketplace "as is". To the extent the law allows, our liability for any claim is limited to the fees we earned on the booking or ticket concerned. Nothing in these terms limits rights you have under the Consumer Protection Act, 2019.</p>
+            <p>Yaay provides the marketplace "as is". To the extent the law allows, our liability for any claim is limited to the fees we earned on the booking or ticket concerned. Nothing in these terms limits rights you have under the Consumer Protection Act, 2019.</p>
 
             <h2>10. Disputes and governing law</h2>
             <p>Contact us first at {{ b.supportEmail }} and we will try to resolve the issue. These terms are governed by the laws of India, and courts in Bengaluru, Karnataka have jurisdiction.</p>
 
             <h2>11. Changes</h2>
-            <p>We may update these terms. We will notify you of significant changes; continuing to use Festivo means you accept them.</p>
+            <p>We may update these terms. We will notify you of significant changes; continuing to use Yaay means you accept them.</p>
           }
 
           @case ('privacy') {
             <h1>Privacy Policy</h1>
             <p class="updated">Last updated {{ b.lastUpdated }}</p>
 
-            <p>This policy explains what personal data {{ b.legalName }} collects through Festivo and how we use it, in line with the Digital Personal Data Protection Act, 2023.</p>
+            <p>This policy explains what personal data {{ b.legalName }} collects through Yaay and how we use it, in line with the Digital Personal Data Protection Act, 2023.</p>
 
             <h2>What we collect</h2>
             <ul>
@@ -99,16 +99,16 @@ type Page = 'terms' | 'privacy' | 'refunds' | 'contact' | 'delete-account';
               <li><strong>Technical data:</strong> IP address and basic logs, to keep the service secure.</li>
               <li><strong>RSVPs without an account:</strong> the name you give, how many people you're bringing and, if you choose, your mobile number. Only the event's organizers see them. If you give an email, we use it only to send your check-in code and a private link to your RSVP or ticket; organizers don't see it. These details are never shared with vendors or anyone else. Your browser keeps a private code so you can change your answer.</li>
               <li><strong>Deleting your account:</strong> you can delete your account at any time from your profile. See <a routerLink="/delete-account">Delete your account</a> for what is erased and what is kept.</li>
-              <li><strong>How you found us:</strong> the link or website that first brought you to Festivo (for example a campaign tag or a shared link) and the first page you visited, saved in your browser and with your account when you sign up. We also use Google Analytics, which sets cookies, to see which pages and features are used; it receives your account ID but not your name, email or phone number. You can block it with your browser's cookie or tracker settings.</li>
+              <li><strong>How you found us:</strong> the link or website that first brought you to Yaay (for example a campaign tag or a shared link) and the first page you visited, saved in your browser and with your account when you sign up. We also use Google Analytics, which sets cookies, to see which pages and features are used; it receives your account ID but not your name, email or phone number. You can block it with your browser's cookie or tracker settings.</li>
             </ul>
 
             <h2>How we use it</h2>
-            <p>To run the marketplace (bookings, tickets, messaging, payouts), to send account and booking emails, to prevent fraud and abuse, and to improve Festivo. We do not sell your personal data.</p>
+            <p>To run the marketplace (bookings, tickets, messaging, payouts), to send account and booking emails, to prevent fraud and abuse, and to improve Yaay. We do not sell your personal data.</p>
 
             <h2>Who we share it with</h2>
             <ul>
               <li>Other users, as needed for a booking or event (for example, a vendor sees the organizer's name and contact details on a booking).</li>
-              <li>Service providers who help us run Festivo: Razorpay (payments), Google (analytics and sign-in), our hosting and database providers, and our email provider.</li>
+              <li>Service providers who help us run Yaay: Razorpay (payments), Google (analytics and sign-in), our hosting and database providers, and our email provider.</li>
               <li>Authorities, when required by law.</li>
             </ul>
 
@@ -127,7 +127,7 @@ type Page = 'terms' | 'privacy' | 'refunds' | 'contact' | 'delete-account';
             <p class="updated">Last updated {{ b.lastUpdated }}</p>
 
             <h2>Vendor bookings</h2>
-            <p>These rules apply to amounts paid online through Festivo:</p>
+            <p>These rules apply to amounts paid online through Yaay:</p>
             <table>
               <thead><tr><th>Who cancels</th><th>When</th><th>Refund to organizer</th></tr></thead>
               <tbody>
@@ -149,24 +149,24 @@ type Page = 'terms' | 'privacy' | 'refunds' | 'contact' | 'delete-account';
             <p>Refunds are issued automatically to the original payment method through Razorpay when the cancellation is made. Banks usually credit them within 5–7 working days.</p>
 
             <h2>Problems with a service</h2>
-            <p>If a vendor didn't arrive, or didn't deliver what was agreed, use <strong>Report a problem</strong> on the booking before it is completed (within 3 days of the event, or 1 day if the vendor entered your arrival code). The vendor's payout is frozen and they have 24 hours to reply. If they don't reply, and didn't enter your arrival code, you are refunded in full for what you paid online, automatically. Otherwise Festivo reviews both sides and decides on a full refund, a partial refund or payment to the vendor. You can also email {{ b.supportEmail }}.</p>
-            <p>Cash or direct payments made to the vendor outside Festivo can't be refunded by Festivo.</p>
+            <p>If a vendor didn't arrive, or didn't deliver what was agreed, use <strong>Report a problem</strong> on the booking before it is completed (within 3 days of the event, or 1 day if the vendor entered your arrival code). The vendor's payout is frozen and they have 24 hours to reply. If they don't reply, and didn't enter your arrival code, you are refunded in full for what you paid online, automatically. Otherwise Yaay reviews both sides and decides on a full refund, a partial refund or payment to the vendor. You can also email {{ b.supportEmail }}.</p>
+            <p>Cash or direct payments made to the vendor outside Yaay can't be refunded by Yaay.</p>
           }
 
           @case ('delete-account') {
-            <h1>Delete your Festivo account</h1>
+            <h1>Delete your Yaay account</h1>
             <p class="updated">Last updated {{ b.lastUpdated }}</p>
 
             <h2>How to delete it</h2>
             <ol>
-              <li>Log in to Festivo, in the app or at festivo.paathly.in.</li>
+              <li>Log in to Yaay, in the app or at yaay.paathly.in.</li>
               <li>Open <strong>Profile</strong>, then <strong>Security</strong>.</li>
               <li>Under <strong>Delete account</strong>, type DELETE and confirm.</li>
             </ol>
             <p>Can't log in? Email {{ b.supportEmail }} from the address on your account and ask us to delete it. We do it within 7 days.</p>
 
             <h2>What has to happen first</h2>
-            <p>You can delete your account once nothing is still open: no accepted bookings, no upcoming events you're hosting, no tickets for upcoming events, no money Festivo still owes you and nothing you owe Festivo. The page tells you exactly what's left.</p>
+            <p>You can delete your account once nothing is still open: no accepted bookings, no upcoming events you're hosting, no tickets for upcoming events, no money Yaay still owes you and nothing you owe Yaay. The page tells you exactly what's left.</p>
 
             <h2>What is deleted</h2>
             <ul>

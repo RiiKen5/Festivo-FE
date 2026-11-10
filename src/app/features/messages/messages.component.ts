@@ -22,7 +22,7 @@ import { EventService } from '../../core/services/event.service';
 import { Conversation, Message } from '../../core/models/message.model';
 import { Booking } from '../../core/models/booking.model';
 import { Service } from '../../core/models/service.model';
-import { Event as FestivoEvent } from '../../core/models/event.model';
+import { Event as YaayEvent } from '../../core/models/event.model';
 import { User } from '../../core/models/user.model';
 
 // Only used when the live connection is down
@@ -266,7 +266,7 @@ interface DayGroup { label: string; messages: Message[]; }
         <div class="form">
           <label>Your final price (₹)
             <input type="number" class="form-input" [(ngModel)]="quotePrice" min="0">
-            <span class="hint">They proposed ₹{{ quoteFor()?.priceAgreed | number }}. {{ paymentsEnabled() ? 'After you accept, they can pay online and Festivo holds the money until the job is done.' : 'After you accept, they pay you directly.' }}</span>
+            <span class="hint">They proposed ₹{{ quoteFor()?.priceAgreed | number }}. {{ paymentsEnabled() ? 'After you accept, they can pay online and Yaay holds the money until the job is done.' : 'After you accept, they pay you directly.' }}</span>
           </label>
         </div>
         <div modal-footer>
@@ -404,7 +404,7 @@ export class MessagesComponent implements OnInit, OnDestroy {
   otherUser = signal<User | null>(null);
   bookings = signal<Booking[]>([]);
   theirServices = signal<Service[]>([]);
-  myEvents = signal<FestivoEvent[]>([]);
+  myEvents = signal<YaayEvent[]>([]);
   online = signal<Record<string, boolean>>({});
   typingFrom = signal<string | null>(null);
   showJump = signal(false);
@@ -529,7 +529,7 @@ export class MessagesComponent implements OnInit, OnDestroy {
     if (!known) {
       this.userService.getUserProfile(userId).subscribe({
         next: res => this.otherUser.set(res.data),
-        error: () => this.toast.error('Could not open this chat', 'The person may no longer be on Festivo.')
+        error: () => this.toast.error('Could not open this chat', 'The person may no longer be on Yaay.')
       });
     }
 
@@ -784,7 +784,7 @@ export class MessagesComponent implements OnInit, OnDestroy {
     this.eventService.getMyEvents({ limit: 50 } as any).subscribe({
       next: res => {
         const now = Date.now() - 864e5;
-        const upcoming = ((res.data as FestivoEvent[]) || [])
+        const upcoming = ((res.data as YaayEvent[]) || [])
           .filter(e => !['cancelled', 'completed'].includes(e.status) && new Date(e.date).getTime() >= now)
           .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         this.myEvents.set(upcoming);
@@ -896,7 +896,7 @@ export class MessagesComponent implements OnInit, OnDestroy {
       if (b.pricePaid > 0) return `Advance paid · ₹${this.balance(b).toLocaleString('en-IN')} still due`;
       return vendor ? 'Accepted · waiting for payment' : 'Accepted · pay to lock the date';
     }
-    return 'Paid · Festivo holds it until the job is done';
+    return 'Paid · Yaay holds it until the job is done';
   }
 
   dealTone(b: Booking): string {

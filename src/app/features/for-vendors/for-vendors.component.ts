@@ -20,21 +20,21 @@ import { PaymentConfig, PaymentService } from '../../core/services/payment.servi
         <p class="eyebrow">For bakers, decorators, photographers and DJs</p>
         <h1 class="hero__title">Customers who pay before the event, not after.</h1>
         <p class="hero__lead">
-          Send customers your Festivo link instead of chasing advances on WhatsApp. They book and pay online,
-          Festivo holds the money, and it is paid out to you once the job is done.
+          Send customers your Yaay link instead of chasing advances on WhatsApp. They book and pay online,
+          Yaay holds the money, and it is paid out to you once the job is done.
         </p>
         <!-- Shown until we know payments are on, so the buttons below don't jump when the API answers -->
         @if (!config()?.enabled) {
           <p class="launch-note" role="note">
             <strong>Launch period:</strong> online payment isn't switched on yet. Until it is, customers pay you directly
-            and Festivo charges nothing. The payments and payouts described below start when it is, and we'll tell you before it does.
+            and Yaay charges nothing. The payments and payouts described below start when it is, and we'll tell you before it does.
           </p>
         }
         <div class="hero__actions">
           <app-button [routerLink]="ctaLink()" [queryParams]="ctaParams()" size="lg" (onClick)="cta('hero')">List your service, free</app-button>
-          <app-button routerLink="/services" variant="secondary" size="lg">See vendors on Festivo</app-button>
+          <app-button routerLink="/services" variant="secondary" size="lg">See vendors on Yaay</app-button>
         </div>
-        <p class="hero__note">Free to list, no monthly plan. Festivo charges only when a customer pays online: 3% on your own customers, 10% on new customers Festivo brings, never more than ₹1,000 a booking.</p>
+        <p class="hero__note">Free to list, no monthly plan. Yaay charges only when a customer pays online: 3% on your own customers, 10% on new customers Yaay brings, never more than ₹1,000 a booking.</p>
         @if (fees()?.foundingOpen) {
           <p class="hero__note hero__note--strong">Founding vendors: the first 50 to list pay 0% on their own customers and 5% on new ones until {{ foundingLastDay() }}.</p>
         }
@@ -50,7 +50,7 @@ import { PaymentConfig, PaymentService } from '../../core/services/payment.servi
           <li class="benefit">
             <app-icon name="wallet" [size]="22"></app-icon>
             <h3>Paid before the job, not after</h3>
-            <p>Customers pay online when they book. Once you're verified, half of what they paid reaches you 7 days before the event (or as soon as they pay, if it's sooner). The rest arrives within 24 hours after the job. If we're late, there's no Festivo fee on that booking.</p>
+            <p>Customers pay online when they book. Once you're verified, half of what they paid reaches you 7 days before the event (or as soon as they pay, if it's sooner). The rest arrives within 24 hours after the job. If we're late, there's no Yaay fee on that booking.</p>
           </li>
           <li class="benefit">
             <app-icon name="shield" [size]="22"></app-icon>
@@ -79,7 +79,7 @@ import { PaymentConfig, PaymentService } from '../../core/services/payment.servi
         <ol class="steps">
           <li class="step"><span class="step__num">1</span><h3>List your service</h3><p>Add photos, a starting price and the areas you serve. Takes about 10 minutes.</p></li>
           <li class="step"><span class="step__num">2</span><h3>Confirm requests</h3><p>Customers send a request for their date. You confirm with your final quote, or decline.</p></li>
-          <li class="step"><span class="step__num">3</span><h3>Customer pays</h3><p>They pay online. Festivo holds the money until the booking is completed.</p></li>
+          <li class="step"><span class="step__num">3</span><h3>Customer pays</h3><p>They pay online. Yaay holds the money until the booking is completed.</p></li>
           <li class="step"><span class="step__num">4</span><h3>Get paid out</h3><p>Half before the event if you're verified, the rest within 24 hours after the job, to your UPI ID or bank account.</p></li>
         </ol>
       </div>
@@ -92,11 +92,11 @@ import { PaymentConfig, PaymentService } from '../../core/services/payment.servi
         </div>
         <details>
           <summary>What does it cost?</summary>
-          <p>Listing is free and there's nothing to pay unless a booking is paid. On customers who book through your own Festivo link, Festivo keeps 3% (₹60 on a ₹2,000 cake). On new customers who found you on Festivo, 10% (₹200). Never more than ₹1,000 on one booking. Founding vendors pay 0% and 5% until the founding offer ends.</p>
+          <p>Listing is free and there's nothing to pay unless a booking is paid. On customers who book through your own Yaay link, Yaay keeps 3% (₹60 on a ₹2,000 cake). On new customers who found you on Yaay, 10% (₹200). Never more than ₹1,000 on one booking. Founding vendors pay 0% and 5% until the founding offer ends.</p>
         </details>
         <details>
           <summary>Can I keep using Instagram and WhatsApp?</summary>
-          <p>Yes. Keep showing your work there, and use your Festivo link when it is time to book and take payment. You can also chat with customers inside Festivo.</p>
+          <p>Yes. Keep showing your work there, and use your Yaay link when it is time to book and take payment. You can also chat with customers inside Yaay.</p>
         </details>
         <details>
           <summary>Who decides the price?</summary>
@@ -108,7 +108,7 @@ import { PaymentConfig, PaymentService } from '../../core/services/payment.servi
         </details>
         <details>
           <summary>When do I receive the money?</summary>
-          <p>Verified vendors get half of what the customer paid 7 days before the event, so you can buy materials. The rest is sent within 24 hours after the booking is complete: when the customer marks it done, or automatically 1 day after the event if you entered their arrival code (3 days if you didn't). If a payout is late, there's no Festivo fee on that booking.</p>
+          <p>Verified vendors get half of what the customer paid 7 days before the event, so you can buy materials. The rest is sent within 24 hours after the booking is complete: when the customer marks it done, or automatically 1 day after the event if you entered their arrival code (3 days if you didn't). If a payout is late, there's no Yaay fee on that booking.</p>
         </details>
       </div>
     </section>

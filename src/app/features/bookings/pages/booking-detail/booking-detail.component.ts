@@ -88,7 +88,7 @@ import { User } from '../../../../core/models/user.model';
                       <p class="dayof-quote">"{{ d.details }}"</p>
                       @if (isVendor()) {
                         @if (d.vendorRespondedAt) {
-                          <p class="action-hint">You replied on {{ d.vendorRespondedAt | date:'d MMM, h:mm a' }}. Festivo is reviewing both sides and will let you both know.</p>
+                          <p class="action-hint">You replied on {{ d.vendorRespondedAt | date:'d MMM, h:mm a' }}. Yaay is reviewing both sides and will let you both know.</p>
                         } @else {
                           <p class="action-hint">The organizer says you {{ d.reason === 'no_show' ? "didn't arrive" : "didn't deliver what was agreed" }}. Your payout is on hold. Reply by <strong>{{ d.respondBy | date:'d MMM, h:mm a' }}</strong> with your side and photos (for example, the set-up at the venue). If you don't reply, the organizer is refunded.</p>
                           <div class="form-group">
@@ -111,7 +111,7 @@ import { User } from '../../../../core/models/user.model';
                       } @else {
                         <p class="action-hint">
                           @if (d.vendorRespondedAt) {
-                            The vendor replied. Festivo is reviewing both sides and will let you know. Your money stays on hold until then.
+                            The vendor replied. Yaay is reviewing both sides and will let you know. Your money stays on hold until then.
                           } @else {
                             The vendor has until <strong>{{ d.respondBy | date:'d MMM, h:mm a' }}</strong> to reply. If they don't, you get a full refund of what you paid online, automatically.
                           }
@@ -205,7 +205,7 @@ import { User } from '../../../../core/models/user.model';
                   </div>
                   @if (isVendor()) {
                     <div class="detail-item">
-                      <span class="label">Festivo fee</span>
+                      <span class="label">Yaay fee</span>
                       <span class="value">{{ feeLabel() }}</span>
                     </div>
                   }
@@ -316,7 +316,7 @@ import { User } from '../../../../core/models/user.model';
                   <p class="action-hint">Completed. Online payments for this booking are paid out to your account.</p>
                   <app-button variant="secondary" fullWidth routerLink="/dashboard/earnings">View earnings</app-button>
                 } @else if (isVendor() && getBalance() <= 0 && booking()?.status === 'confirmed') {
-                  <p class="action-hint">Paid in full. Festivo releases the money to you after the organizer marks the booking complete.</p>
+                  <p class="action-hint">Paid in full. Yaay releases the money to you after the organizer marks the booking complete.</p>
                 } @else if (isVendor() && booking()?.status === 'confirmed') {
                   <p class="action-hint">{{ paymentsEnabled() ? 'Confirmed. The organizer can now pay online.' : 'Confirmed. The organizer pays you directly. Record it here when you receive it.' }}</p>
                 }
@@ -411,7 +411,7 @@ import { User } from '../../../../core/models/user.model';
           <label for="problem-details">Tell us what happened</label>
           <textarea id="problem-details" class="form-textarea" rows="3" [(ngModel)]="problemDetails" placeholder="For example: The decorator didn't come and isn't answering calls."></textarea>
         </div>
-        <p class="policy-note">Your payment stays on hold. The vendor gets 24 hours to reply with their side. If they don't, you're refunded in full automatically. If they do, Festivo looks at both sides and decides.</p>
+        <p class="policy-note">Your payment stays on hold. The vendor gets 24 hours to reply with their side. If they don't, you're refunded in full automatically. If they do, Yaay looks at both sides and decides.</p>
         <div modal-footer>
           <app-button variant="ghost" (onClick)="showProblemModal.set(false)">Close</app-button>
           <app-button variant="danger" [loading]="actionLoading()" [disabled]="!problemReason || problemDetails.trim().length < 10" (onClick)="reportProblem()">Report problem</app-button>
@@ -511,7 +511,7 @@ import { User } from '../../../../core/models/user.model';
           <div class="form-group">
             <label>Your final price (₹)</label>
             <input type="number" class="form-input" [(ngModel)]="quotePrice" min="0">
-            <p class="hint">The organizer proposed ₹{{ booking()?.priceAgreed | number }}. On online payments you receive ₹{{ vendorReceives(quotePrice) | number:'1.0-0' }} after Festivo's {{ feeLabel() }}.</p>
+            <p class="hint">The organizer proposed ₹{{ booking()?.priceAgreed | number }}. On online payments you receive ₹{{ vendorReceives(quotePrice) | number:'1.0-0' }} after Yaay's {{ feeLabel() }}.</p>
           </div>
         </div>
         <div modal-footer>
@@ -1467,7 +1467,7 @@ export class BookingDetailComponent implements OnInit {
     if (accepted && due > 0) {
       if (vendor) {
         return { title: b.pricePaid ? 'Advance received' : 'Accepted · waiting for payment', text: b.pricePaid
-          ? `₹${b.pricePaid.toLocaleString('en-IN')} paid, ₹${due.toLocaleString('en-IN')} still due. Festivo pays you after the job.`
+          ? `₹${b.pricePaid.toLocaleString('en-IN')} paid, ₹${due.toLocaleString('en-IN')} still due. Yaay pays you after the job.`
           : this.paymentsEnabled()
             ? `${other} can now pay online. You'll be notified when they do.`
             : `${other} pays you directly. When you receive it, use "Record a payment you received".`, tone: 'wait' };
@@ -1475,11 +1475,11 @@ export class BookingDetailComponent implements OnInit {
       if (!this.paymentsEnabled()) {
         return { title: `${other} accepted at ₹${b.priceAgreed.toLocaleString('en-IN')}`, text: `Online payment isn't switched on yet. Pay ${other} directly and ask them to record it here.`, tone: 'act' };
       }
-      return { title: b.pricePaid ? `₹${due.toLocaleString('en-IN')} still due` : `${other} accepted · pay to book the date`, text: 'Festivo holds your money and releases it to the vendor only after you mark the job as done.', tone: 'act', action: 'pay' };
+      return { title: b.pricePaid ? `₹${due.toLocaleString('en-IN')} still due` : `${other} accepted · pay to book the date`, text: 'Yaay holds your money and releases it to the vendor only after you mark the job as done.', tone: 'act', action: 'pay' };
     }
     if (accepted) {
       return vendor
-        ? { title: 'Booked and paid', text: 'Festivo releases your money after the organizer marks the job as done (or 3 days after the event).', tone: 'ok' }
+        ? { title: 'Booked and paid', text: 'Yaay releases your money after the organizer marks the job as done (or 3 days after the event).', tone: 'ok' }
         : { title: 'Booked and paid', text: eventPassed ? 'Once the job is done, mark it as done so the vendor gets paid.' : 'All set. After the event, mark the job as done.', tone: 'ok', action: eventPassed ? 'complete' : undefined };
     }
     if (b.status === 'completed' && !vendor && !b.rating) {
@@ -1518,7 +1518,7 @@ export class BookingDetailComponent implements OnInit {
   // "3% fee (your own customer)", "5% fee (new customer, founding rate)", ...
   feeLabel(): string {
     const b = this.booking();
-    const who = b?.source === 'vendor_link' ? 'your own customer' : 'new customer from Festivo';
+    const who = b?.source === 'vendor_link' ? 'your own customer' : 'new customer from Yaay';
     return `${this.feePercent()}% fee (${who}${b?.foundingTerms ? ', founding rate' : ''}, max ₹${this.feeCap().toLocaleString('en-IN')})`;
   }
 
@@ -1617,7 +1617,7 @@ export class BookingDetailComponent implements OnInit {
         this.disputeReply = '';
         this.disputeEvidence.set([]);
         this.reload();
-        this.toast.success('Reply sent', 'Festivo will review both sides and let you know.');
+        this.toast.success('Reply sent', 'Yaay will review both sides and let you know.');
       },
       error: () => this.actionLoading.set(false)
     });

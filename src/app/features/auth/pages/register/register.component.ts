@@ -47,7 +47,7 @@ declare const google: any;
                 </div>
                 <div class="step">
                   <span class="step-number">3</span>
-                  <span class="step-text">Start using Festivo!</span>
+                  <span class="step-text">Start using Yaay!</span>
                 </div>
               </div>
               <p class="verification-note">
@@ -68,7 +68,7 @@ declare const google: any;
           } @else {
             <!-- Normal Registration Form -->
             <div class="auth-header">
-              <a routerLink="/" class="auth-logo" aria-label="Festivo home"><app-logo [size]="34"></app-logo></a>
+              <a routerLink="/" class="auth-logo" aria-label="Yaay home"><app-logo [size]="34"></app-logo></a>
               <h1 class="auth-title">Create your account</h1>
               <p class="auth-subtitle">Start planning and attending amazing events</p>
             </div>
@@ -758,7 +758,7 @@ export class RegisterComponent implements OnInit {
           this.toast.success('Almost There!', 'Please check your email to verify your account.');
         } else if (response.data?.tokens) {
           // Direct login (email verification disabled)
-          this.toast.success('Account Created!', 'Welcome to Festivo. Let\'s get started!');
+          this.toast.success('Account Created!', 'Welcome to Yaay. Let\'s get started!');
           this.router.navigateByUrl(this.auth.homeAfterSignup());
         } else if (response.success && response.data?.emailSent === false) {
           // Account exists but the email didn't go out; they can resend from the next screen

@@ -1,6 +1,6 @@
 {
-  "siteUrl": "https://festivo.paathly.in",
-  "siteName": "Festivo",
+  "siteUrl": "https://yaay.paathly.in",
+  "siteName": "Yaay",
   "locale": "en_IN",
   "defaultImage": "/og-image.png",
   "organization": {
@@ -11,48 +11,48 @@
   "pages": [
     {
       "path": "/",
-      "title": "Festivo · Book local vendors for birthdays, parties and events",
+      "title": "Yaay · Book local vendors for birthdays, parties and events",
       "description": "Find local bakers, decorators, photographers, DJs and venues for birthdays, house parties and community events. Compare prices, book online and invite your guests in one place."
     },
     {
       "path": "/services",
-      "title": "Event vendors near you: cakes, decor, photographers and DJs · Festivo",
+      "title": "Event vendors near you: cakes, decor, photographers and DJs · Yaay",
       "description": "Browse local event vendors with prices up front: custom cakes, balloon and flower decoration, photographers, DJs, entertainers and venues. Check dates and book online."
     },
     {
       "path": "/events",
-      "title": "Public events near you · Festivo",
+      "title": "Public events near you · Yaay",
       "description": "Discover upcoming public events, meetups and celebrations near you. RSVP or get tickets online, and add events to your calendar."
     },
     {
       "path": "/for-vendors",
-      "title": "Get event bookings for your business · Festivo for vendors",
+      "title": "Get event bookings for your business · Yaay for vendors",
       "description": "Bakers, decorators, photographers and DJs: list your services for free, share your booking link and QR card, and find events asking for offers near you."
     },
     {
       "path": "/terms",
-      "title": "Terms of Service · Festivo",
-      "description": "The terms for using Festivo to book event vendors, sell tickets and organise events."
+      "title": "Terms of Service · Yaay",
+      "description": "The terms for using Yaay to book event vendors, sell tickets and organise events."
     },
     {
       "path": "/privacy",
-      "title": "Privacy Policy · Festivo",
-      "description": "What personal data Festivo collects, why, how long we keep it and how to delete it."
+      "title": "Privacy Policy · Yaay",
+      "description": "What personal data Yaay collects, why, how long we keep it and how to delete it."
     },
     {
       "path": "/refund-policy",
-      "title": "Cancellation and Refund Policy · Festivo",
-      "description": "How cancellations, refunds and vendor no-shows work for bookings and tickets on Festivo."
+      "title": "Cancellation and Refund Policy · Yaay",
+      "description": "How cancellations, refunds and vendor no-shows work for bookings and tickets on Yaay."
     },
     {
       "path": "/contact",
-      "title": "Contact Festivo",
-      "description": "Get help with a booking, a vendor listing or your account. Reach the Festivo team by email."
+      "title": "Contact Yaay",
+      "description": "Get help with a booking, a vendor listing or your account. Reach the Yaay team by email."
     },
     {
       "path": "/delete-account",
-      "title": "Delete your Festivo account",
-      "description": "How to delete your Festivo account and what happens to your data.",
+      "title": "Delete your Yaay account",
+      "description": "How to delete your Yaay account and what happens to your data.",
       "noindex": true
     }
   ]
