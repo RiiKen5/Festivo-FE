@@ -93,7 +93,9 @@ export class AttributionService {
     if (!document.referrer) return undefined;
     try {
       const ref = new URL(document.referrer);
-      return ref.host === window.location.host ? undefined : `${ref.origin}${ref.pathname}`;
+      // The old address redirects here, so it is not where a visitor came from
+      const own = ref.host === window.location.host || ref.host === 'festivo.paathly.in';
+      return own ? undefined : `${ref.origin}${ref.pathname}`;
     } catch {
       return undefined;
     }
