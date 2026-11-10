@@ -4,6 +4,7 @@ import { filter } from 'rxjs';
 import { ToastComponent } from './shared/components/toast/toast.component';
 import { NavbarComponent } from './shared/components/navbar/navbar.component';
 import { SiteFooterComponent } from './shared/components/site-footer/site-footer.component';
+import { BottomNavComponent } from './shared/components/bottom-nav/bottom-nav.component';
 import { AttributionService } from './core/services/attribution.service';
 import { AnalyticsService } from './core/services/analytics.service';
 import { RealtimeService } from './core/services/realtime.service';
@@ -17,7 +18,7 @@ import { User } from './core/models/user.model';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, ToastComponent, NavbarComponent, SiteFooterComponent],
+  imports: [RouterOutlet, ToastComponent, NavbarComponent, SiteFooterComponent, BottomNavComponent],
   template: `
     <a class="skip-link" href="#main" (click)="skipToMain($event)">Skip to content</a>
     @if (!isAuthPage()) {
@@ -28,6 +29,9 @@ import { User } from './core/models/user.model';
     </div>
     @if (!isAuthPage() && !isWorkspacePage()) {
       <app-site-footer></app-site-footer>
+    }
+    @if (!isAuthPage()) {
+      <app-bottom-nav></app-bottom-nav>
     }
     <app-toast></app-toast>
   `,

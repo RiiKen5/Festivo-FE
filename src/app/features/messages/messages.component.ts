@@ -280,7 +280,7 @@ interface DayGroup { label: string; messages: Message[]; }
     @use '../../../styles/variables' as *;
     @use '../../../styles/mixins' as *;
 
-    .chat-page { height: calc(100dvh - #{$navbar-height}); background: $bg-secondary; }
+    .chat-page { height: calc(100dvh - #{$navbar-height} - var(--bottom-nav, 0px)); background: $bg-secondary; }
     .chat-shell { display: grid; height: 100%; grid-template-columns: 1fr; @include md { grid-template-columns: 340px 1fr; } }
 
     .inbox { display: flex; flex-direction: column; min-height: 0; background: $bg-primary; border-right: 1px solid $border-light;

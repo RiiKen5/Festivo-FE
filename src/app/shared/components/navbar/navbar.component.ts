@@ -157,51 +157,8 @@ import { LogoComponent } from '../logo/logo.component';
             <a routerLink="/auth/login" class="navbar__link navbar__login">Log in</a>
             <app-button routerLink="/auth/register" size="sm">Sign up</app-button>
           }
-
-          <button
-            type="button"
-            class="navbar__icon-btn navbar__mobile-toggle"
-            [attr.aria-expanded]="isMobileMenuOpen()"
-            aria-controls="mobile-menu"
-            [attr.aria-label]="isMobileMenuOpen() ? 'Close menu' : 'Open menu'"
-            (click)="toggleMobileMenu()"
-          >
-            <app-icon [name]="isMobileMenuOpen() ? 'x' : 'menu'" [size]="22"></app-icon>
-            @if (!isMobileMenuOpen() && messageService.unreadCount() > 0) {
-              <span class="navbar__dot" aria-hidden="true"></span>
-            }
-          </button>
         </div>
       </div>
-
-      @if (isMobileMenuOpen()) {
-        <nav id="mobile-menu" class="navbar__mobile" aria-label="Mobile">
-          <a routerLink="/events" routerLinkActive="active" class="navbar__mobile-link"><app-icon name="party"></app-icon>Events</a>
-          <a routerLink="/services" routerLinkActive="active" class="navbar__mobile-link"><app-icon name="store"></app-icon>Vendors</a>
-          @if (auth.isAuthenticated()) {
-            <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="navbar__mobile-link"><app-icon name="home"></app-icon>Dashboard</a>
-            <a routerLink="/bookings" routerLinkActive="active" class="navbar__mobile-link"><app-icon name="calendar"></app-icon>Bookings</a>
-            <a routerLink="/messages" routerLinkActive="active" class="navbar__mobile-link"><app-icon name="message"></app-icon>Messages
-              @if (messageService.unreadCount() > 0) {
-                <span class="navbar__count">{{ messageService.unreadCount() > 99 ? '99+' : messageService.unreadCount() }}<span class="visually-hidden"> unread</span></span>
-              }
-            </a>
-            @if (canProvideServices()) {
-              <a routerLink="/dashboard/my-services" routerLinkActive="active" class="navbar__mobile-link"><app-icon name="store"></app-icon>My services</a>
-              <a routerLink="/dashboard/find-events" routerLinkActive="active" class="navbar__mobile-link"><app-icon name="search"></app-icon>Find events</a>
-              <a routerLink="/dashboard/calendar" routerLinkActive="active" class="navbar__mobile-link"><app-icon name="calendar"></app-icon>My calendar</a>
-            }
-            <a routerLink="/dashboard/earnings" routerLinkActive="active" class="navbar__mobile-link"><app-icon name="wallet"></app-icon>Earnings &amp; payouts</a>
-            @if (isAdmin()) {
-              <a routerLink="/admin" routerLinkActive="active" class="navbar__mobile-link"><app-icon name="shield"></app-icon>Admin</a>
-            }
-            <a routerLink="/profile" routerLinkActive="active" class="navbar__mobile-link"><app-icon name="settings"></app-icon>Profile &amp; settings</a>
-            <button type="button" class="navbar__mobile-link" (click)="logout()"><app-icon name="log-out"></app-icon>Log out</button>
-          } @else {
-            <a routerLink="/auth/login" class="navbar__mobile-link"><app-icon name="user"></app-icon>Log in</a>
-          }
-        </nav>
-      }
     </header>
   `,
   styles: [`
@@ -255,6 +212,15 @@ import { LogoComponent } from '../logo/logo.component';
       &.active {
         color: $primary-700;
         background: $primary-50;
+      }
+    }
+
+    // On phones the account menu lives in the bottom bar's "Me" tab
+    .navbar__user-menu {
+      display: none;
+
+      @include md {
+        display: block;
       }
     }
 
@@ -312,16 +278,6 @@ import { LogoComponent } from '../logo/logo.component';
       line-height: 1;
     }
 
-    .navbar__dot {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      width: 9px;
-      height: 9px;
-      border-radius: $radius-full;
-      border: 2px solid $bg-primary;
-      background: $primary-600;
-    }
 
     .navbar__badge {
       position: absolute;
@@ -616,53 +572,6 @@ import { LogoComponent } from '../logo/logo.component';
         color: $text-primary;
       }
     }
-
-    .navbar__mobile-toggle {
-      @include md {
-        display: none;
-      }
-    }
-
-    .navbar__mobile {
-      display: flex;
-      flex-direction: column;
-      padding: $spacing-2 $spacing-4 $spacing-4;
-      border-top: 1px solid $border-light;
-      background: $bg-primary;
-
-      @include md {
-        display: none;
-      }
-    }
-
-    .navbar__mobile-link {
-      display: flex;
-      align-items: center;
-      gap: $spacing-3;
-      min-height: 48px;
-      padding: 0 $spacing-3;
-      border: none;
-      border-radius: $radius-default;
-      background: none;
-      color: $text-primary;
-      font-size: $font-size-base;
-      font-weight: $font-weight-medium;
-      text-align: left;
-      cursor: pointer;
-
-      app-icon {
-        color: $text-tertiary;
-      }
-
-      &.active {
-        background: $primary-50;
-        color: $primary-700;
-
-        app-icon {
-          color: $primary-600;
-        }
-      }
-    }
   `]
 })
 export class NavbarComponent implements OnInit, OnDestroy {
@@ -672,7 +581,6 @@ export class NavbarComponent implements OnInit, OnDestroy {
   private router = inject(Router);
 
   isUserMenuOpen = signal(false);
-  isMobileMenuOpen = signal(false);
   isNotificationsOpen = signal(false);
   isLoadingNotifications = signal(false);
   notifications = signal<Notification[]>([]);
@@ -717,17 +625,12 @@ export class NavbarComponent implements OnInit, OnDestroy {
   closeMenus(): void {
     this.isUserMenuOpen.set(false);
     this.isNotificationsOpen.set(false);
-    this.isMobileMenuOpen.set(false);
   }
 
   toggleUserMenu(event: Event): void {
     event.stopPropagation();
     this.isNotificationsOpen.set(false);
     this.isUserMenuOpen.update(v => !v);
-  }
-
-  toggleMobileMenu(): void {
-    this.isMobileMenuOpen.update(v => !v);
   }
 
   toggleNotifications(event: Event): void {

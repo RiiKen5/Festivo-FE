@@ -805,7 +805,7 @@ import { Task, TaskStatus, TaskCategory, TaskPriority } from '../../../../core/m
       position: fixed;
       left: 0;
       right: 0;
-      bottom: 0;
+      bottom: var(--bottom-nav, 0px);
       z-index: $z-sticky;
       display: flex;
       align-items: center;
